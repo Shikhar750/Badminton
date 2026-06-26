@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🏸 Squad Leaderboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0f1117;--surface:#1a1d27;--surface2:#222537;
+      --accent:#00e5a0;--accent-dim:rgba(0,229,160,0.12);
+      --loss:#ff4f6d;--loss-dim:rgba(255,79,109,0.12);
+      --text:#f0f2f8;--muted:#6b7280;--border:rgba(255,255,255,0.07);
+      --gold:#FFD700;--silver:#C0C0C0;--bronze:#CD7F32;
+    }
+    body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh;padding:20px 16px 60px}
+    .wrap{max-width:480px;margin:0 auto}
+    header{text-align:center;margin-bottom:24px}
+    header .icon{font-size:36px;display:block;margin-bottom:6px}
+    header h1{font-size:26px;font-weight:700;letter-spacing:-0.5px}
+    header h1 span{color:var(--accent)}
+    header p{color:var(--muted);font-size:12px;margin-top:4px;font-family:'Space Mono',monospace}
+    .refresh{color:var(--accent);font-size:12px;cursor:pointer;font-family:'Space Mono',monospace;background:none;border:none;margin-top:8px;display:inline-block}
+
+    /* Nav */
+    .nav{display:flex;gap:8px;margin-bottom:24px}
+    .nav-tab{flex:1;padding:10px 0;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-weight:600;font-size:13px;cursor:pointer;text-align:center;font-family:'Space Grotesk',sans-serif;transition:all 0.2s}
+    .nav-tab.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
+
+    /* Tabs */
+    .tab{display:none}.tab.active{display:block}
+
+    /* Leaderboard */
+    .lb-row{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;border-left:3px solid var(--muted)}
+    .lb-row.rank-0{border-left-color:var(--gold)}
+    .lb-row.rank-1{border-left-color:var(--silver)}
+    .lb-row.rank-2{border-left-color:var(--bronze)}
+    .lb-rank{font-size:20px;min-width:28px;text-align:center}
+    .lb-name{font-weight:600;font-size:15px;flex:1}
+    .lb-stats{text-align:right}
+    .lb-rate{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--accent)}
+    .lb-rate.low{color:var(--loss)}
+    .lb-detail{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace}
+    .lb-bar-track{background:var(--surface2);border-radius:99px;height:5px;overflow:hidden;margin-top:4px;width:70px;margin-left:auto}
+    .lb-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),#00b4d8)}
+    .lb-bar-fill.low{background:linear-gradient(90deg,var(--loss),#ff8c69)}
+
+    /* Session card */
+    .session-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+    .session-card.loss{border-left-color:var(--loss)}
+    .card-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .badge{display:inline-block;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase;background:var(--accent-dim);color:var(--accent)}
+    .badge.loss{background:var(--loss-dim);color:var(--loss)}
+    .card-name{font-weight:600;flex:1;font-size:14px}
+    .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:6px}
+    .del-btn:hover{color:var(--loss);background:var(--loss-dim)}
+    .score-row{display:flex;align-items:center;gap:16px}
+    .score-block{text-align:center}
+    .score-num{font-family:'Space Mono',monospace;font-size:26px;font-weight:700;color:var(--accent)}
+    .score-num.loss{color:var(--loss)}
+    .score-lbl{font-size:10px;color:var(--muted);text-transform:uppercase}
+    .score-div{color:var(--muted);font-family:'Space Mono',monospace;font-size:18px}
+    .score-total{margin-left:auto;font-size:11px;color:var(--muted);font-family:'Space Mono',monospace}
+    .dots{margin-top:8px}
+    .dot{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;margin-right:4px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent)}
+    .dot.l{background:var(--loss-dim);color:var(--loss);border-color:var(--loss)}
+
+    /* Filter tabs */
+    .filter-row{display:flex;gap:6px;margin-bottom:14px}
+    .filter-tab{padding:5px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;cursor:pointer;font-family:'Space Grotesk',sans-serif}
+    .filter-tab.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
+
+    /* Day label */
+    .day-label{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-left:2px}
+
+    /* Form */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px}
+    .card-title{font-size:14px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+    .form-group{margin-bottom:12px}
+    .form-row{display:flex;gap:10px;margin-bottom:12px}
+    .form-row .form-group{flex:1;margin-bottom:0}
+    label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px}
+    input{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;width:100%;font-family:'Space Grotesk',sans-serif}
+    input:focus{border-color:var(--accent)}
+    .btn{width:100%;background:var(--accent);color:#0f1117;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;font-family:'Space Grotesk',sans-serif}
+    .btn:disabled{opacity:0.6;cursor:not-allowed}
+    .error{color:var(--loss);font-size:12px;margin:8px 0}
+    .success{color:var(--accent);font-size:12px;margin:8px 0}
+    .hint{font-size:11px;color:var(--muted);text-align:center;margin-top:10px;font-family:'Space Mono',monospace}
+
+    /* Empty */
+    .empty{text-align:center;padding:40px 20px;color:var(--muted)}
+    .empty .emoji{font-size:36px;margin-bottom:10px}
+
+    /* Count */
+    .count{text-align:center;margin-top:12px;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="icon">🏸</span>
+    <h1>Squad <span>Leaderboard</span></h1>
+    <p>shared • live • everyone sees it</p>
+    <button class="refresh" onclick="loadSessions()">↻ Refresh</button>
+  </header>
+
+  <div class="nav">
+    <div class="nav-tab active" onclick="switchTab('leaderboard',this)">🏆 Rankings</div>
+    <div class="nav-tab" onclick="switchTab('history',this)">📋 History</div>
+    <div class="nav-tab" onclick="switchTab('add',this)">＋ Add</div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="tab-leaderboard" class="tab active">
+    <div id="lb-content"><div class="empty"><div class="emoji">🏸</div><p>Loading...</p></div></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="tab-history" class="tab">
+    <div class="filter-row">
+      <div class="filter-tab active" onclick="setFilter('all',this)">All</div>
+      <div class="filter-tab" onclick="setFilter('win',this)">Won</div>
+      <div class="filter-tab" onclick="setFilter('loss',this)">Lost</div>
+    </div>
+    <div id="history-content"><div class="empty"><div class="emoji">🏸</div><p>No sessions yet!</p></div></div>
+  </div>
+
+  <!-- ADD -->
+  <div id="tab-add" class="tab">
+    <div class="card">
+      <div class="card-title">Add Session</div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="inp-date"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Your Name</label>
+          <input type="text" id="inp-player" placeholder="e.g. Shikhar"/>
+        </div>
+        <div class="form-group">
+          <label>Opponent</label>
+          <input type="text" id="inp-opponent" placeholder="e.g. Divyanshu"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>You Won</label>
+          <input type="number" id="inp-mywins" placeholder="3" min="0"/>
+        </div>
+        <div class="form-group">
+          <label>They Won</label>
+          <input type="number" id="inp-theirwins" placeholder="2" min="0"/>
+        </div>
+      </div>
+      <div id="form-error" class="error" style="display:none"></div>
+      <div id="form-success" class="success" style="display:none"></div>
+      <button class="btn" id="save-btn" onclick="handleSave()">Save Session</button>
+      <div class="hint">⚡ saves to Google Sheets • visible to everyone</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxNtubQodqAlTooLoN3LL_kHTyZnDePcrgdRDstngsGbtetN4FveKywadLhOifpdTRd/exec";
+  var PROXY = "https://corsproxy.io/?" + encodeURIComponent(SCRIPT_URL);
+  var sessions = [];
+  var currentFilter = "all";
+  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  // Set today's date
+  document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
+
+  function formatDate(d) {
+    if (!d) return "";
+    var parts = d.split("-");
+    return parts[2] + " " + MONTHS[parseInt(parts[1])-1] + " " + parts[0];
+  }
+
+  function switchTab(name, el) {
+    document.querySelectorAll(".tab").forEach(function(t){ t.classList.remove("active"); });
+    document.querySelectorAll(".nav-tab").forEach(function(t){ t.classList.remove("active"); });
+    document.getElementById("tab-" + name).classList.add("active");
+    el.classList.add("active");
+  }
+
+  function setFilter(f, el) {
+    currentFilter = f;
+    document.querySelectorAll(".filter-tab").forEach(function(t){ t.classList.remove("active"); });
+    el.classList.add("active");
+    renderHistory();
+  }
+
+  async function loadSessions() {
+    document.getElementById("lb-content").innerHTML = '<div class="empty"><div class="emoji">🏸</div><p>Loading...</p></div>';
+    try {
+      var res = await fetch(PROXY);
+      var data = await res.json();
+      sessions = data.filter(function(r){ return r.id && r.id !== "id"; });
+      sessions.reverse();
+      renderLeaderboard();
+      renderHistory();
+    } catch(e) {
+      document.getElementById("lb-content").innerHTML = '<div class="empty"><div class="emoji">⚠️</div><p>Could not load. Tap Refresh to try again.</p></div>';
+    }
+  }
+
+  function computeLeaderboard() {
+    var players = {};
+    sessions.forEach(function(s) {
+      [[s.player, s.myWins, s.theirWins],[s.opponent, s.theirWins, s.myWins]].forEach(function(arr) {
+        var name = arr[0], w = Number(arr[1]), l = Number(arr[2]);
+        if (!name) return;
+        if (!players[name]) players[name] = { name:name, won:0, lost:0 };
+        players[name].won += w;
+        players[name].lost += l;
+      });
+    });
+    return Object.values(players).sort(function(a,b){
+      var ra = a.won+a.lost ? a.won/(a.won+a.lost) : 0;
+      var rb = b.won+b.lost ? b.won/(b.won+b.lost) : 0;
+      return rb - ra || b.won - a.won;
+    });
+  }
+
+  function renderLeaderboard() {
+    var lb = computeLeaderboard();
+    var medals = ["🥇","🥈","🥉"];
+    if (lb.length === 0) {
+      document.getElementById("lb-content").innerHTML = '<div class="empty"><div class="emoji">🏸</div><p>No matches yet — tap ＋ Add!</p></div>';
+      return;
+    }
+    var html = lb.map(function(p, i) {
+      var total = p.won + p.lost;
+      var rate = total ? Math.round(p.won/total*100) : 0;
+      var low = rate < 50;
+      return '<div class="lb-row rank-'+i+'">' +
+        '<div class="lb-rank">'+(medals[i]||("#"+(i+1)))+'</div>' +
+        '<div class="lb-name">'+p.name+'</div>' +
+        '<div class="lb-stats">' +
+          '<div class="lb-rate'+(low?' low':'')+'">'+rate+'%</div>' +
+          '<div class="lb-detail">'+p.won+'W — '+p.lost+'L</div>' +
+          '<div class="lb-bar-track"><div class="lb-bar-fill'+(low?' low':'')+'" style="width:'+rate+'%"></div></div>' +
+        '</div></div>';
+    }).join("");
+    html += '<div class="count">'+sessions.length+' session'+(sessions.length!==1?'s':'')+' recorded</div>';
+    document.getElementById("lb-content").innerHTML = html;
+  }
+
+  function renderHistory() {
+    var filtered = sessions.filter(function(s) {
+      if (currentFilter === "win") return Number(s.myWins) > Number(s.theirWins);
+      if (currentFilter === "loss") return Number(s.myWins) < Number(s.theirWins);
+      return true;
+    });
+    if (filtered.length === 0) {
+      document.getElementById("history-content").innerHTML = '<div class="empty"><div class="emoji">🏸</div><p>No sessions here!</p></div>';
+      return;
+    }
+    var grouped = {};
+    filtered.forEach(function(s) {
+      if (!grouped[s.date]) grouped[s.date] = [];
+      grouped[s.date].push(s);
+    });
+    var dates = Object.keys(grouped).sort(function(a,b){ return b.localeCompare(a); });
+    var html = dates.map(function(date) {
+      var cards = grouped[date].map(function(s) {
+        var isWin = Number(s.myWins) > Number(s.theirWins);
+        var total = Number(s.myWins) + Number(s.theirWins);
+        var dots = "";
+        for (var i=0;i<Number(s.myWins);i++) dots += '<span class="dot">W</span>';
+        for (var i=0;i<Number(s.theirWins);i++) dots += '<span class="dot l">L</span>';
+        return '<div class="session-card'+(isWin?'':' loss')+'">' +
+          '<div class="card-top">' +
+            '<span class="badge'+(isWin?'':' loss')+'">'+(isWin?'Won':'Lost')+'</span>' +
+            '<span class="card-name">'+s.player+' vs '+s.opponent+'</span>' +
+            '<button class="del-btn" onclick="handleDelete(\''+s.id+'\')">✕</button>' +
+          '</div>' +
+          '<div class="score-row">' +
+            '<div class="score-block"><div class="score-num">'+s.myWins+'</div><div class="score-lbl">'+s.player+'</div></div>' +
+            '<div class="score-div">—</div>' +
+            '<div class="score-block"><div class="score-num loss">'+s.theirWins+'</div><div class="score-lbl">'+s.opponent+'</div></div>' +
+            '<div class="score-total">'+total+' matches</div>' +
+          '</div>' +
+          '<div class="dots">'+dots+'</div>' +
+        '</div>';
+      }).join("");
+      return '<div class="day-label">'+formatDate(date)+'</div>' + cards;
+    }).join("");
+    document.getElementById("history-content").innerHTML = html;
+  }
+
+  async function handleSave() {
+    var date = document.getElementById("inp-date").value;
+    var player = document.getElementById("inp-player").value.trim();
+    var opponent = document.getElementById("inp-opponent").value.trim();
+    var myWins = document.getElementById("inp-mywins").value;
+    var theirWins = document.getElementById("inp-theirwins").value;
+    var errEl = document.getElementById("form-error");
+    var sucEl = document.getElementById("form-success");
+    var btn = document.getElementById("save-btn");
+
+    errEl.style.display = "none";
+    sucEl.style.display = "none";
+
+    if (!date || !player || !opponent || myWins === "" || theirWins === "") {
+      errEl.textContent = "Please fill in all fields!";
+      errEl.style.display = "block"; return;
+    }
+    if (player.toLowerCase() === opponent.toLowerCase()) {
+      errEl.textContent = "Player and opponent can't be the same!";
+      errEl.style.display = "block"; return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+
+    try {
+      await fetch(PROXY, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "add",
+          id: String(Date.now()),
+          date: date, player: player, opponent: opponent,
+          myWins: parseInt(myWins), theirWins: parseInt(theirWins)
+        })
+      });
+      document.getElementById("inp-opponent").value = "";
+      document.getElementById("inp-mywins").value = "";
+      document.getElementById("inp-theirwins").value = "";
+      sucEl.textContent = "✓ Saved! Refreshing...";
+      sucEl.style.display = "block";
+      await loadSessions();
+      setTimeout(function(){ sucEl.style.display="none"; }, 2000);
+    } catch(e) {
+      errEl.textContent = "Save failed. Check connection.";
+      errEl.style.display = "block";
+    }
+
+    btn.disabled = false;
+    btn.textContent = "Save Session";
+  }
+
+  async function handleDelete(id) {
+    try {
+      await fetch(PROXY, {
+        method: "POST",
+        body: JSON.stringify({ action: "delete", id: id })
+      });
+      await loadSessions();
+    } catch(e) {}
+  }
+
+  loadSessions();
+</script>
+</body>
+</html>
