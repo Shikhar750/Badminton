@@ -17,85 +17,72 @@
     body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh;padding:20px 16px 60px}
     .wrap{max-width:480px;margin:0 auto}
     header{text-align:center;margin-bottom:24px}
-    header .icon{font-size:36px;display:block;margin-bottom:6px}
-    header h1{font-size:26px;font-weight:700;letter-spacing:-0.5px}
-    header h1 span{color:var(--accent)}
-    header p{color:var(--muted);font-size:12px;margin-top:4px;font-family:'Space Mono',monospace}
-    .refresh{color:var(--accent);font-size:12px;cursor:pointer;font-family:'Space Mono',monospace;background:none;border:none;margin-top:8px;display:inline-block}
-
-    .nav{display:flex;gap:6px;margin-bottom:24px;flex-wrap:wrap}
-    .nav-tab{flex:1;padding:10px 0;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-weight:600;font-size:12px;cursor:pointer;text-align:center;font-family:'Space Grotesk',sans-serif;transition:all 0.2s;min-width:70px}
+    .icon{font-size:36px;display:block;margin-bottom:6px}
+    h1{font-size:26px;font-weight:700;letter-spacing:-0.5px}
+    h1 span{color:var(--accent)}
+    .sub{color:var(--muted);font-size:12px;margin-top:4px;font-family:'Space Mono',monospace}
+    .refresh-btn{color:var(--accent);font-size:12px;cursor:pointer;font-family:'Space Mono',monospace;background:none;border:none;margin-top:8px;display:inline-block;padding:4px 8px}
+    .nav{display:flex;gap:6px;margin-bottom:24px}
+    .nav-tab{flex:1;padding:10px 0;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-weight:600;font-size:12px;cursor:pointer;text-align:center;transition:all 0.2s}
     .nav-tab.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
-
-    .tab{display:none}.tab.active{display:block}
-
-    /* Sub tabs for leaderboard */
+    .tab{display:none}
+    .tab.active{display:block}
     .sub-tabs{display:flex;gap:6px;margin-bottom:16px}
-    .sub-tab{flex:1;padding:8px 0;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-weight:600;font-size:12px;cursor:pointer;text-align:center;font-family:'Space Grotesk',sans-serif}
+    .sub-tab{flex:1;padding:8px 0;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-weight:600;font-size:12px;cursor:pointer;text-align:center}
     .sub-tab.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
-
     .lb-row{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;border-left:3px solid var(--muted)}
-    .lb-row.rank-0{border-left-color:var(--gold)}
-    .lb-row.rank-1{border-left-color:var(--silver)}
-    .lb-row.rank-2{border-left-color:var(--bronze)}
+    .lb-row.r0{border-left-color:var(--gold)}
+    .lb-row.r1{border-left-color:var(--silver)}
+    .lb-row.r2{border-left-color:var(--bronze)}
     .lb-rank{font-size:20px;min-width:28px;text-align:center}
     .lb-name{font-weight:600;font-size:14px;flex:1;line-height:1.3}
     .lb-stats{text-align:right;flex-shrink:0}
     .lb-rate{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--accent)}
     .lb-rate.low{color:var(--loss)}
     .lb-detail{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace}
-    .lb-bar-track{background:var(--surface2);border-radius:99px;height:5px;overflow:hidden;margin-top:4px;width:70px;margin-left:auto}
+    .lb-bar{background:var(--surface2);border-radius:99px;height:5px;overflow:hidden;margin-top:4px;width:70px;margin-left:auto}
     .lb-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),#00b4d8)}
     .lb-bar-fill.low{background:linear-gradient(90deg,var(--loss),#ff8c69)}
-
     .session-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:14px;padding:14px 16px;margin-bottom:10px}
     .session-card.loss{border-left-color:var(--loss)}
     .card-top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
     .badge{display:inline-block;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase;background:var(--accent-dim);color:var(--accent)}
     .badge.loss{background:var(--loss-dim);color:var(--loss)}
     .card-name{font-weight:600;flex:1;font-size:13px;line-height:1.4}
-    .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:6px;flex-shrink:0}
-
-    .teams-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+    .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;flex-shrink:0}
+    .teams-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
     .team-block{flex:1;background:var(--surface2);border-radius:10px;padding:10px;text-align:center}
     .team-names{font-size:12px;font-weight:600;line-height:1.4;margin-bottom:4px}
     .team-score{font-family:'Space Mono',monospace;font-size:28px;font-weight:700;color:var(--accent)}
     .team-score.loss{color:var(--loss)}
-    .vs-divider{color:var(--muted);font-family:'Space Mono',monospace;font-size:16px;flex-shrink:0}
-    .total-matches{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;text-align:center;margin-top:6px}
-
+    .vs{color:var(--muted);font-family:'Space Mono',monospace;font-size:14px;flex-shrink:0}
+    .match-total{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;text-align:center;margin-top:4px}
     .dots{margin-top:6px;text-align:center}
     .dot{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;margin:2px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent)}
     .dot.l{background:var(--loss-dim);color:var(--loss);border-color:var(--loss)}
-
     .filter-row{display:flex;gap:6px;margin-bottom:14px}
-    .filter-tab{padding:5px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;cursor:pointer;font-family:'Space Grotesk',sans-serif}
+    .filter-tab{padding:5px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;cursor:pointer}
     .filter-tab.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
-
     .day-label{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-left:2px}
-
-    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px}
-    .card-title{font-size:14px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
-    .form-group{margin-bottom:12px}
-    .form-row{display:flex;gap:10px;margin-bottom:12px}
-    .form-row .form-group{flex:1;margin-bottom:0}
-    .team-section{background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:12px}
-    .team-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
-    .team-label.opp{color:var(--loss)}
+    .form-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px}
+    .form-title{font-size:14px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+    .fg{margin-bottom:12px}
+    .frow{display:flex;gap:10px;margin-bottom:12px}
+    .frow .fg{flex:1;margin-bottom:0}
+    .team-sec{background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:12px}
+    .team-sec-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+    .team-sec-label.opp{color:var(--loss)}
     label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px}
     input{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;width:100%;font-family:'Space Grotesk',sans-serif}
     input:focus{border-color:var(--accent)}
-    .score-inputs{display:flex;gap:10px;margin-top:12px}
-    .score-inputs .form-group{flex:1;margin-bottom:0}
-    .btn{width:100%;background:var(--accent);color:#0f1117;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;font-family:'Space Grotesk',sans-serif}
-    .btn:disabled{opacity:0.6;cursor:not-allowed}
-    .error{color:var(--loss);font-size:12px;margin:8px 0}
-    .success{color:var(--accent);font-size:12px;margin:8px 0}
+    .save-btn{width:100%;background:var(--accent);color:#0f1117;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;font-family:'Space Grotesk',sans-serif}
+    .save-btn:disabled{opacity:0.6;cursor:not-allowed}
+    .err{color:var(--loss);font-size:12px;margin:8px 0;display:none}
+    .suc{color:var(--accent);font-size:12px;margin:8px 0;display:none}
     .hint{font-size:11px;color:var(--muted);text-align:center;margin-top:10px;font-family:'Space Mono',monospace}
     .empty{text-align:center;padding:40px 20px;color:var(--muted)}
-    .empty .emoji{font-size:36px;margin-bottom:10px}
+    .empty-icon{font-size:36px;margin-bottom:10px}
     .count{text-align:center;margin-top:12px;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace}
-    .section-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;font-family:'Space Mono',monospace}
   </style>
 </head>
 <body>
@@ -103,341 +90,336 @@
   <header>
     <span class="icon">🏸</span>
     <h1>Squad <span>Leaderboard</span></h1>
-    <p>shared • live • doubles</p>
-    <button class="refresh" onclick="loadSessions()">↻ Refresh</button>
+    <p class="sub">shared • live • doubles</p>
+    <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
   </header>
 
   <div class="nav">
-    <div class="nav-tab active" onclick="switchTab('leaderboard',this)">🏆 Rankings</div>
-    <div class="nav-tab" onclick="switchTab('history',this)">📋 History</div>
-    <div class="nav-tab" onclick="switchTab('add',this)">＋ Add</div>
+    <div class="nav-tab active" id="nav-leaderboard">🏆 Rankings</div>
+    <div class="nav-tab" id="nav-history">📋 History</div>
+    <div class="nav-tab" id="nav-add">＋ Add</div>
   </div>
 
-  <!-- LEADERBOARD -->
-  <div id="tab-leaderboard" class="tab active">
+  <div class="tab active" id="tab-leaderboard">
     <div class="sub-tabs">
-      <div class="sub-tab active" onclick="switchSubTab('individual',this)">👤 Individual</div>
-      <div class="sub-tab" onclick="switchSubTab('pairs',this)">👥 Pairs</div>
+      <div class="sub-tab active" id="sub-individual">👤 Individual</div>
+      <div class="sub-tab" id="sub-pairs">👥 Pairs</div>
     </div>
-    <div id="lb-individual"><div class="empty"><div class="emoji">🏸</div><p>Loading...</p></div></div>
-    <div id="lb-pairs" style="display:none"><div class="empty"><div class="emoji">🏸</div><p>Loading...</p></div></div>
+    <div id="lb-individual"></div>
+    <div id="lb-pairs" style="display:none"></div>
   </div>
 
-  <!-- HISTORY -->
-  <div id="tab-history" class="tab">
+  <div class="tab" id="tab-history">
     <div class="filter-row">
-      <div class="filter-tab active" onclick="setFilter('all',this)">All</div>
-      <div class="filter-tab" onclick="setFilter('win',this)">Won</div>
-      <div class="filter-tab" onclick="setFilter('loss',this)">Lost</div>
+      <div class="filter-tab active" id="filter-all">All</div>
+      <div class="filter-tab" id="filter-win">Won</div>
+      <div class="filter-tab" id="filter-loss">Lost</div>
     </div>
-    <div id="history-content"><div class="empty"><div class="emoji">🏸</div><p>No sessions yet!</p></div></div>
+    <div id="history-content"></div>
   </div>
 
-  <!-- ADD -->
-  <div id="tab-add" class="tab">
-    <div class="card">
-      <div class="card-title">Add Doubles Match</div>
-
-      <div class="form-group">
+  <div class="tab" id="tab-add">
+    <div class="form-card">
+      <div class="form-title">Add Doubles Match</div>
+      <div class="fg">
         <label>Date</label>
         <input type="date" id="inp-date"/>
       </div>
-
-      <div class="team-section">
-        <div class="team-label">🟢 Your Team</div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Player 1</label>
-            <input type="text" id="inp-t1p1" placeholder="e.g. Shikhar"/>
-          </div>
-          <div class="form-group">
-            <label>Player 2</label>
-            <input type="text" id="inp-t1p2" placeholder="e.g. Divyanshu"/>
-          </div>
+      <div class="team-sec">
+        <div class="team-sec-label">🟢 Your Team</div>
+        <div class="frow">
+          <div class="fg"><label>Player 1</label><input type="text" id="t1p1" placeholder="e.g. Shikhar"/></div>
+          <div class="fg"><label>Player 2</label><input type="text" id="t1p2" placeholder="e.g. Vaibhav"/></div>
         </div>
       </div>
-
-      <div class="team-section">
-        <div class="team-label opp">🔴 Opponent Team</div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Player 1</label>
-            <input type="text" id="inp-t2p1" placeholder="e.g. Archit"/>
-          </div>
-          <div class="form-group">
-            <label>Player 2</label>
-            <input type="text" id="inp-t2p2" placeholder="e.g. Rohit"/>
-          </div>
+      <div class="team-sec">
+        <div class="team-sec-label opp">🔴 Opponent Team</div>
+        <div class="frow">
+          <div class="fg"><label>Player 1</label><input type="text" id="t2p1" placeholder="e.g. Archit"/></div>
+          <div class="fg"><label>Player 2</label><input type="text" id="t2p2" placeholder="e.g. Abhinav"/></div>
         </div>
       </div>
-
-      <div class="score-inputs">
-        <div class="form-group">
-          <label>Your Team Won</label>
-          <input type="number" id="inp-t1wins" placeholder="3" min="0"/>
-        </div>
-        <div class="form-group">
-          <label>They Won</label>
-          <input type="number" id="inp-t2wins" placeholder="1" min="0"/>
-        </div>
+      <div class="frow">
+        <div class="fg"><label>Your Team Won</label><input type="number" id="t1wins" placeholder="3" min="0"/></div>
+        <div class="fg"><label>They Won</label><input type="number" id="t2wins" placeholder="1" min="0"/></div>
       </div>
-
-      <div id="form-error" class="error" style="display:none"></div>
-      <div id="form-success" class="success" style="display:none"></div>
-      <button class="btn" id="save-btn" onclick="handleSave()">Save Match</button>
+      <div class="err" id="form-err"></div>
+      <div class="suc" id="form-suc"></div>
+      <button class="save-btn" id="save-btn">Save Match</button>
       <div class="hint">⚡ saves to Google Sheets • visible to everyone</div>
     </div>
   </div>
 </div>
 
 <script>
-  var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbww5FcY-0PrlZc1Ja-hIBQgB8ca14V3x86TBtfaXlVx8KVwP-oyTGmAco6y6Vwb0tHZ/exec";
-  var PROXY = "https://corsproxy.io/?" + encodeURIComponent(SCRIPT_URL);
-  var sessions = [];
-  var currentFilter = "all";
-  var currentSubTab = "individual";
-  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbww5FcY-0PrlZc1Ja-hIBQgB8ca14V3x86TBtfaXlVx8KVwP-oyTGmAco6y6Vwb0tHZ/exec";
+var PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(SCRIPT_URL);
+var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var sessions = [];
+var currentFilter = "all";
+var currentSubTab = "individual";
 
-  document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
+// Set today
+document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
 
-  function formatDate(d) { if (!d || d === "undefined") return "Unknown Date"; if (d.indexOf("-") > -1) { var pts = d.split("-"); if (pts.length === 3 && pts[0].length === 4) return pts[2] + " " + MONTHS[parseInt(pts[1])-1] + " " + pts[0]; } try { var dt = new Date(d); if (!isNaN(dt)) return dt.getDate() + " " + MONTHS[dt.getMonth()] + " " + dt.getFullYear(); } catch(e) {} return d; }
-    if (!d) return "";
-    var parts = d.split("-");
-    return parts[2] + " " + MONTHS[parseInt(parts[1])-1] + " " + parts[0];
+// Nav
+document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
+document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
+document.getElementById("nav-add").addEventListener("click", function(){ showTab("add"); });
+document.getElementById("refresh-btn").addEventListener("click", function(){ loadSessions(); });
+
+// Sub tabs
+document.getElementById("sub-individual").addEventListener("click", function(){
+  currentSubTab = "individual";
+  document.getElementById("sub-individual").classList.add("active");
+  document.getElementById("sub-pairs").classList.remove("active");
+  document.getElementById("lb-individual").style.display = "block";
+  document.getElementById("lb-pairs").style.display = "none";
+});
+document.getElementById("sub-pairs").addEventListener("click", function(){
+  currentSubTab = "pairs";
+  document.getElementById("sub-pairs").classList.add("active");
+  document.getElementById("sub-individual").classList.remove("active");
+  document.getElementById("lb-pairs").style.display = "block";
+  document.getElementById("lb-individual").style.display = "none";
+});
+
+// Filters
+document.getElementById("filter-all").addEventListener("click", function(){ setFilter("all", this); });
+document.getElementById("filter-win").addEventListener("click", function(){ setFilter("win", this); });
+document.getElementById("filter-loss").addEventListener("click", function(){ setFilter("loss", this); });
+
+// Save
+document.getElementById("save-btn").addEventListener("click", handleSave);
+
+function showTab(name) {
+  ["leaderboard","history","add"].forEach(function(t){
+    document.getElementById("tab-"+t).classList.remove("active");
+    document.getElementById("nav-"+t).classList.remove("active");
+  });
+  document.getElementById("tab-"+name).classList.add("active");
+  document.getElementById("nav-"+name).classList.add("active");
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  ["all","win","loss"].forEach(function(x){ document.getElementById("filter-"+x).classList.remove("active"); });
+  el.classList.add("active");
+  renderHistory();
+}
+
+function formatDate(d) {
+  if (!d || d === "undefined" || d === "null") return "Unknown Date";
+  if (d.indexOf("-") > -1) {
+    var p = d.split("-");
+    if (p.length === 3 && p[0].length === 4) {
+      return p[2] + " " + MONTHS[parseInt(p[1])-1] + " " + p[0];
+    }
   }
+  try {
+    var dt = new Date(d);
+    if (!isNaN(dt.getTime())) return dt.getDate() + " " + MONTHS[dt.getMonth()] + " " + dt.getFullYear();
+  } catch(e) {}
+  return d;
+}
 
-  function switchTab(name, el) {
-    document.querySelectorAll(".tab").forEach(function(t){ t.classList.remove("active"); });
-    document.querySelectorAll(".nav-tab").forEach(function(t){ t.classList.remove("active"); });
-    document.getElementById("tab-" + name).classList.add("active");
-    el.classList.add("active");
-  }
+function setHTML(id, html) { document.getElementById(id).innerHTML = html; }
 
-  function switchSubTab(name, el) {
-    currentSubTab = name;
-    document.querySelectorAll(".sub-tab").forEach(function(t){ t.classList.remove("active"); });
-    el.classList.add("active");
-    document.getElementById("lb-individual").style.display = name === "individual" ? "block" : "none";
-    document.getElementById("lb-pairs").style.display = name === "pairs" ? "block" : "none";
-  }
+function emptyHTML() { return '<div class="empty"><div class="empty-icon">🏸</div><p>No matches yet — tap ＋ Add!</p></div>'; }
 
-  function setFilter(f, el) {
-    currentFilter = f;
-    document.querySelectorAll(".filter-tab").forEach(function(t){ t.classList.remove("active"); });
-    el.classList.add("active");
+async function loadSessions() {
+  setHTML("lb-individual", '<div class="empty"><div class="empty-icon">🏸</div><p>Loading...</p></div>');
+  setHTML("lb-pairs", '<div class="empty"><div class="empty-icon">🏸</div><p>Loading...</p></div>');
+  try {
+    var res = await fetch(PROXY);
+    var data = await res.json();
+    sessions = data.filter(function(r){ return r.id && r.id !== "id"; });
+    sessions.reverse();
+    renderLeaderboard();
     renderHistory();
+  } catch(e) {
+    setHTML("lb-individual", '<div class="empty"><div class="empty-icon">⚠️</div><p>Could not load. Tap Refresh.</p></div>');
   }
+}
 
-  async function loadSessions() {
-    document.getElementById("lb-individual").innerHTML = '<div class="empty"><div class="emoji">🏸</div><p>Loading...</p></div>';
-    document.getElementById("lb-pairs").innerHTML = '<div class="empty"><div class="emoji">🏸</div><p>Loading...</p></div>';
-    try {
-      var res = await fetch(PROXY);
-      var data = await res.json();
-      sessions = data.filter(function(r){ return r.id && r.id !== "id"; });
-      sessions.reverse();
-      renderLeaderboard();
-      renderHistory();
-    } catch(e) {
-      document.getElementById("lb-individual").innerHTML = '<div class="empty"><div class="emoji">⚠️</div><p>Could not load. Tap Refresh.</p></div>';
+function computeIndividual() {
+  var players = {};
+  sessions.forEach(function(s) {
+    var t1won = Number(s.t1wins) > Number(s.t2wins);
+    [s.t1p1, s.t1p2].forEach(function(name) {
+      if (!name || name === "undefined" || name === "null" || name === "") return;
+      if (!players[name]) players[name] = { name:name, won:0, lost:0 };
+      players[name].won += t1won ? 1 : 0;
+      players[name].lost += t1won ? 0 : 1;
+    });
+    [s.t2p1, s.t2p2].forEach(function(name) {
+      if (!name || name === "undefined" || name === "null" || name === "") return;
+      if (!players[name]) players[name] = { name:name, won:0, lost:0 };
+      players[name].won += t1won ? 0 : 1;
+      players[name].lost += t1won ? 1 : 0;
+    });
+  });
+  return Object.values(players).sort(function(a,b){
+    var ra = a.won+a.lost ? a.won/(a.won+a.lost) : 0;
+    var rb = b.won+b.lost ? b.won/(b.won+b.lost) : 0;
+    return rb-ra || b.won-a.won;
+  });
+}
+
+function computePairs() {
+  var pairs = {};
+  sessions.forEach(function(s) {
+    var t1won = Number(s.t1wins) > Number(s.t2wins);
+    var p1 = [s.t1p1, s.t1p2].filter(function(n){ return n && n !== "undefined" && n !== "null" && n !== ""; }).sort().join(" & ");
+    var p2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n !== "undefined" && n !== "null" && n !== ""; }).sort().join(" & ");
+    if (p1) {
+      if (!pairs[p1]) pairs[p1] = { name:p1, won:0, lost:0 };
+      pairs[p1].won += t1won ? 1 : 0;
+      pairs[p1].lost += t1won ? 0 : 1;
     }
-  }
-
-  function computeIndividual() {
-    var players = {};
-    sessions.forEach(function(s) {
-      var t1won = Number(s.t1wins) > Number(s.t2wins);
-      // Team 1 players
-      [s.t1p1, s.t1p2].forEach(function(name) {
-        if (!name || name === "undefined") return;
-        if (!players[name]) players[name] = { name:name, won:0, lost:0 };
-        players[name].won += t1won ? 1 : 0;
-        players[name].lost += t1won ? 0 : 1;
-      });
-      // Team 2 players
-      [s.t2p1, s.t2p2].forEach(function(name) {
-        if (!name || name === "undefined") return;
-        if (!players[name]) players[name] = { name:name, won:0, lost:0 };
-        players[name].won += t1won ? 0 : 1;
-        players[name].lost += t1won ? 1 : 0;
-      });
-    });
-    return Object.values(players).sort(function(a,b){
-      var ra = a.won+a.lost ? a.won/(a.won+a.lost) : 0;
-      var rb = b.won+b.lost ? b.won/(b.won+b.lost) : 0;
-      return rb - ra || b.won - a.won;
-    });
-  }
-
-  function computePairs() {
-    var pairs = {};
-    sessions.forEach(function(s) {
-      var t1won = Number(s.t1wins) > Number(s.t2wins);
-      var p1 = [s.t1p1, s.t1p2].filter(function(n){ return n && n !== "undefined"; }).sort().join(" & ");
-      var p2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n !== "undefined"; }).sort().join(" & ");
-      if (p1) {
-        if (!pairs[p1]) pairs[p1] = { name:p1, won:0, lost:0 };
-        pairs[p1].won += t1won ? 1 : 0;
-        pairs[p1].lost += t1won ? 0 : 1;
-      }
-      if (p2) {
-        if (!pairs[p2]) pairs[p2] = { name:p2, won:0, lost:0 };
-        pairs[p2].won += t1won ? 0 : 1;
-        pairs[p2].lost += t1won ? 1 : 0;
-      }
-    });
-    return Object.values(pairs).sort(function(a,b){
-      var ra = a.won+a.lost ? a.won/(a.won+a.lost) : 0;
-      var rb = b.won+b.lost ? b.won/(b.won+b.lost) : 0;
-      return rb - ra || b.won - a.won;
-    });
-  }
-
-  function renderLbRows(data, containerId) {
-    var medals = ["🥇","🥈","🥉"];
-    if (data.length === 0) {
-      document.getElementById(containerId).innerHTML = '<div class="empty"><div class="emoji">🏸</div><p>No matches yet — tap ＋ Add!</p></div>';
-      return;
+    if (p2) {
+      if (!pairs[p2]) pairs[p2] = { name:p2, won:0, lost:0 };
+      pairs[p2].won += t1won ? 0 : 1;
+      pairs[p2].lost += t1won ? 1 : 0;
     }
-    var html = data.map(function(p, i) {
-      var total = p.won + p.lost;
-      var rate = total ? Math.round(p.won/total*100) : 0;
-      var low = rate < 50;
-      return '<div class="lb-row rank-'+i+'">' +
-        '<div class="lb-rank">'+(medals[i]||("#"+(i+1)))+'</div>' +
-        '<div class="lb-name">'+p.name+'</div>' +
-        '<div class="lb-stats">' +
-          '<div class="lb-rate'+(low?' low':'')+'">'+rate+'%</div>' +
-          '<div class="lb-detail">'+p.won+'W — '+p.lost+'L</div>' +
-          '<div class="lb-bar-track"><div class="lb-bar-fill'+(low?' low':'')+'" style="width:'+rate+'%"></div></div>' +
-        '</div></div>';
+  });
+  return Object.values(pairs).sort(function(a,b){
+    var ra = a.won+a.lost ? a.won/(a.won+a.lost) : 0;
+    var rb = b.won+b.lost ? b.won/(b.won+b.lost) : 0;
+    return rb-ra || b.won-a.won;
+  });
+}
+
+function renderLbRows(data, containerId) {
+  var medals = ["🥇","🥈","🥉"];
+  if (!data.length) { setHTML(containerId, emptyHTML()); return; }
+  var html = data.map(function(p, i) {
+    var total = p.won + p.lost;
+    var rate = total ? Math.round(p.won/total*100) : 0;
+    var low = rate < 50;
+    return '<div class="lb-row r'+Math.min(i,2)+'">' +
+      '<div class="lb-rank">'+(medals[i]||(("#"+(i+1))))+'</div>' +
+      '<div class="lb-name">'+p.name+'</div>' +
+      '<div class="lb-stats">' +
+        '<div class="lb-rate'+(low?' low':'')+'">'+rate+'%</div>' +
+        '<div class="lb-detail">'+p.won+'W — '+p.lost+'L</div>' +
+        '<div class="lb-bar"><div class="lb-bar-fill'+(low?' low':'')+'" style="width:'+rate+'%"></div></div>' +
+      '</div></div>';
+  }).join("");
+  html += '<div class="count">'+sessions.length+' match'+(sessions.length!==1?'es':'')+' recorded</div>';
+  setHTML(containerId, html);
+}
+
+function renderLeaderboard() {
+  renderLbRows(computeIndividual(), "lb-individual");
+  renderLbRows(computePairs(), "lb-pairs");
+}
+
+function renderHistory() {
+  var filtered = sessions.filter(function(s) {
+    if (currentFilter === "win") return Number(s.t1wins) > Number(s.t2wins);
+    if (currentFilter === "loss") return Number(s.t1wins) < Number(s.t2wins);
+    return true;
+  });
+  if (!filtered.length) { setHTML("history-content", emptyHTML()); return; }
+  var grouped = {};
+  filtered.forEach(function(s) {
+    var d = s.date || "unknown";
+    if (!grouped[d]) grouped[d] = [];
+    grouped[d].push(s);
+  });
+  var dates = Object.keys(grouped).sort(function(a,b){ return b.localeCompare(a); });
+  var html = dates.map(function(date) {
+    var cards = grouped[date].map(function(s) {
+      var isWin = Number(s.t1wins) > Number(s.t2wins);
+      var total = Number(s.t1wins) + Number(s.t2wins);
+      var t1names = [s.t1p1, s.t1p2].filter(function(n){ return n && n !== "undefined"; }).join(" & ");
+      var t2names = [s.t2p1, s.t2p2].filter(function(n){ return n && n !== "undefined"; }).join(" & ");
+      var dots = "";
+      for (var i=0;i<Number(s.t1wins);i++) dots += '<span class="dot">W</span>';
+      for (var i=0;i<Number(s.t2wins);i++) dots += '<span class="dot l">L</span>';
+      return '<div class="session-card'+(isWin?'':' loss')+'">' +
+        '<div class="card-top">' +
+          '<span class="badge'+(isWin?'':' loss')+'">'+(isWin?'Won':'Lost')+'</span>' +
+          '<span class="card-name">'+t1names+' vs '+t2names+'</span>' +
+          '<button class="del-btn" data-id="'+s.id+'">✕</button>' +
+        '</div>' +
+        '<div class="teams-row">' +
+          '<div class="team-block"><div class="team-names">'+t1names+'</div><div class="team-score'+(isWin?'':' loss')+'">'+s.t1wins+'</div></div>' +
+          '<div class="vs">vs</div>' +
+          '<div class="team-block"><div class="team-names">'+t2names+'</div><div class="team-score'+(isWin?' loss':'')+'">'+s.t2wins+'</div></div>' +
+        '</div>' +
+        '<div class="match-total">'+total+' matches played</div>' +
+        '<div class="dots">'+dots+'</div>' +
+      '</div>';
     }).join("");
-    html += '<div class="count">'+sessions.length+' match'+(sessions.length!==1?'es':'')+' recorded</div>';
-    document.getElementById(containerId).innerHTML = html;
+    return '<div class="day-label">'+formatDate(date)+'</div>'+cards;
+  }).join("");
+  setHTML("history-content", html);
+
+  // Attach delete listeners
+  document.querySelectorAll(".del-btn").forEach(function(btn) {
+    btn.addEventListener("click", function(){ handleDelete(this.getAttribute("data-id")); });
+  });
+}
+
+async function handleSave() {
+  var date = document.getElementById("inp-date").value;
+  var t1p1 = document.getElementById("t1p1").value.trim();
+  var t1p2 = document.getElementById("t1p2").value.trim();
+  var t2p1 = document.getElementById("t2p1").value.trim();
+  var t2p2 = document.getElementById("t2p2").value.trim();
+  var t1wins = document.getElementById("t1wins").value;
+  var t2wins = document.getElementById("t2wins").value;
+  var errEl = document.getElementById("form-err");
+  var sucEl = document.getElementById("form-suc");
+  var btn = document.getElementById("save-btn");
+
+  errEl.style.display = "none";
+  sucEl.style.display = "none";
+
+  if (!date || !t1p1 || !t1p2 || !t2p1 || !t2p2 || t1wins === "" || t2wins === "") {
+    errEl.textContent = "Please fill in all fields!";
+    errEl.style.display = "block"; return;
   }
 
-  function renderLeaderboard() {
-    renderLbRows(computeIndividual(), "lb-individual");
-    renderLbRows(computePairs(), "lb-pairs");
-  }
+  btn.disabled = true;
+  btn.textContent = "Saving...";
 
-  function renderHistory() {
-    var filtered = sessions.filter(function(s) {
-      if (currentFilter === "win") return Number(s.t1wins) > Number(s.t2wins);
-      if (currentFilter === "loss") return Number(s.t1wins) < Number(s.t2wins);
-      return true;
+  try {
+    await fetch(PROXY, {
+      method: "POST",
+      body: JSON.stringify({
+        action:"add", id:String(Date.now()),
+        date:date, t1p1:t1p1, t1p2:t1p2, t2p1:t2p1, t2p2:t2p2,
+        t1wins:parseInt(t1wins), t2wins:parseInt(t2wins)
+      })
     });
-    if (filtered.length === 0) {
-      document.getElementById("history-content").innerHTML = '<div class="empty"><div class="emoji">🏸</div><p>No sessions here!</p></div>';
-      return;
-    }
-    var grouped = {};
-    filtered.forEach(function(s) {
-      if (!grouped[s.date]) grouped[s.date] = [];
-      grouped[s.date].push(s);
+    ["t1p1","t1p2","t2p1","t2p2","t1wins","t2wins"].forEach(function(id){ document.getElementById(id).value=""; });
+    sucEl.textContent = "✓ Saved! Refreshing...";
+    sucEl.style.display = "block";
+    await loadSessions();
+    setTimeout(function(){ sucEl.style.display="none"; }, 2000);
+  } catch(e) {
+    errEl.textContent = "Save failed. Check connection.";
+    errEl.style.display = "block";
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Save Match";
+}
+
+async function handleDelete(id) {
+  try {
+    await fetch(PROXY, {
+      method:"POST",
+      body:JSON.stringify({ action:"delete", id:id })
     });
-    var dates = Object.keys(grouped).sort(function(a,b){ return b.localeCompare(a); });
-    var html = dates.map(function(date) {
-      var cards = grouped[date].map(function(s) {
-        var isWin = Number(s.t1wins) > Number(s.t2wins);
-        var total = Number(s.t1wins) + Number(s.t2wins);
-        var t1names = [s.t1p1, s.t1p2].filter(function(n){ return n && n !== "undefined"; }).join(" & ");
-        var t2names = [s.t2p1, s.t2p2].filter(function(n){ return n && n !== "undefined"; }).join(" & ");
-        var dots = "";
-        for (var i=0;i<Number(s.t1wins);i++) dots += '<span class="dot">W</span>';
-        for (var i=0;i<Number(s.t2wins);i++) dots += '<span class="dot l">L</span>';
-        return '<div class="session-card'+(isWin?'':' loss')+'">' +
-          '<div class="card-top">' +
-            '<span class="badge'+(isWin?'':' loss')+'">'+(isWin?'Won':'Lost')+'</span>' +
-            '<span class="card-name">'+t1names+' vs '+t2names+'</span>' +
-            '<button class="del-btn" onclick="handleDelete(\''+s.id+'\')">✕</button>' +
-          '</div>' +
-          '<div class="teams-row">' +
-            '<div class="team-block">' +
-              '<div class="team-names">'+t1names+'</div>' +
-              '<div class="team-score'+(isWin?'':' loss')+'">'+s.t1wins+'</div>' +
-            '</div>' +
-            '<div class="vs-divider">vs</div>' +
-            '<div class="team-block">' +
-              '<div class="team-names">'+t2names+'</div>' +
-              '<div class="team-score'+(isWin?' loss':'')+'">'+s.t2wins+'</div>' +
-            '</div>' +
-          '</div>' +
-          '<div class="total-matches">'+total+' matches played</div>' +
-          '<div class="dots">'+dots+'</div>' +
-        '</div>';
-      }).join("");
-      return '<div class="day-label">'+formatDate(date)+'</div>' + cards;
-    }).join("");
-    document.getElementById("history-content").innerHTML = html;
-  }
+    await loadSessions();
+  } catch(e) {}
+}
 
-  async function handleSave() {
-    var date = document.getElementById("inp-date").value;
-    var t1p1 = document.getElementById("inp-t1p1").value.trim();
-    var t1p2 = document.getElementById("inp-t1p2").value.trim();
-    var t2p1 = document.getElementById("inp-t2p1").value.trim();
-    var t2p2 = document.getElementById("inp-t2p2").value.trim();
-    var t1wins = document.getElementById("inp-t1wins").value;
-    var t2wins = document.getElementById("inp-t2wins").value;
-    var errEl = document.getElementById("form-error");
-    var sucEl = document.getElementById("form-success");
-    var btn = document.getElementById("save-btn");
-
-    errEl.style.display = "none";
-    sucEl.style.display = "none";
-
-    if (!date || !t1p1 || !t1p2 || !t2p1 || !t2p2 || t1wins === "" || t2wins === "") {
-      errEl.textContent = "Please fill in all fields!";
-      errEl.style.display = "block"; return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = "Saving...";
-
-    try {
-      await fetch(PROXY, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "add",
-          id: String(Date.now()),
-          date: date,
-          t1p1: t1p1, t1p2: t1p2,
-          t2p1: t2p1, t2p2: t2p2,
-          t1wins: parseInt(t1wins),
-          t2wins: parseInt(t2wins)
-        })
-      });
-      document.getElementById("inp-t1p1").value = "";
-      document.getElementById("inp-t1p2").value = "";
-      document.getElementById("inp-t2p1").value = "";
-      document.getElementById("inp-t2p2").value = "";
-      document.getElementById("inp-t1wins").value = "";
-      document.getElementById("inp-t2wins").value = "";
-      sucEl.textContent = "✓ Saved! Refreshing...";
-      sucEl.style.display = "block";
-      await loadSessions();
-      setTimeout(function(){ sucEl.style.display="none"; }, 2000);
-    } catch(e) {
-      errEl.textContent = "Save failed. Check connection.";
-      errEl.style.display = "block";
-    }
-
-    btn.disabled = false;
-    btn.textContent = "Save Match";
-  }
-
-  async function handleDelete(id) {
-    try {
-      await fetch(PROXY, {
-        method: "POST",
-        body: JSON.stringify({ action: "delete", id: id })
-      });
-      await loadSessions();
-    } catch(e) {}
-  }
-
-  loadSessions();
+loadSessions();
 </script>
 </body>
 </html>
