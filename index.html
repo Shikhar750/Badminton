@@ -241,14 +241,14 @@
       [s.t1p1, s.t1p2].forEach(function(name) {
         if (!name || name === "undefined" || name === "") return;
         if (!players[name]) players[name] = { name:name, won:0, lost:0 };
-        players[name].won += t1won ? 1 : 0;
-        players[name].lost += t1won ? 0 : 1;
+        players[name].won += Number(s.t1wins);
+        players[name].lost += Number(s.t2wins);
       });
       [s.t2p1, s.t2p2].forEach(function(name) {
         if (!name || name === "undefined" || name === "") return;
         if (!players[name]) players[name] = { name:name, won:0, lost:0 };
-        players[name].won += t1won ? 0 : 1;
-        players[name].lost += t1won ? 1 : 0;
+        players[name].won += Number(s.t2wins);
+        players[name].lost += Number(s.t1wins);
       });
     });
     return Object.values(players).sort(function(a,b){
@@ -266,13 +266,13 @@
       var p2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n !== "undefined" && n !== ""; }).sort().join(" & ");
       if (p1) {
         if (!pairs[p1]) pairs[p1] = { name:p1, won:0, lost:0 };
-        pairs[p1].won += t1won ? 1 : 0;
-        pairs[p1].lost += t1won ? 0 : 1;
+        pairs[p1].won += Number(s.t1wins);
+        pairs[p1].lost += Number(s.t2wins);
       }
       if (p2) {
         if (!pairs[p2]) pairs[p2] = { name:p2, won:0, lost:0 };
-        pairs[p2].won += t1won ? 0 : 1;
-        pairs[p2].lost += t1won ? 1 : 0;
+        pairs[p2].won += Number(s.t2wins);
+        pairs[p2].lost += Number(s.t1wins);
       }
     });
     return Object.values(pairs).sort(function(a,b){
