@@ -25,15 +25,12 @@
     .nav{display:flex;gap:6px;margin-bottom:24px}
     .nav-tab{flex:1;padding:10px 0;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-weight:600;font-size:12px;cursor:pointer;text-align:center;transition:all 0.2s}
     .nav-tab.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
-    .tab{display:none}
-    .tab.active{display:block}
+    .tab{display:none}.tab.active{display:block}
     .sub-tabs{display:flex;gap:6px;margin-bottom:16px}
     .sub-tab{flex:1;padding:8px 0;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-weight:600;font-size:12px;cursor:pointer;text-align:center}
     .sub-tab.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
     .lb-row{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;border-left:3px solid var(--muted)}
-    .lb-row.r0{border-left-color:var(--gold)}
-    .lb-row.r1{border-left-color:var(--silver)}
-    .lb-row.r2{border-left-color:var(--bronze)}
+    .lb-row.r0{border-left-color:var(--gold)}.lb-row.r1{border-left-color:var(--silver)}.lb-row.r2{border-left-color:var(--bronze)}
     .lb-rank{font-size:20px;min-width:28px;text-align:center}
     .lb-name{font-weight:600;font-size:14px;flex:1;line-height:1.3}
     .lb-stats{text-align:right;flex-shrink:0}
@@ -93,13 +90,11 @@
     <p class="sub">shared • live • doubles</p>
     <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
   </header>
-
   <div class="nav">
     <div class="nav-tab active" id="nav-leaderboard">🏆 Rankings</div>
     <div class="nav-tab" id="nav-history">📋 History</div>
     <div class="nav-tab" id="nav-add">＋ Add</div>
   </div>
-
   <div class="tab active" id="tab-leaderboard">
     <div class="sub-tabs">
       <div class="sub-tab active" id="sub-individual">👤 Individual</div>
@@ -108,7 +103,6 @@
     <div id="lb-individual"></div>
     <div id="lb-pairs" style="display:none"></div>
   </div>
-
   <div class="tab" id="tab-history">
     <div class="filter-row">
       <div class="filter-tab active" id="filter-all">All</div>
@@ -117,14 +111,10 @@
     </div>
     <div id="history-content"></div>
   </div>
-
   <div class="tab" id="tab-add">
     <div class="form-card">
       <div class="form-title">Add Doubles Match</div>
-      <div class="fg">
-        <label>Date</label>
-        <input type="date" id="inp-date"/>
-      </div>
+      <div class="fg"><label>Date</label><input type="date" id="inp-date"/></div>
       <div class="team-sec">
         <div class="team-sec-label">🟢 Your Team</div>
         <div class="frow">
@@ -146,280 +136,270 @@
       <div class="err" id="form-err"></div>
       <div class="suc" id="form-suc"></div>
       <button class="save-btn" id="save-btn">Save Match</button>
-      <div class="hint">⚡ saves to Google Sheets • visible to everyone</div>
+      <div class="hint">⚡ saves to Firebase • visible to everyone</div>
     </div>
   </div>
 </div>
 
-<script>
-var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz6vib6RSb49xV18HnN9hpgTQoeqvkVH4SuBLZ3dN9PVJVZLcdrcaYf0lemoCxOO_5N/exec";
-var PROXY = "https://api.allorigins.win/raw?url=" + encodeURIComponent(SCRIPT_URL);
-var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-var sessions = [];
-var currentFilter = "all";
-var currentSubTab = "individual";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, push, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// Set today
-document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
+  var firebaseConfig = {
+    databaseURL: "https://badminton-7ef03-default-rtdb.asia-southeast1.firebasedatabase.app"
+  };
 
-// Nav
-document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
-document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
-document.getElementById("nav-add").addEventListener("click", function(){ showTab("add"); });
-document.getElementById("refresh-btn").addEventListener("click", function(){ loadSessions(); });
+  var app = initializeApp(firebaseConfig);
+  var db = getDatabase(app);
+  var matchesRef = ref(db, "matches");
 
-// Sub tabs
-document.getElementById("sub-individual").addEventListener("click", function(){
-  currentSubTab = "individual";
-  document.getElementById("sub-individual").classList.add("active");
-  document.getElementById("sub-pairs").classList.remove("active");
-  document.getElementById("lb-individual").style.display = "block";
-  document.getElementById("lb-pairs").style.display = "none";
-});
-document.getElementById("sub-pairs").addEventListener("click", function(){
-  currentSubTab = "pairs";
-  document.getElementById("sub-pairs").classList.add("active");
-  document.getElementById("sub-individual").classList.remove("active");
-  document.getElementById("lb-pairs").style.display = "block";
-  document.getElementById("lb-individual").style.display = "none";
-});
+  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var sessions = [];
+  var currentFilter = "all";
 
-// Filters
-document.getElementById("filter-all").addEventListener("click", function(){ setFilter("all", this); });
-document.getElementById("filter-win").addEventListener("click", function(){ setFilter("win", this); });
-document.getElementById("filter-loss").addEventListener("click", function(){ setFilter("loss", this); });
+  document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
 
-// Save
-document.getElementById("save-btn").addEventListener("click", handleSave);
+  // Nav
+  document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
+  document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
+  document.getElementById("nav-add").addEventListener("click", function(){ showTab("add"); });
+  document.getElementById("refresh-btn").addEventListener("click", function(){ renderAll(); });
 
-function showTab(name) {
-  ["leaderboard","history","add"].forEach(function(t){
-    document.getElementById("tab-"+t).classList.remove("active");
-    document.getElementById("nav-"+t).classList.remove("active");
+  // Sub tabs
+  document.getElementById("sub-individual").addEventListener("click", function(){
+    document.getElementById("sub-individual").classList.add("active");
+    document.getElementById("sub-pairs").classList.remove("active");
+    document.getElementById("lb-individual").style.display = "block";
+    document.getElementById("lb-pairs").style.display = "none";
   });
-  document.getElementById("tab-"+name).classList.add("active");
-  document.getElementById("nav-"+name).classList.add("active");
-}
+  document.getElementById("sub-pairs").addEventListener("click", function(){
+    document.getElementById("sub-pairs").classList.add("active");
+    document.getElementById("sub-individual").classList.remove("active");
+    document.getElementById("lb-pairs").style.display = "block";
+    document.getElementById("lb-individual").style.display = "none";
+  });
 
-function setFilter(f, el) {
-  currentFilter = f;
-  ["all","win","loss"].forEach(function(x){ document.getElementById("filter-"+x).classList.remove("active"); });
-  el.classList.add("active");
-  renderHistory();
-}
+  // Filters
+  document.getElementById("filter-all").addEventListener("click", function(){ setFilter("all", this); });
+  document.getElementById("filter-win").addEventListener("click", function(){ setFilter("win", this); });
+  document.getElementById("filter-loss").addEventListener("click", function(){ setFilter("loss", this); });
 
-function formatDate(d) {
-  if (!d || d === "undefined" || d === "null") return "Unknown Date";
-  if (d.indexOf("-") > -1) {
-    var p = d.split("-");
-    if (p.length === 3 && p[0].length === 4) {
-      return p[2] + " " + MONTHS[parseInt(p[1])-1] + " " + p[0];
-    }
+  // Save
+  document.getElementById("save-btn").addEventListener("click", handleSave);
+
+  function showTab(name) {
+    ["leaderboard","history","add"].forEach(function(t){
+      document.getElementById("tab-"+t).classList.remove("active");
+      document.getElementById("nav-"+t).classList.remove("active");
+    });
+    document.getElementById("tab-"+name).classList.add("active");
+    document.getElementById("nav-"+name).classList.add("active");
   }
-  try {
-    var dt = new Date(d);
-    if (!isNaN(dt.getTime())) return dt.getDate() + " " + MONTHS[dt.getMonth()] + " " + dt.getFullYear();
-  } catch(e) {}
-  return d;
-}
 
-function setHTML(id, html) { document.getElementById(id).innerHTML = html; }
+  function setFilter(f, el) {
+    currentFilter = f;
+    ["all","win","loss"].forEach(function(x){ document.getElementById("filter-"+x).classList.remove("active"); });
+    el.classList.add("active");
+    renderHistory();
+  }
 
-function emptyHTML() { return '<div class="empty"><div class="empty-icon">🏸</div><p>No matches yet — tap ＋ Add!</p></div>'; }
+  function formatDate(d) {
+    if (!d) return "Unknown Date";
+    var p = d.split("-");
+    if (p.length === 3) return p[2] + " " + MONTHS[parseInt(p[1])-1] + " " + p[0];
+    return d;
+  }
 
-async function loadSessions() {
-  setHTML("lb-individual", '<div class="empty"><div class="empty-icon">🏸</div><p>Loading...</p></div>');
-  setHTML("lb-pairs", '<div class="empty"><div class="empty-icon">🏸</div><p>Loading...</p></div>');
-  try {
-    var res = await fetch(PROXY);
-    var data = await res.json();
-    sessions = data.filter(function(r){ return r.id && r.id !== "id"; });
-    sessions.reverse();
+  function setHTML(id, html) { document.getElementById(id).innerHTML = html; }
+  function emptyHTML(msg) { return '<div class="empty"><div class="empty-icon">🏸</div><p>'+(msg||"No matches yet — tap ＋ Add!")+'</p></div>'; }
+
+  // Listen to Firebase in real time
+  setHTML("lb-individual", emptyHTML("Loading..."));
+  onValue(matchesRef, function(snapshot) {
+    var data = snapshot.val();
+    sessions = [];
+    if (data) {
+      Object.keys(data).forEach(function(key) {
+        var s = data[key];
+        s.firebaseKey = key;
+        sessions.push(s);
+      });
+      sessions.sort(function(a,b){ return b.id - a.id; });
+    }
+    renderAll();
+  });
+
+  function renderAll() {
     renderLeaderboard();
     renderHistory();
-  } catch(e) {
-    setHTML("lb-individual", '<div class="empty"><div class="empty-icon">⚠️</div><p>Could not load. Tap Refresh.</p></div>');
   }
-}
 
-function computeIndividual() {
-  var players = {};
-  sessions.forEach(function(s) {
-    var t1won = Number(s.t1wins) > Number(s.t2wins);
-    [s.t1p1, s.t1p2].forEach(function(name) {
-      if (!name || name === "undefined" || name === "null" || name === "") return;
-      if (!players[name]) players[name] = { name:name, won:0, lost:0 };
-      players[name].won += t1won ? 1 : 0;
-      players[name].lost += t1won ? 0 : 1;
+  function computeIndividual() {
+    var players = {};
+    sessions.forEach(function(s) {
+      var t1won = Number(s.t1wins) > Number(s.t2wins);
+      [s.t1p1, s.t1p2].forEach(function(name) {
+        if (!name || name === "undefined" || name === "") return;
+        if (!players[name]) players[name] = { name:name, won:0, lost:0 };
+        players[name].won += t1won ? 1 : 0;
+        players[name].lost += t1won ? 0 : 1;
+      });
+      [s.t2p1, s.t2p2].forEach(function(name) {
+        if (!name || name === "undefined" || name === "") return;
+        if (!players[name]) players[name] = { name:name, won:0, lost:0 };
+        players[name].won += t1won ? 0 : 1;
+        players[name].lost += t1won ? 1 : 0;
+      });
     });
-    [s.t2p1, s.t2p2].forEach(function(name) {
-      if (!name || name === "undefined" || name === "null" || name === "") return;
-      if (!players[name]) players[name] = { name:name, won:0, lost:0 };
-      players[name].won += t1won ? 0 : 1;
-      players[name].lost += t1won ? 1 : 0;
+    return Object.values(players).sort(function(a,b){
+      var ra = a.won+a.lost ? a.won/(a.won+a.lost) : 0;
+      var rb = b.won+b.lost ? b.won/(b.won+b.lost) : 0;
+      return rb-ra || b.won-a.won;
     });
-  });
-  return Object.values(players).sort(function(a,b){
-    var ra = a.won+a.lost ? a.won/(a.won+a.lost) : 0;
-    var rb = b.won+b.lost ? b.won/(b.won+b.lost) : 0;
-    return rb-ra || b.won-a.won;
-  });
-}
+  }
 
-function computePairs() {
-  var pairs = {};
-  sessions.forEach(function(s) {
-    var t1won = Number(s.t1wins) > Number(s.t2wins);
-    var p1 = [s.t1p1, s.t1p2].filter(function(n){ return n && n !== "undefined" && n !== "null" && n !== ""; }).sort().join(" & ");
-    var p2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n !== "undefined" && n !== "null" && n !== ""; }).sort().join(" & ");
-    if (p1) {
-      if (!pairs[p1]) pairs[p1] = { name:p1, won:0, lost:0 };
-      pairs[p1].won += t1won ? 1 : 0;
-      pairs[p1].lost += t1won ? 0 : 1;
-    }
-    if (p2) {
-      if (!pairs[p2]) pairs[p2] = { name:p2, won:0, lost:0 };
-      pairs[p2].won += t1won ? 0 : 1;
-      pairs[p2].lost += t1won ? 1 : 0;
-    }
-  });
-  return Object.values(pairs).sort(function(a,b){
-    var ra = a.won+a.lost ? a.won/(a.won+a.lost) : 0;
-    var rb = b.won+b.lost ? b.won/(b.won+b.lost) : 0;
-    return rb-ra || b.won-a.won;
-  });
-}
+  function computePairs() {
+    var pairs = {};
+    sessions.forEach(function(s) {
+      var t1won = Number(s.t1wins) > Number(s.t2wins);
+      var p1 = [s.t1p1, s.t1p2].filter(function(n){ return n && n !== "undefined" && n !== ""; }).sort().join(" & ");
+      var p2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n !== "undefined" && n !== ""; }).sort().join(" & ");
+      if (p1) {
+        if (!pairs[p1]) pairs[p1] = { name:p1, won:0, lost:0 };
+        pairs[p1].won += t1won ? 1 : 0;
+        pairs[p1].lost += t1won ? 0 : 1;
+      }
+      if (p2) {
+        if (!pairs[p2]) pairs[p2] = { name:p2, won:0, lost:0 };
+        pairs[p2].won += t1won ? 0 : 1;
+        pairs[p2].lost += t1won ? 1 : 0;
+      }
+    });
+    return Object.values(pairs).sort(function(a,b){
+      var ra = a.won+a.lost ? a.won/(a.won+a.lost) : 0;
+      var rb = b.won+b.lost ? b.won/(b.won+b.lost) : 0;
+      return rb-ra || b.won-a.won;
+    });
+  }
 
-function renderLbRows(data, containerId) {
-  var medals = ["🥇","🥈","🥉"];
-  if (!data.length) { setHTML(containerId, emptyHTML()); return; }
-  var html = data.map(function(p, i) {
-    var total = p.won + p.lost;
-    var rate = total ? Math.round(p.won/total*100) : 0;
-    var low = rate < 50;
-    return '<div class="lb-row r'+Math.min(i,2)+'">' +
-      '<div class="lb-rank">'+(medals[i]||(("#"+(i+1))))+'</div>' +
-      '<div class="lb-name">'+p.name+'</div>' +
-      '<div class="lb-stats">' +
-        '<div class="lb-rate'+(low?' low':'')+'">'+rate+'%</div>' +
-        '<div class="lb-detail">'+p.won+'W — '+p.lost+'L</div>' +
-        '<div class="lb-bar"><div class="lb-bar-fill'+(low?' low':'')+'" style="width:'+rate+'%"></div></div>' +
-      '</div></div>';
-  }).join("");
-  html += '<div class="count">'+sessions.length+' match'+(sessions.length!==1?'es':'')+' recorded</div>';
-  setHTML(containerId, html);
-}
-
-function renderLeaderboard() {
-  renderLbRows(computeIndividual(), "lb-individual");
-  renderLbRows(computePairs(), "lb-pairs");
-}
-
-function renderHistory() {
-  var filtered = sessions.filter(function(s) {
-    if (currentFilter === "win") return Number(s.t1wins) > Number(s.t2wins);
-    if (currentFilter === "loss") return Number(s.t1wins) < Number(s.t2wins);
-    return true;
-  });
-  if (!filtered.length) { setHTML("history-content", emptyHTML()); return; }
-  var grouped = {};
-  filtered.forEach(function(s) {
-    var d = s.date || "unknown";
-    if (!grouped[d]) grouped[d] = [];
-    grouped[d].push(s);
-  });
-  var dates = Object.keys(grouped).sort(function(a,b){ return b.localeCompare(a); });
-  var html = dates.map(function(date) {
-    var cards = grouped[date].map(function(s) {
-      var isWin = Number(s.t1wins) > Number(s.t2wins);
-      var total = Number(s.t1wins) + Number(s.t2wins);
-      var t1names = [s.t1p1, s.t1p2].filter(function(n){ return n && n !== "undefined"; }).join(" & ");
-      var t2names = [s.t2p1, s.t2p2].filter(function(n){ return n && n !== "undefined"; }).join(" & ");
-      var dots = "";
-      for (var i=0;i<Number(s.t1wins);i++) dots += '<span class="dot">W</span>';
-      for (var i=0;i<Number(s.t2wins);i++) dots += '<span class="dot l">L</span>';
-      return '<div class="session-card'+(isWin?'':' loss')+'">' +
-        '<div class="card-top">' +
-          '<span class="badge'+(isWin?'':' loss')+'">'+(isWin?'Won':'Lost')+'</span>' +
-          '<span class="card-name">'+t1names+' vs '+t2names+'</span>' +
-          '<button class="del-btn" data-id="'+s.id+'">✕</button>' +
-        '</div>' +
-        '<div class="teams-row">' +
-          '<div class="team-block"><div class="team-names">'+t1names+'</div><div class="team-score'+(isWin?'':' loss')+'">'+s.t1wins+'</div></div>' +
-          '<div class="vs">vs</div>' +
-          '<div class="team-block"><div class="team-names">'+t2names+'</div><div class="team-score'+(isWin?' loss':'')+'">'+s.t2wins+'</div></div>' +
-        '</div>' +
-        '<div class="match-total">'+total+' matches played</div>' +
-        '<div class="dots">'+dots+'</div>' +
-      '</div>';
+  function renderLbRows(data, containerId) {
+    var medals = ["🥇","🥈","🥉"];
+    if (!data.length) { setHTML(containerId, emptyHTML()); return; }
+    var html = data.map(function(p, i) {
+      var total = p.won + p.lost;
+      var rate = total ? Math.round(p.won/total*100) : 0;
+      var low = rate < 50;
+      return '<div class="lb-row r'+Math.min(i,2)+'">' +
+        '<div class="lb-rank">'+(medals[i]||("#"+(i+1)))+'</div>' +
+        '<div class="lb-name">'+p.name+'</div>' +
+        '<div class="lb-stats">' +
+          '<div class="lb-rate'+(low?' low':'')+'">'+rate+'%</div>' +
+          '<div class="lb-detail">'+p.won+'W — '+p.lost+'L</div>' +
+          '<div class="lb-bar"><div class="lb-bar-fill'+(low?' low':'')+'" style="width:'+rate+'%"></div></div>' +
+        '</div></div>';
     }).join("");
-    return '<div class="day-label">'+formatDate(date)+'</div>'+cards;
-  }).join("");
-  setHTML("history-content", html);
-
-  // Attach delete listeners
-  document.querySelectorAll(".del-btn").forEach(function(btn) {
-    btn.addEventListener("click", function(){ handleDelete(this.getAttribute("data-id")); });
-  });
-}
-
-async function handleSave() {
-  var date = document.getElementById("inp-date").value;
-  var t1p1 = document.getElementById("t1p1").value.trim();
-  var t1p2 = document.getElementById("t1p2").value.trim();
-  var t2p1 = document.getElementById("t2p1").value.trim();
-  var t2p2 = document.getElementById("t2p2").value.trim();
-  var t1wins = document.getElementById("t1wins").value;
-  var t2wins = document.getElementById("t2wins").value;
-  var errEl = document.getElementById("form-err");
-  var sucEl = document.getElementById("form-suc");
-  var btn = document.getElementById("save-btn");
-
-  errEl.style.display = "none";
-  sucEl.style.display = "none";
-
-  if (!date || !t1p1 || !t1p2 || !t2p1 || !t2p2 || t1wins === "" || t2wins === "") {
-    errEl.textContent = "Please fill in all fields!";
-    errEl.style.display = "block"; return;
+    html += '<div class="count">'+sessions.length+' match'+(sessions.length!==1?'es':'')+' recorded</div>';
+    setHTML(containerId, html);
   }
 
-  btn.disabled = true;
-  btn.textContent = "Saving...";
-
-  try {
-    await fetch(PROXY, {
-      method: "POST",
-      body: JSON.stringify({
-        action:"add", id:String(Date.now()),
-        date:date, t1p1:t1p1, t1p2:t1p2, t2p1:t2p1, t2p2:t2p2,
-        t1wins:parseInt(t1wins), t2wins:parseInt(t2wins)
-      })
-    });
-    ["t1p1","t1p2","t2p1","t2p2","t1wins","t2wins"].forEach(function(id){ document.getElementById(id).value=""; });
-    sucEl.textContent = "✓ Saved! Refreshing...";
-    sucEl.style.display = "block";
-    await loadSessions();
-    setTimeout(function(){ sucEl.style.display="none"; }, 2000);
-  } catch(e) {
-    errEl.textContent = "Save failed. Check connection.";
-    errEl.style.display = "block";
+  function renderLeaderboard() {
+    renderLbRows(computeIndividual(), "lb-individual");
+    renderLbRows(computePairs(), "lb-pairs");
   }
 
-  btn.disabled = false;
-  btn.textContent = "Save Match";
-}
-
-async function handleDelete(id) {
-  try {
-    await fetch(PROXY, {
-      method:"POST",
-      body:JSON.stringify({ action:"delete", id:id })
+  function renderHistory() {
+    var filtered = sessions.filter(function(s) {
+      if (currentFilter === "win") return Number(s.t1wins) > Number(s.t2wins);
+      if (currentFilter === "loss") return Number(s.t1wins) < Number(s.t2wins);
+      return true;
     });
-    await loadSessions();
-  } catch(e) {}
-}
+    if (!filtered.length) { setHTML("history-content", emptyHTML("No sessions here!")); return; }
+    var grouped = {};
+    filtered.forEach(function(s) {
+      var d = s.date || "unknown";
+      if (!grouped[d]) grouped[d] = [];
+      grouped[d].push(s);
+    });
+    var dates = Object.keys(grouped).sort(function(a,b){ return b.localeCompare(a); });
+    var html = dates.map(function(date) {
+      var cards = grouped[date].map(function(s) {
+        var isWin = Number(s.t1wins) > Number(s.t2wins);
+        var total = Number(s.t1wins) + Number(s.t2wins);
+        var t1names = [s.t1p1, s.t1p2].filter(function(n){ return n && n !== "undefined"; }).join(" & ");
+        var t2names = [s.t2p1, s.t2p2].filter(function(n){ return n && n !== "undefined"; }).join(" & ");
+        var dots = "";
+        for (var i=0;i<Number(s.t1wins);i++) dots += '<span class="dot">W</span>';
+        for (var i=0;i<Number(s.t2wins);i++) dots += '<span class="dot l">L</span>';
+        return '<div class="session-card'+(isWin?'':' loss')+'">' +
+          '<div class="card-top">' +
+            '<span class="badge'+(isWin?'':' loss')+'">'+(isWin?'Won':'Lost')+'</span>' +
+            '<span class="card-name">'+t1names+' vs '+t2names+'</span>' +
+            '<button class="del-btn" data-key="'+s.firebaseKey+'">✕</button>' +
+          '</div>' +
+          '<div class="teams-row">' +
+            '<div class="team-block"><div class="team-names">'+t1names+'</div><div class="team-score'+(isWin?'':' loss')+'">'+s.t1wins+'</div></div>' +
+            '<div class="vs">vs</div>' +
+            '<div class="team-block"><div class="team-names">'+t2names+'</div><div class="team-score'+(isWin?' loss':'')+'">'+s.t2wins+'</div></div>' +
+          '</div>' +
+          '<div class="match-total">'+total+' matches played</div>' +
+          '<div class="dots">'+dots+'</div>' +
+        '</div>';
+      }).join("");
+      return '<div class="day-label">'+formatDate(date)+'</div>'+cards;
+    }).join("");
+    setHTML("history-content", html);
+    document.querySelectorAll(".del-btn").forEach(function(btn) {
+      btn.addEventListener("click", function(){
+        var key = this.getAttribute("data-key");
+        remove(ref(db, "matches/" + key));
+      });
+    });
+  }
 
-loadSessions();
+  async function handleSave() {
+    var date = document.getElementById("inp-date").value;
+    var t1p1 = document.getElementById("t1p1").value.trim();
+    var t1p2 = document.getElementById("t1p2").value.trim();
+    var t2p1 = document.getElementById("t2p1").value.trim();
+    var t2p2 = document.getElementById("t2p2").value.trim();
+    var t1wins = document.getElementById("t1wins").value;
+    var t2wins = document.getElementById("t2wins").value;
+    var errEl = document.getElementById("form-err");
+    var sucEl = document.getElementById("form-suc");
+    var btn = document.getElementById("save-btn");
+
+    errEl.style.display = "none";
+    sucEl.style.display = "none";
+
+    if (!date || !t1p1 || !t1p2 || !t2p1 || !t2p2 || t1wins === "" || t2wins === "") {
+      errEl.textContent = "Please fill in all fields!";
+      errEl.style.display = "block"; return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+
+    try {
+      await push(matchesRef, {
+        id: Date.now(),
+        date: date,
+        t1p1: t1p1, t1p2: t1p2,
+        t2p1: t2p1, t2p2: t2p2,
+        t1wins: parseInt(t1wins),
+        t2wins: parseInt(t2wins)
+      });
+      ["t1p1","t1p2","t2p1","t2p2","t1wins","t2wins"].forEach(function(id){ document.getElementById(id).value=""; });
+      sucEl.textContent = "✓ Saved! Everyone can see it now.";
+      sucEl.style.display = "block";
+      setTimeout(function(){ sucEl.style.display="none"; showTab("history"); }, 1500);
+    } catch(e) {
+      errEl.textContent = "Save failed: " + e.message;
+      errEl.style.display = "block";
+    }
+
+    btn.disabled = false;
+    btn.textContent = "Save Match";
+  }
 </script>
 </body>
 </html>
