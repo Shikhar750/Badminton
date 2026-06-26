@@ -200,7 +200,7 @@
 
   document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
 
-  function formatDate(d) {
+  function formatDate(d) { if (!d || d === "undefined") return "Unknown Date"; if (d.indexOf("-") > -1) { var pts = d.split("-"); if (pts.length === 3 && pts[0].length === 4) return pts[2] + " " + MONTHS[parseInt(pts[1])-1] + " " + pts[0]; } try { var dt = new Date(d); if (!isNaN(dt)) return dt.getDate() + " " + MONTHS[dt.getMonth()] + " " + dt.getFullYear(); } catch(e) {} return d; }
     if (!d) return "";
     var parts = d.split("-");
     return parts[2] + " " + MONTHS[parseInt(parts[1])-1] + " " + parts[0];
@@ -251,15 +251,15 @@
       [s.t1p1, s.t1p2].forEach(function(name) {
         if (!name || name === "undefined") return;
         if (!players[name]) players[name] = { name:name, won:0, lost:0 };
-        players[name].won += Number(t1won ? s.t1wins : s.t2wins);
-        players[name].lost += Number(t1won ? s.t2wins : s.t1wins);
+        players[name].won += t1won ? 1 : 0;
+        players[name].lost += t1won ? 0 : 1;
       });
       // Team 2 players
       [s.t2p1, s.t2p2].forEach(function(name) {
         if (!name || name === "undefined") return;
         if (!players[name]) players[name] = { name:name, won:0, lost:0 };
-        players[name].won += Number(t1won ? s.t2wins : s.t1wins);
-        players[name].lost += Number(t1won ? s.t1wins : s.t2wins);
+        players[name].won += t1won ? 0 : 1;
+        players[name].lost += t1won ? 1 : 0;
       });
     });
     return Object.values(players).sort(function(a,b){
@@ -277,13 +277,13 @@
       var p2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n !== "undefined"; }).sort().join(" & ");
       if (p1) {
         if (!pairs[p1]) pairs[p1] = { name:p1, won:0, lost:0 };
-        pairs[p1].won += Number(t1won ? s.t1wins : s.t2wins);
-        pairs[p1].lost += Number(t1won ? s.t2wins : s.t1wins);
+        pairs[p1].won += t1won ? 1 : 0;
+        pairs[p1].lost += t1won ? 0 : 1;
       }
       if (p2) {
         if (!pairs[p2]) pairs[p2] = { name:p2, won:0, lost:0 };
-        pairs[p2].won += Number(t1won ? s.t2wins : s.t1wins);
-        pairs[p2].lost += Number(t1won ? s.t1wins : s.t2wins);
+        pairs[p2].won += t1won ? 0 : 1;
+        pairs[p2].lost += t1won ? 1 : 0;
       }
     });
     return Object.values(pairs).sort(function(a,b){
