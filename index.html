@@ -33,6 +33,9 @@
     .lb-row.r0{border-left-color:var(--gold)}.lb-row.r1{border-left-color:var(--silver)}.lb-row.r2{border-left-color:var(--bronze)}
     .lb-rank{font-size:20px;min-width:28px;text-align:center}
     .lb-name{font-weight:600;font-size:14px;flex:1;line-height:1.3}
+    .lb-streak{font-size:11px;color:var(--muted);margin-top:2px}
+    .lb-streak.hot{color:#ff9500}
+    .lb-streak.cold{color:#5b8dd9}
     .lb-stats{text-align:right;flex-shrink:0}
     .lb-rate{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--accent)}
     .lb-rate.low{color:var(--loss)}
@@ -42,11 +45,16 @@
     .lb-bar-fill.low{background:linear-gradient(90deg,var(--loss),#ff8c69)}
     .session-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:14px;padding:14px 16px;margin-bottom:10px}
     .session-card.loss{border-left-color:var(--loss)}
+    .session-card.draw{border-left-color:#6b7280}
     .card-top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
     .badge{display:inline-block;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase;background:var(--accent-dim);color:var(--accent)}
     .badge.loss{background:var(--loss-dim);color:var(--loss)}
+    .badge.draw{background:rgba(107,114,128,0.15);color:var(--muted)}
     .card-name{font-weight:600;flex:1;font-size:13px;line-height:1.4}
-    .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;flex-shrink:0}
+    .card-actions{display:flex;gap:4px;flex-shrink:0}
+    .del-btn,.edit-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:6px}
+    .edit-btn:hover{color:var(--accent);background:var(--accent-dim)}
+    .del-btn:hover{color:var(--loss);background:var(--loss-dim)}
     .teams-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
     .team-block{flex:1;background:var(--surface2);border-radius:10px;padding:10px;text-align:center}
     .team-names{font-size:12px;font-weight:600;line-height:1.4;margin-bottom:4px}
@@ -69,17 +77,30 @@
     .team-sec{background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:12px}
     .team-sec-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
     .team-sec-label.opp{color:var(--loss)}
-    label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px}
-    input{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;width:100%;font-family:'Space Grotesk',sans-serif}
-    input:focus{border-color:var(--accent)}
+    label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px}
+    input[type="date"],input[type="number"]{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;width:100%;font-family:'Space Grotesk',sans-serif}
+    input[type="date"]:focus,input[type="number"]:focus{border-color:var(--accent)}
+    /* Player chips */
+    .player-chips{display:flex;flex-wrap:wrap;gap:8px}
+    .chip{padding:8px 14px;border-radius:99px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s;font-family:'Space Grotesk',sans-serif}
+    .chip.selected-t1{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
+    .chip.selected-t2{border-color:var(--loss);background:var(--loss-dim);color:var(--loss)}
+    .chip.disabled{opacity:0.3;cursor:not-allowed}
+    .add-player-row{display:flex;gap:8px;margin-top:12px}
+    .add-player-input{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;flex:1;font-family:'Space Grotesk',sans-serif}
+    .add-player-input:focus{border-color:var(--accent)}
+    .add-player-btn{background:var(--accent);color:#0f1117;border:none;border-radius:10px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;font-family:'Space Grotesk',sans-serif}
+    .remove-chip{font-size:10px;margin-left:4px;opacity:0.6}
     .save-btn{width:100%;background:var(--accent);color:#0f1117;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;font-family:'Space Grotesk',sans-serif}
     .save-btn:disabled{opacity:0.6;cursor:not-allowed}
+    .cancel-btn{width:100%;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:10px;font-weight:600;font-size:14px;cursor:pointer;margin-top:8px;font-family:'Space Grotesk',sans-serif}
     .err{color:var(--loss);font-size:12px;margin:8px 0;display:none}
     .suc{color:var(--accent);font-size:12px;margin:8px 0;display:none}
     .hint{font-size:11px;color:var(--muted);text-align:center;margin-top:10px;font-family:'Space Mono',monospace}
     .empty{text-align:center;padding:40px 20px;color:var(--muted)}
     .empty-icon{font-size:36px;margin-bottom:10px}
     .count{text-align:center;margin-top:12px;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace}
+    .selection-hint{font-size:11px;color:var(--muted);margin-bottom:8px;font-family:'Space Mono',monospace}
   </style>
 </head>
 <body>
@@ -95,6 +116,8 @@
     <div class="nav-tab" id="nav-history">📋 History</div>
     <div class="nav-tab" id="nav-add">＋ Add</div>
   </div>
+
+  <!-- LEADERBOARD -->
   <div class="tab active" id="tab-leaderboard">
     <div class="sub-tabs">
       <div class="sub-tab active" id="sub-individual">👤 Individual</div>
@@ -103,6 +126,8 @@
     <div id="lb-individual"></div>
     <div id="lb-pairs" style="display:none"></div>
   </div>
+
+  <!-- HISTORY -->
   <div class="tab" id="tab-history">
     <div class="filter-row">
       <div class="filter-tab active" id="filter-all">All</div>
@@ -111,24 +136,35 @@
     </div>
     <div id="history-content"></div>
   </div>
+
+  <!-- ADD/EDIT -->
   <div class="tab" id="tab-add">
     <div class="form-card">
-      <div class="form-title">Add Doubles Match</div>
+      <div class="form-title" id="form-title">Add Doubles Match</div>
       <div class="fg"><label>Date</label><input type="date" id="inp-date"/></div>
+
+      <!-- Player selection -->
       <div class="team-sec">
-        <div class="team-sec-label">🟢 Your Team</div>
-        <div class="frow">
-          <div class="fg"><label>Player 1</label><input type="text" id="t1p1" placeholder="e.g. Shikhar"/></div>
-          <div class="fg"><label>Player 2</label><input type="text" id="t1p2" placeholder="e.g. Vaibhav"/></div>
+        <div class="team-sec-label">🟢 Your Team <span style="font-weight:400;color:var(--muted)">(pick 2)</span></div>
+        <div class="selection-hint" id="t1-hint">0 of 2 selected</div>
+        <div class="player-chips" id="t1-chips"></div>
+      </div>
+
+      <div class="team-sec">
+        <div class="team-sec-label opp">🔴 Opponent Team <span style="font-weight:400;color:var(--muted)">(pick 2)</span></div>
+        <div class="selection-hint" id="t2-hint">0 of 2 selected</div>
+        <div class="player-chips" id="t2-chips"></div>
+      </div>
+
+      <!-- Add new player -->
+      <div class="form-card" style="margin-top:0;margin-bottom:12px;padding:12px;background:var(--surface2)">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">+ Add New Player to Squad</div>
+        <div class="add-player-row">
+          <input type="text" class="add-player-input" id="new-player-input" placeholder="Player name"/>
+          <button class="add-player-btn" id="add-player-btn">Add</button>
         </div>
       </div>
-      <div class="team-sec">
-        <div class="team-sec-label opp">🔴 Opponent Team</div>
-        <div class="frow">
-          <div class="fg"><label>Player 1</label><input type="text" id="t2p1" placeholder="e.g. Archit"/></div>
-          <div class="fg"><label>Player 2</label><input type="text" id="t2p2" placeholder="e.g. Abhinav"/></div>
-        </div>
-      </div>
+
       <div class="frow">
         <div class="fg"><label>Your Team Won</label><input type="number" id="t1wins" placeholder="3" min="0"/></div>
         <div class="fg"><label>They Won</label><input type="number" id="t2wins" placeholder="1" min="0"/></div>
@@ -136,6 +172,7 @@
       <div class="err" id="form-err"></div>
       <div class="suc" id="form-suc"></div>
       <button class="save-btn" id="save-btn">Save Match</button>
+      <button class="cancel-btn" id="cancel-btn" style="display:none">Cancel Edit</button>
       <div class="hint">⚡ saves to Firebase • visible to everyone</div>
     </div>
   </div>
@@ -143,26 +180,28 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, push, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getDatabase, ref, push, remove, update, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-  var firebaseConfig = {
-    databaseURL: "https://badminton-7ef03-default-rtdb.asia-southeast1.firebasedatabase.app"
-  };
-
+  var firebaseConfig = { databaseURL: "https://badminton-7ef03-default-rtdb.asia-southeast1.firebasedatabase.app" };
   var app = initializeApp(firebaseConfig);
   var db = getDatabase(app);
   var matchesRef = ref(db, "matches");
+  var squadRef = ref(db, "squad");
 
   var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   var sessions = [];
+  var squadPlayers = [];
   var currentFilter = "all";
+  var editingKey = null;
+  var t1Selected = [];
+  var t2Selected = [];
 
   document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
 
   // Nav
   document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
   document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
-  document.getElementById("nav-add").addEventListener("click", function(){ showTab("add"); });
+  document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); });
   document.getElementById("refresh-btn").addEventListener("click", function(){ renderAll(); });
 
   // Sub tabs
@@ -184,8 +223,13 @@
   document.getElementById("filter-win").addEventListener("click", function(){ setFilter("win", this); });
   document.getElementById("filter-loss").addEventListener("click", function(){ setFilter("loss", this); });
 
-  // Save
+  // Save & Cancel
   document.getElementById("save-btn").addEventListener("click", handleSave);
+  document.getElementById("cancel-btn").addEventListener("click", function(){ resetForm(); showTab("history"); });
+
+  // Add player
+  document.getElementById("add-player-btn").addEventListener("click", addNewPlayer);
+  document.getElementById("new-player-input").addEventListener("keydown", function(e){ if(e.key==="Enter") addNewPlayer(); });
 
   function showTab(name) {
     ["leaderboard","history","add"].forEach(function(t){
@@ -213,8 +257,14 @@
   function setHTML(id, html) { document.getElementById(id).innerHTML = html; }
   function emptyHTML(msg) { return '<div class="empty"><div class="empty-icon">🏸</div><p>'+(msg||"No matches yet — tap ＋ Add!")+'</p></div>'; }
 
-  // Listen to Firebase in real time
-  setHTML("lb-individual", emptyHTML("Loading..."));
+  // Listen to squad
+  onValue(squadRef, function(snapshot) {
+    var data = snapshot.val();
+    squadPlayers = data ? Object.values(data) : [];
+    renderChips();
+  });
+
+  // Listen to matches
   onValue(matchesRef, function(snapshot) {
     var data = snapshot.val();
     sessions = [];
@@ -234,10 +284,121 @@
     renderHistory();
   }
 
+  // ── CHIP SELECTION ──────────────────────────────────────────────
+  function renderChips() {
+    var t1 = document.getElementById("t1-chips");
+    var t2 = document.getElementById("t2-chips");
+    if (!squadPlayers.length) {
+      t1.innerHTML = '<div style="color:var(--muted);font-size:12px">Add players above first</div>';
+      t2.innerHTML = '<div style="color:var(--muted);font-size:12px">Add players above first</div>';
+      return;
+    }
+    t1.innerHTML = squadPlayers.map(function(p) {
+      var isSel = t1Selected.indexOf(p) > -1;
+      var isSelt2 = t2Selected.indexOf(p) > -1;
+      var cls = isSel ? "chip selected-t1" : isSelt2 ? "chip disabled" : "chip";
+      return '<button class="'+cls+'" data-player="'+p+'" data-team="t1">'+p+'</button>';
+    }).join("");
+    t2.innerHTML = squadPlayers.map(function(p) {
+      var isSel = t2Selected.indexOf(p) > -1;
+      var isSelt1 = t1Selected.indexOf(p) > -1;
+      var cls = isSel ? "chip selected-t2" : isSelt1 ? "chip disabled" : "chip";
+      return '<button class="'+cls+'" data-player="'+p+'" data-team="t2">'+p+'</button>';
+    }).join("");
+
+    // Update hints
+    document.getElementById("t1-hint").textContent = t1Selected.length + " of 2 selected" + (t1Selected.length ? ": " + t1Selected.join(" & ") : "");
+    document.getElementById("t2-hint").textContent = t2Selected.length + " of 2 selected" + (t2Selected.length ? ": " + t2Selected.join(" & ") : "");
+
+    // Attach listeners
+    document.querySelectorAll(".chip:not(.disabled)").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var player = this.getAttribute("data-player");
+        var team = this.getAttribute("data-team");
+        if (team === "t1") {
+          var idx = t1Selected.indexOf(player);
+          if (idx > -1) { t1Selected.splice(idx, 1); }
+          else if (t1Selected.length < 2) { t1Selected.push(player); }
+        } else {
+          var idx = t2Selected.indexOf(player);
+          if (idx > -1) { t2Selected.splice(idx, 1); }
+          else if (t2Selected.length < 2) { t2Selected.push(player); }
+        }
+        renderChips();
+      });
+    });
+  }
+
+  async function addNewPlayer() {
+    var input = document.getElementById("new-player-input");
+    var name = input.value.trim();
+    if (!name) return;
+    if (squadPlayers.indexOf(name) > -1) { input.value = ""; return; }
+    var newSquad = squadPlayers.concat([name]);
+    await set(squadRef, newSquad);
+    input.value = "";
+  }
+
+  function resetForm() {
+    editingKey = null;
+    t1Selected = [];
+    t2Selected = [];
+    document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
+    document.getElementById("t1wins").value = "";
+    document.getElementById("t2wins").value = "";
+    document.getElementById("form-err").style.display = "none";
+    document.getElementById("form-suc").style.display = "none";
+    document.getElementById("save-btn").textContent = "Save Match";
+    document.getElementById("cancel-btn").style.display = "none";
+    document.getElementById("form-title").textContent = "Add Doubles Match";
+    renderChips();
+  }
+
+  function startEdit(session) {
+    editingKey = session.firebaseKey;
+    t1Selected = [session.t1p1, session.t1p2].filter(function(n){ return n && n !== "undefined"; });
+    t2Selected = [session.t2p1, session.t2p2].filter(function(n){ return n && n !== "undefined"; });
+    document.getElementById("inp-date").value = session.date;
+    document.getElementById("t1wins").value = session.t1wins;
+    document.getElementById("t2wins").value = session.t2wins;
+    document.getElementById("save-btn").textContent = "Update Match";
+    document.getElementById("cancel-btn").style.display = "block";
+    document.getElementById("form-title").textContent = "Edit Match";
+    renderChips();
+    showTab("add");
+  }
+
+  // ── LEADERBOARD ─────────────────────────────────────────────────
+  function computeStreaks(playerName) {
+    // Get all matches for this player sorted by date ascending
+    var playerMatches = sessions.filter(function(s) {
+      return [s.t1p1,s.t1p2,s.t2p1,s.t2p2].indexOf(playerName) > -1;
+    }).sort(function(a,b){ return a.id - b.id; });
+
+    if (!playerMatches.length) return null;
+
+    // Get results
+    var results = playerMatches.map(function(s) {
+      var inT1 = [s.t1p1,s.t1p2].indexOf(playerName) > -1;
+      var t1wins = Number(s.t1wins);
+      var t2wins = Number(s.t2wins);
+      if (inT1) return t1wins > t2wins ? "W" : t1wins < t2wins ? "L" : "D";
+      else return t2wins > t1wins ? "W" : t2wins < t1wins ? "L" : "D";
+    });
+
+    // Count current streak from last match
+    var last = results[results.length - 1];
+    var streak = 1;
+    for (var i = results.length - 2; i >= 0; i--) {
+      if (results[i] === last) streak++;
+      else break;
+    }
+    return { type: last, count: streak };
+  }
+
   function computeIndividual() {
     var players = {};
     sessions.forEach(function(s) {
-      var t1won = Number(s.t1wins) > Number(s.t2wins);
       [s.t1p1, s.t1p2].forEach(function(name) {
         if (!name || name === "undefined" || name === "") return;
         if (!players[name]) players[name] = { name:name, won:0, lost:0 };
@@ -261,7 +422,6 @@
   function computePairs() {
     var pairs = {};
     sessions.forEach(function(s) {
-      var t1won = Number(s.t1wins) > Number(s.t2wins);
       var p1 = [s.t1p1, s.t1p2].filter(function(n){ return n && n !== "undefined" && n !== ""; }).sort().join(" & ");
       var p2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n !== "undefined" && n !== ""; }).sort().join(" & ");
       if (p1) {
@@ -282,16 +442,24 @@
     });
   }
 
-  function renderLbRows(data, containerId) {
+  function renderLbRows(data, containerId, showStreak) {
     var medals = ["🥇","🥈","🥉"];
     if (!data.length) { setHTML(containerId, emptyHTML()); return; }
     var html = data.map(function(p, i) {
       var total = p.won + p.lost;
       var rate = total ? Math.round(p.won/total*100) : 0;
       var low = rate < 50;
+      var streakHTML = "";
+      if (showStreak) {
+        var streak = computeStreaks(p.name);
+        if (streak && streak.count >= 2) {
+          if (streak.type === "W") streakHTML = '<div class="lb-streak hot">🔥 Won last '+streak.count+'</div>';
+          else if (streak.type === "L") streakHTML = '<div class="lb-streak cold">❄️ Lost last '+streak.count+'</div>';
+        }
+      }
       return '<div class="lb-row r'+Math.min(i,2)+'">' +
         '<div class="lb-rank">'+(medals[i]||("#"+(i+1)))+'</div>' +
-        '<div class="lb-name">'+p.name+'</div>' +
+        '<div style="flex:1"><div class="lb-name">'+p.name+'</div>'+streakHTML+'</div>' +
         '<div class="lb-stats">' +
           '<div class="lb-rate'+(low?' low':'')+'">'+rate+'%</div>' +
           '<div class="lb-detail">'+p.won+'W — '+p.lost+'L</div>' +
@@ -303,8 +471,8 @@
   }
 
   function renderLeaderboard() {
-    renderLbRows(computeIndividual(), "lb-individual");
-    renderLbRows(computePairs(), "lb-pairs");
+    renderLbRows(computeIndividual(), "lb-individual", true);
+    renderLbRows(computePairs(), "lb-pairs", false);
   }
 
   function renderHistory() {
@@ -323,23 +491,30 @@
     var dates = Object.keys(grouped).sort(function(a,b){ return b.localeCompare(a); });
     var html = dates.map(function(date) {
       var cards = grouped[date].map(function(s) {
-        var isWin = Number(s.t1wins) > Number(s.t2wins);
-        var total = Number(s.t1wins) + Number(s.t2wins);
+        var t1w = Number(s.t1wins), t2w = Number(s.t2wins);
+        var isWin = t1w > t2w;
+        var isDraw = t1w === t2w;
+        var resultClass = isDraw ? "draw" : isWin ? "" : "loss";
+        var resultLabel = isDraw ? "Draw" : isWin ? "Won" : "Lost";
+        var total = t1w + t2w;
         var t1names = [s.t1p1, s.t1p2].filter(function(n){ return n && n !== "undefined"; }).join(" & ");
         var t2names = [s.t2p1, s.t2p2].filter(function(n){ return n && n !== "undefined"; }).join(" & ");
         var dots = "";
-        for (var i=0;i<Number(s.t1wins);i++) dots += '<span class="dot">W</span>';
-        for (var i=0;i<Number(s.t2wins);i++) dots += '<span class="dot l">L</span>';
-        return '<div class="session-card'+(isWin?'':' loss')+'">' +
+        for (var i=0;i<t1w;i++) dots += '<span class="dot">W</span>';
+        for (var i=0;i<t2w;i++) dots += '<span class="dot l">L</span>';
+        return '<div class="session-card '+resultClass+'">' +
           '<div class="card-top">' +
-            '<span class="badge'+(isWin?'':' loss')+'">'+(isWin?'Won':'Lost')+'</span>' +
+            '<span class="badge '+resultClass+'">'+resultLabel+'</span>' +
             '<span class="card-name">'+t1names+' vs '+t2names+'</span>' +
-            '<button class="del-btn" data-key="'+s.firebaseKey+'">✕</button>' +
+            '<div class="card-actions">' +
+              '<button class="edit-btn" data-key="'+s.firebaseKey+'">✏️</button>' +
+              '<button class="del-btn" data-key="'+s.firebaseKey+'">✕</button>' +
+            '</div>' +
           '</div>' +
           '<div class="teams-row">' +
-            '<div class="team-block"><div class="team-names">'+t1names+'</div><div class="team-score'+(isWin?'':' loss')+'">'+s.t1wins+'</div></div>' +
+            '<div class="team-block"><div class="team-names">'+t1names+'</div><div class="team-score'+(isWin?'':isDraw?'':' loss')+'">'+t1w+'</div></div>' +
             '<div class="vs">vs</div>' +
-            '<div class="team-block"><div class="team-names">'+t2names+'</div><div class="team-score'+(isWin?' loss':'')+'">'+s.t2wins+'</div></div>' +
+            '<div class="team-block"><div class="team-names">'+t2names+'</div><div class="team-score'+(isWin?' loss':isDraw?'':'')+'">'+t2w+'</div></div>' +
           '</div>' +
           '<div class="match-total">'+total+' matches played</div>' +
           '<div class="dots">'+dots+'</div>' +
@@ -348,20 +523,23 @@
       return '<div class="day-label">'+formatDate(date)+'</div>'+cards;
     }).join("");
     setHTML("history-content", html);
+
     document.querySelectorAll(".del-btn").forEach(function(btn) {
       btn.addEventListener("click", function(){
+        remove(ref(db, "matches/" + this.getAttribute("data-key")));
+      });
+    });
+    document.querySelectorAll(".edit-btn").forEach(function(btn) {
+      btn.addEventListener("click", function(){
         var key = this.getAttribute("data-key");
-        remove(ref(db, "matches/" + key));
+        var session = sessions.find(function(s){ return s.firebaseKey === key; });
+        if (session) startEdit(session);
       });
     });
   }
 
   async function handleSave() {
     var date = document.getElementById("inp-date").value;
-    var t1p1 = document.getElementById("t1p1").value.trim();
-    var t1p2 = document.getElementById("t1p2").value.trim();
-    var t2p1 = document.getElementById("t2p1").value.trim();
-    var t2p2 = document.getElementById("t2p2").value.trim();
     var t1wins = document.getElementById("t1wins").value;
     var t2wins = document.getElementById("t2wins").value;
     var errEl = document.getElementById("form-err");
@@ -371,34 +549,40 @@
     errEl.style.display = "none";
     sucEl.style.display = "none";
 
-    if (!date || !t1p1 || !t1p2 || !t2p1 || !t2p2 || t1wins === "" || t2wins === "") {
-      errEl.textContent = "Please fill in all fields!";
+    if (!date || t1Selected.length !== 2 || t2Selected.length !== 2 || t1wins === "" || t2wins === "") {
+      errEl.textContent = t1Selected.length < 2 || t2Selected.length < 2 ? "Please select 2 players for each team!" : "Please fill in all fields!";
       errEl.style.display = "block"; return;
     }
 
     btn.disabled = true;
-    btn.textContent = "Saving...";
+    btn.textContent = editingKey ? "Updating..." : "Saving...";
+
+    var matchData = {
+      id: editingKey ? sessions.find(function(s){ return s.firebaseKey === editingKey; }).id : Date.now(),
+      date: date,
+      t1p1: t1Selected[0], t1p2: t1Selected[1],
+      t2p1: t2Selected[0], t2p2: t2Selected[1],
+      t1wins: parseInt(t1wins), t2wins: parseInt(t2wins)
+    };
 
     try {
-      await push(matchesRef, {
-        id: Date.now(),
-        date: date,
-        t1p1: t1p1, t1p2: t1p2,
-        t2p1: t2p1, t2p2: t2p2,
-        t1wins: parseInt(t1wins),
-        t2wins: parseInt(t2wins)
-      });
-      ["t1p1","t1p2","t2p1","t2p2","t1wins","t2wins"].forEach(function(id){ document.getElementById(id).value=""; });
-      sucEl.textContent = "✓ Saved! Everyone can see it now.";
+      if (editingKey) {
+        await update(ref(db, "matches/" + editingKey), matchData);
+        sucEl.textContent = "✓ Updated!";
+      } else {
+        await push(matchesRef, matchData);
+        sucEl.textContent = "✓ Saved! Everyone can see it now.";
+      }
       sucEl.style.display = "block";
+      resetForm();
       setTimeout(function(){ sucEl.style.display="none"; showTab("history"); }, 1500);
     } catch(e) {
-      errEl.textContent = "Save failed: " + e.message;
+      errEl.textContent = "Failed: " + e.message;
       errEl.style.display = "block";
     }
 
     btn.disabled = false;
-    btn.textContent = "Save Match";
+    btn.textContent = editingKey ? "Update Match" : "Save Match";
   }
 </script>
 </body>
