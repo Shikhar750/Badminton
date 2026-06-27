@@ -158,7 +158,8 @@
 
       <!-- Add new player -->
       <div class="form-card" style="margin-top:0;margin-bottom:12px;padding:12px;background:var(--surface2)">
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">+ Add New Player to Squad</div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Manage Squad</div>
+        <div id="squad-manage" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
         <div class="add-player-row">
           <input type="text" class="add-player-input" id="new-player-input" placeholder="Player name"/>
           <button class="add-player-btn" id="add-player-btn">Add</button>
@@ -286,6 +287,7 @@
 
   // ── CHIP SELECTION ──────────────────────────────────────────────
   function renderChips() {
+    renderSquadManage();
     var t1 = document.getElementById("t1-chips");
     var t2 = document.getElementById("t2-chips");
     if (!squadPlayers.length) {
@@ -337,6 +339,20 @@
     var newSquad = squadPlayers.concat([name]);
     await set(squadRef, newSquad);
     input.value = "";
+  }
+
+  async function removePlayer(name) {
+    var newSquad = squadPlayers.filter(function(p){ return p !== name; });
+    await set(squadRef, newSquad);
+  }
+
+  function renderSquadManage() {
+    var el = document.getElementById("squad-manage");
+    if (!el) return;
+    if (!squadPlayers.length) { el.innerHTML = "<span style="color:var(--muted);font-size:12px">No players yet</span>"; return; }
+    el.innerHTML = squadPlayers.map(function(p) {
+      return "<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:99px;padding:5px 10px;font-size:12px">"+p+"<button onclick="removePlayer('"+p+"')" style="background:none;border:none;color:var(--loss);cursor:pointer;font-size:12px;padding:0 2px">✕</button></span>";
+    }).join("");
   }
 
   function resetForm() {
@@ -584,6 +600,7 @@
     btn.disabled = false;
     btn.textContent = editingKey ? "Update Match" : "Save Match";
   }
+  window.removePlayer = removePlayer;
 </script>
 </body>
 </html>
