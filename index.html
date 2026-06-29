@@ -29,10 +29,7 @@
     .sub-tabs{display:flex;gap:6px;margin-bottom:16px}
     .sub-tab{flex:1;padding:8px 0;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-weight:600;font-size:12px;cursor:pointer;text-align:center}
     .sub-tab.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
-
-    /* Leaderboard */
-    .lb-row{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;border-left:3px solid var(--muted);cursor:pointer;transition:border-color 0.2s}
-    .lb-row:hover{border-color:rgba(255,255,255,0.15)}
+    .lb-row{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;border-left:3px solid var(--muted);cursor:pointer}
     .lb-row.r0{border-left-color:var(--gold)}.lb-row.r1{border-left-color:var(--silver)}.lb-row.r2{border-left-color:var(--bronze)}
     .lb-rank{font-size:20px;min-width:28px;text-align:center}
     .lb-name{font-weight:600;font-size:14px;line-height:1.3}
@@ -46,20 +43,18 @@
     .lb-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),#00b4d8)}
     .lb-bar-fill.low{background:linear-gradient(90deg,var(--loss),#ff8c69)}
     .tap-hint{font-size:11px;color:var(--muted);text-align:center;margin-bottom:12px;font-family:'Space Mono',monospace}
-
-    /* Session card */
     .session-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:14px;padding:14px 16px;margin-bottom:10px}
     .session-card.loss{border-left-color:var(--loss)}
     .session-card.draw{border-left-color:#6b7280}
-    .card-top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .card-top{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
     .badge{display:inline-block;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase;background:var(--accent-dim);color:var(--accent)}
     .badge.loss{background:var(--loss-dim);color:var(--loss)}
     .badge.draw{background:rgba(107,114,128,0.15);color:var(--muted)}
-    .card-name{font-weight:600;flex:1;font-size:13px;line-height:1.4}
-    .card-actions{display:flex;gap:4px;flex-shrink:0}
+    .gt-badge{font-size:10px;color:var(--muted);background:var(--surface2);border-radius:4px;padding:2px 6px;font-family:'Space Mono',monospace}
+    .card-name{font-weight:600;flex:1;font-size:13px;line-height:1.4;min-width:120px}
+    .card-actions{display:flex;gap:4px;flex-shrink:0;margin-left:auto}
     .del-btn,.edit-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:6px}
-    .edit-btn:hover{color:var(--accent);background:var(--accent-dim)}
-    .del-btn:hover{color:var(--loss);background:var(--loss-dim)}
+    .edit-btn:hover{color:var(--accent)}.del-btn:hover{color:var(--loss)}
     .teams-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
     .team-block{flex:1;background:var(--surface2);border-radius:10px;padding:10px;text-align:center}
     .team-names{font-size:12px;font-weight:600;line-height:1.4;margin-bottom:4px}
@@ -74,8 +69,6 @@
     .filter-tab{padding:5px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;cursor:pointer}
     .filter-tab.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
     .day-label{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-left:2px}
-
-    /* Form */
     .form-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px}
     .form-title{font-size:14px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
     .fg{margin-bottom:12px}
@@ -84,7 +77,7 @@
     .team-sec{background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:12px}
     .team-sec-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
     .team-sec-label.opp{color:var(--loss)}
-    .selection-hint{font-size:11px;color:var(--muted);margin-bottom:8px;font-family:'Space Mono',monospace}
+    .sel-hint{font-size:11px;color:var(--muted);margin-bottom:8px;font-family:'Space Mono',monospace}
     label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px}
     input[type="date"],input[type="number"],input[type="text"]{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;width:100%;font-family:'Space Grotesk',sans-serif}
     input:focus{border-color:var(--accent)}
@@ -93,13 +86,13 @@
     .chip.sel-t2{border-color:var(--loss);background:var(--loss-dim);color:var(--loss)}
     .chip.dis{opacity:0.3;cursor:not-allowed;pointer-events:none}
     .chips-wrap{display:flex;flex-wrap:wrap;gap:8px}
+    .gt-btn{flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all 0.2s}
+    .gt-btn.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
     .squad-tag{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:99px;padding:5px 10px;font-size:12px;margin:3px}
     .squad-del{background:none;border:none;color:var(--loss);cursor:pointer;font-size:12px;padding:0 2px}
     .add-row{display:flex;gap:8px;margin-top:10px}
     .add-input{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;flex:1;font-family:'Space Grotesk',sans-serif}
     .add-input:focus{border-color:var(--accent)}
-    .game-type-btn{flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:"Space Grotesk",sans-serif;transition:all 0.2s}
-    .game-type-btn.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
     .add-btn{background:var(--accent);color:#0f1117;border:none;border-radius:10px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
     .save-btn{width:100%;background:var(--accent);color:#0f1117;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;font-family:'Space Grotesk',sans-serif}
     .save-btn:disabled{opacity:0.6;cursor:not-allowed}
@@ -111,49 +104,41 @@
     .empty-icon{font-size:36px;margin-bottom:10px}
     .count{text-align:center;margin-top:12px;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace}
     .sec-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
-
-    /* Back button */
     .back-btn{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--accent);font-size:14px;font-weight:600;cursor:pointer;margin-bottom:20px;padding:0;font-family:'Space Grotesk',sans-serif}
-
-    /* Player stats */
     .player-header{text-align:center;margin-bottom:24px}
     .player-avatar{width:64px;height:64px;border-radius:50%;background:var(--accent-dim);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--accent);margin:0 auto 12px}
     .player-name-big{font-size:22px;font-weight:700}
     .player-winrate{font-size:36px;font-weight:700;font-family:'Space Mono',monospace;color:var(--accent);margin:4px 0}
     .player-winrate.low{color:var(--loss)}
     .player-record{font-size:13px;color:var(--muted);font-family:'Space Mono',monospace}
-
     .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
     .stat-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
-    .stat-box-val{font-size:20px;font-weight:700;font-family:'Space Mono',monospace;color:var(--text)}
-    .stat-box-val.accent{color:var(--accent)}
-    .stat-box-val.loss{color:var(--loss)}
-    .stat-box-label{font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px}
-
-    .section-header{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-family:'Space Mono',monospace;padding-left:2px}
-
-    /* H2H rows */
-    .h2h-row{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color 0.2s}
+    .stat-box.wide{grid-column:span 2}
+    .stat-val{font-size:20px;font-weight:700;font-family:'Space Mono',monospace;color:var(--text)}
+    .stat-val.accent{color:var(--accent)}.stat-val.loss{color:var(--loss)}
+    .stat-lbl{font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px}
+    .gt-split{display:flex;justify-content:space-around}
+    .gt-split-item{text-align:center}
+    .gt-divider{width:1px;background:var(--border)}
+    .sec-hdr{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-family:'Space Mono',monospace;padding-left:2px}
+    .h2h-row{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer}
     .h2h-row:hover{border-color:rgba(255,255,255,0.2)}
-    .h2h-opponent{font-weight:600;font-size:14px;flex:1}
+    .h2h-opp{font-weight:600;font-size:14px;flex:1}
     .h2h-score{font-family:'Space Mono',monospace;font-size:14px;font-weight:700}
     .h2h-score.win{color:var(--accent)}.h2h-score.loss{color:var(--loss)}.h2h-score.draw{color:var(--muted)}
-    .h2h-arrow{color:var(--muted);font-size:12px}
-
-    /* Head to head page */
+    .h2h-arr{color:var(--muted);font-size:12px}
     .h2h-header{text-align:center;margin-bottom:24px}
-    .h2h-players{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px}
+    .h2h-players{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:12px}
     .h2h-player{text-align:center}
-    .h2h-player-name{font-size:16px;font-weight:700}
-    .h2h-player-score{font-size:48px;font-weight:700;font-family:'Space Mono',monospace;color:var(--accent)}
-    .h2h-player-score.loss{color:var(--loss)}
+    .h2h-pname{font-size:16px;font-weight:700}
+    .h2h-pscore{font-size:48px;font-weight:700;font-family:'Space Mono',monospace;color:var(--accent)}
+    .h2h-pscore.loss{color:var(--loss)}
     .h2h-vs{font-size:18px;color:var(--muted);font-family:'Space Mono',monospace}
-    .h2h-last{font-size:12px;color:var(--muted);text-align:center;font-family:'Space Mono',monospace;margin-top:8px}
-
+    .h2h-last{font-size:12px;color:var(--muted);text-align:center;font-family:'Space Mono',monospace}
     .h2h-match-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
     .h2h-match-date{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;flex-shrink:0}
-    .h2h-match-teams{flex:1;font-size:12px;color:var(--text)}
-    .h2h-match-result{font-size:12px;font-weight:700;font-family:'Space Mono',monospace}
+    .h2h-match-info{flex:1;font-size:12px}
+    .h2h-match-result{font-size:12px;font-weight:700;font-family:'Space Mono',monospace;flex-shrink:0}
     .h2h-match-result.w{color:var(--accent)}.h2h-match-result.l{color:var(--loss)}.h2h-match-result.d{color:var(--muted)}
   </style>
 </head>
@@ -165,7 +150,6 @@
     <p class="sub">shared • live • doubles</p>
     <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
   </header>
-
   <div class="nav">
     <div class="nav-tab active" id="nav-leaderboard">🏆 Rankings</div>
     <div class="nav-tab" id="nav-history">📋 History</div>
@@ -192,19 +176,22 @@
     <div id="history-content"></div>
   </div>
 
-  <!-- ADD / EDIT -->
+  <!-- ADD/EDIT -->
   <div class="tab" id="tab-add">
     <div class="form-card">
       <div class="form-title" id="form-title">Add Doubles Match</div>
-      <div class="fg"><label>Date</label><input type="date" id="inp-date"/></div>
+      <div class="fg">
+        <label>Date</label>
+        <input type="date" id="inp-date"/>
+      </div>
       <div class="team-sec">
         <div class="team-sec-label">🟢 Your Team <span style="font-weight:400;color:var(--muted)">(pick 2)</span></div>
-        <div class="selection-hint" id="t1-hint">0 of 2 selected</div>
+        <div class="sel-hint" id="t1-hint">0 of 2 selected</div>
         <div class="chips-wrap" id="t1-chips"></div>
       </div>
       <div class="team-sec">
         <div class="team-sec-label opp">🔴 Opponent Team <span style="font-weight:400;color:var(--muted)">(pick 2)</span></div>
-        <div class="selection-hint" id="t2-hint">0 of 2 selected</div>
+        <div class="sel-hint" id="t2-hint">0 of 2 selected</div>
         <div class="chips-wrap" id="t2-chips"></div>
       </div>
       <div style="background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:12px">
@@ -218,8 +205,8 @@
       <div class="fg">
         <label>Game Type</label>
         <div style="display:flex;gap:8px">
-          <button class="game-type-btn active" id="btn-21" data-type="21">21 pts</button>
-          <button class="game-type-btn" id="btn-11" data-type="11">11 pts</button>
+          <button class="gt-btn active" id="btn-21">21 pts</button>
+          <button class="gt-btn" id="btn-11">11 pts</button>
         </div>
       </div>
       <div class="frow">
@@ -238,13 +225,13 @@
   <div class="tab" id="tab-player">
     <button class="back-btn" id="back-from-player">← Back to Rankings</button>
     <div class="player-header">
-      <div class="player-avatar" id="player-avatar">S</div>
-      <div class="player-name-big" id="player-name-big">Shikhar</div>
-      <div class="player-winrate" id="player-winrate">60%</div>
-      <div class="player-record" id="player-record">3W — 2L • 5 matches</div>
+      <div class="player-avatar" id="p-avatar">S</div>
+      <div class="player-name-big" id="p-name">Player</div>
+      <div class="player-winrate" id="p-winrate">0%</div>
+      <div class="player-record" id="p-record">0W — 0L • 0 matches</div>
     </div>
     <div class="stats-grid" id="stats-grid"></div>
-    <div class="section-header">Head to Head</div>
+    <div class="sec-hdr">Head to Head</div>
     <div id="h2h-list"></div>
   </div>
 
@@ -254,18 +241,18 @@
     <div class="h2h-header">
       <div class="h2h-players">
         <div class="h2h-player">
-          <div class="h2h-player-name" id="h2h-p1-name">Shikhar</div>
-          <div class="h2h-player-score" id="h2h-p1-score">2</div>
+          <div class="h2h-pname" id="h2h-p1-name">P1</div>
+          <div class="h2h-pscore" id="h2h-p1-score">0</div>
         </div>
         <div class="h2h-vs">vs</div>
         <div class="h2h-player">
-          <div class="h2h-player-name" id="h2h-p2-name">Archit</div>
-          <div class="h2h-player-score loss" id="h2h-p2-score">3</div>
+          <div class="h2h-pname" id="h2h-p2-name">P2</div>
+          <div class="h2h-pscore" id="h2h-p2-score">0</div>
         </div>
       </div>
       <div class="h2h-last" id="h2h-last"></div>
     </div>
-    <div class="section-header">Match History</div>
+    <div class="sec-hdr">Match History</div>
     <div id="h2h-matches"></div>
   </div>
 </div>
@@ -274,8 +261,8 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, push, remove, update, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-  var firebaseConfig = { databaseURL: "https://badminton-7ef03-default-rtdb.asia-southeast1.firebasedatabase.app" };
-  var app = initializeApp(firebaseConfig);
+  var DB_URL = "https://badminton-7ef03-default-rtdb.asia-southeast1.firebasedatabase.app";
+  var app = initializeApp({ databaseURL: DB_URL });
   var db = getDatabase(app);
   var matchesRef = ref(db, "matches");
   var squadRef = ref(db, "squad");
@@ -287,13 +274,13 @@
   var editingKey = null;
   var t1Selected = [];
   var t2Selected = [];
-  var currentPlayer = null;
-  var currentH2HOpponent = null;
   var gameType = "21";
+  var currentPlayer = null;
 
+  // ── INIT ────────────────────────────────────────────────────────
   document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
 
-  // ── NAV ─────────────────────────────────────────────────────────
+  // ── NAV LISTENERS ───────────────────────────────────────────────
   document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
   document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
   document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); });
@@ -315,14 +302,22 @@
   document.getElementById("filter-loss").addEventListener("click", function(){ setFilter("loss", this); });
   document.getElementById("save-btn").addEventListener("click", handleSave);
   document.getElementById("cancel-btn").addEventListener("click", function(){ resetForm(); showTab("history"); });
-  document.getElementById("btn-21").addEventListener("click", function(){ gameType="21"; document.getElementById("btn-21").classList.add("active"); document.getElementById("btn-11").classList.remove("active"); });
-  document.getElementById("btn-11").addEventListener("click", function(){ gameType="11"; document.getElementById("btn-11").classList.add("active"); document.getElementById("btn-21").classList.remove("active"); });
   document.getElementById("add-player-btn").addEventListener("click", addNewPlayer);
   document.getElementById("new-player-input").addEventListener("keydown", function(e){ if(e.key==="Enter") addNewPlayer(); });
+  document.getElementById("btn-21").addEventListener("click", function(){
+    gameType = "21";
+    this.classList.add("active");
+    document.getElementById("btn-11").classList.remove("active");
+  });
+  document.getElementById("btn-11").addEventListener("click", function(){
+    gameType = "11";
+    this.classList.add("active");
+    document.getElementById("btn-21").classList.remove("active");
+  });
   document.getElementById("back-from-player").addEventListener("click", function(){ showTab("leaderboard"); });
   document.getElementById("back-from-h2h").addEventListener("click", function(){ showPlayerStats(currentPlayer); });
 
-  // ── FIREBASE ────────────────────────────────────────────────────
+  // ── FIREBASE LISTENERS ──────────────────────────────────────────
   onValue(squadRef, function(snapshot) {
     var data = snapshot.val();
     squadPlayers = data ? (Array.isArray(data) ? data : Object.values(data)) : [];
@@ -370,9 +365,11 @@
     return d;
   }
 
-  function setHTML(id, html) { document.getElementById(id).innerHTML = html; }
-  function emptyHTML(msg) { return '<div class="empty"><div class="empty-icon">🏸</div><p>'+(msg||"No matches yet!")+'</p></div>'; }
+  function H(id, html) { document.getElementById(id).innerHTML = html; }
+  function empty(msg) { return '<div class="empty"><div class="empty-icon">🏸</div><p>'+(msg||"No matches yet!")+'</p></div>'; }
   function renderAll() { renderLeaderboard(); renderHistory(); }
+  function weight(s) { return (s.gameType === "11") ? 0.5 : 1; }
+  function gtBadge(s) { return '<span class="gt-badge">'+(s.gameType==="11"?"11pt":"21pt")+'</span>'; }
 
   // ── SQUAD ────────────────────────────────────────────────────────
   function renderSquadTags() {
@@ -405,17 +402,17 @@
   function renderChips() {
     if (!squadPlayers.length) {
       var msg = '<div style="color:var(--muted);font-size:12px">Add players in Manage Squad below</div>';
-      setHTML("t1-chips", msg); setHTML("t2-chips", msg); return;
+      H("t1-chips", msg); H("t2-chips", msg); return;
     }
-    function makeChips(containerId, team) {
-      var el = document.getElementById(containerId);
+    function make(cid, team) {
+      var el = document.getElementById(cid);
       el.innerHTML = squadPlayers.map(function(p) {
         var inT1 = t1Selected.indexOf(p) > -1;
         var inT2 = t2Selected.indexOf(p) > -1;
         var cls = "chip";
-        if (team==="t1"&&inT1) cls+=" sel-t1";
-        else if (team==="t2"&&inT2) cls+=" sel-t2";
-        else if ((team==="t1"&&inT2)||(team==="t2"&&inT1)) cls+=" dis";
+        if (team==="t1" && inT1) cls += " sel-t1";
+        else if (team==="t2" && inT2) cls += " sel-t2";
+        else if ((team==="t1"&&inT2)||(team==="t2"&&inT1)) cls += " dis";
         return '<button class="'+cls+'" data-p="'+p+'" data-team="'+team+'">'+p+'</button>';
       }).join("");
       el.querySelectorAll(".chip:not(.dis)").forEach(function(btn) {
@@ -423,20 +420,20 @@
           var p = this.getAttribute("data-p"), t = this.getAttribute("data-team");
           var arr = t==="t1" ? t1Selected : t2Selected;
           var idx = arr.indexOf(p);
-          if (idx>-1) arr.splice(idx,1);
-          else if (arr.length<2) arr.push(p);
+          if (idx > -1) arr.splice(idx, 1);
+          else if (arr.length < 2) arr.push(p);
           renderChips();
         });
       });
     }
-    makeChips("t1-chips","t1"); makeChips("t2-chips","t2");
+    make("t1-chips","t1"); make("t2-chips","t2");
     document.getElementById("t1-hint").textContent = t1Selected.length+" of 2 selected"+(t1Selected.length?": "+t1Selected.join(" & "):"");
     document.getElementById("t2-hint").textContent = t2Selected.length+" of 2 selected"+(t2Selected.length?": "+t2Selected.join(" & "):"");
   }
 
   // ── FORM ─────────────────────────────────────────────────────────
   function resetForm() {
-    editingKey = null; t1Selected = []; t2Selected = [];
+    editingKey = null; t1Selected = []; t2Selected = []; gameType = "21";
     document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
     document.getElementById("t1wins").value = "";
     document.getElementById("t2wins").value = "";
@@ -445,22 +442,24 @@
     document.getElementById("save-btn").textContent = "Save Match";
     document.getElementById("cancel-btn").style.display = "none";
     document.getElementById("form-title").textContent = "Add Doubles Match";
+    document.getElementById("btn-21").classList.add("active");
+    document.getElementById("btn-11").classList.remove("active");
     renderChips();
   }
 
-  function startEdit(session) {
-    editingKey = session.firebaseKey;
-    t1Selected = [session.t1p1,session.t1p2].filter(function(n){ return n&&n!=="undefined"; });
-    t2Selected = [session.t2p1,session.t2p2].filter(function(n){ return n&&n!=="undefined"; });
-    document.getElementById("inp-date").value = session.date;
-    document.getElementById("t1wins").value = session.t1wins;
-    gameType = session.gameType||"21";
-    document.getElementById("btn-21").classList.toggle("active", gameType==="21");
-    document.getElementById("btn-11").classList.toggle("active", gameType==="11");
-    document.getElementById("t2wins").value = session.t2wins;
+  function startEdit(s) {
+    editingKey = s.firebaseKey;
+    t1Selected = [s.t1p1,s.t1p2].filter(function(n){ return n&&n!=="undefined"; });
+    t2Selected = [s.t2p1,s.t2p2].filter(function(n){ return n&&n!=="undefined"; });
+    gameType = s.gameType || "21";
+    document.getElementById("inp-date").value = s.date;
+    document.getElementById("t1wins").value = s.t1wins;
+    document.getElementById("t2wins").value = s.t2wins;
     document.getElementById("save-btn").textContent = "Update Match";
     document.getElementById("cancel-btn").style.display = "block";
     document.getElementById("form-title").textContent = "Edit Match";
+    document.getElementById("btn-21").classList.toggle("active", gameType==="21");
+    document.getElementById("btn-11").classList.toggle("active", gameType==="11");
     renderChips(); showTab("add");
   }
 
@@ -472,11 +471,16 @@
     var sucEl = document.getElementById("form-suc");
     var btn = document.getElementById("save-btn");
     errEl.style.display = "none"; sucEl.style.display = "none";
-    if (!date||t1wins===""||t2wins==="") { errEl.textContent="Please fill in all fields!"; errEl.style.display="block"; return; }
-    if (t1Selected.length!==2||t2Selected.length!==2) { errEl.textContent="Please select 2 players for each team!"; errEl.style.display="block"; return; }
+    if (!date || t1wins==="" || t2wins==="") { errEl.textContent="Please fill in all fields!"; errEl.style.display="block"; return; }
+    if (t1Selected.length!==2 || t2Selected.length!==2) { errEl.textContent="Please select 2 players for each team!"; errEl.style.display="block"; return; }
     btn.disabled=true; btn.textContent=editingKey?"Updating...":"Saving...";
     var existingId = editingKey ? sessions.find(function(s){ return s.firebaseKey===editingKey; }).id : Date.now();
-    var matchData = { id:existingId, date:date, t1p1:t1Selected[0], t1p2:t1Selected[1], t2p1:t2Selected[0], t2p2:t2Selected[1], t1wins:parseInt(t1wins), t2wins:parseInt(t2wins), gameType:gameType };
+    var matchData = {
+      id: existingId, date: date, gameType: gameType,
+      t1p1: t1Selected[0], t1p2: t1Selected[1],
+      t2p1: t2Selected[0], t2p2: t2Selected[1],
+      t1wins: parseInt(t1wins), t2wins: parseInt(t2wins)
+    };
     try {
       if (editingKey) { await update(ref(db,"matches/"+editingKey), matchData); sucEl.textContent="✓ Updated!"; }
       else { await push(matchesRef, matchData); sucEl.textContent="✓ Saved! Everyone can see it now."; }
@@ -487,25 +491,30 @@
   }
 
   // ── CALCULATIONS ─────────────────────────────────────────────────
-  function getPlayerMatches(name) {
-    return sessions.filter(function(s) {
-      return [s.t1p1,s.t1p2,s.t2p1,s.t2p2].indexOf(name) > -1;
-    }).sort(function(a,b){ return a.id-b.id; });
+  function playerInMatch(s, name) {
+    return [s.t1p1,s.t1p2,s.t2p1,s.t2p2].indexOf(name) > -1;
   }
 
-  function getPlayerResult(s, name) {
-    var inT1 = [s.t1p1,s.t1p2].indexOf(name) > -1;
+  function playerInT1(s, name) {
+    return [s.t1p1,s.t1p2].indexOf(name) > -1;
+  }
+
+  function getResult(s, name) {
+    var inT1 = playerInT1(s, name);
     var t1w = Number(s.t1wins), t2w = Number(s.t2wins);
-    if (inT1) return t1w>t2w?"W":t1w<t2w?"L":"D";
-    return t2w>t1w?"W":t2w<t1w?"L":"D";
+    if (inT1) return t1w>t2w ? "W" : t1w<t2w ? "L" : "D";
+    return t2w>t1w ? "W" : t2w<t1w ? "L" : "D";
+  }
+
+  function getPlayerMatches(name) {
+    return sessions.filter(function(s){ return playerInMatch(s,name); }).sort(function(a,b){ return a.id-b.id; });
   }
 
   function computeStreaks(name) {
     var matches = getPlayerMatches(name);
     if (!matches.length) return null;
-    var results = matches.map(function(s){ return getPlayerResult(s,name); });
-    var last = results[results.length-1];
-    var streak = 1;
+    var results = matches.map(function(s){ return getResult(s,name); });
+    var last = results[results.length-1], streak=1;
     for (var i=results.length-2;i>=0;i--) { if(results[i]===last) streak++; else break; }
     return { type:last, count:streak };
   }
@@ -513,24 +522,20 @@
   function computeBestStreak(name) {
     var matches = getPlayerMatches(name);
     if (!matches.length) return 0;
-    var results = matches.map(function(s){ return getPlayerResult(s,name); });
-    var best=1, cur=1;
-    for (var i=1;i<results.length;i++) {
-      if (results[i]==="W"&&results[i-1]==="W") { cur++; best=Math.max(best,cur); }
-      else { cur = results[i]==="W"?1:0; }
-    }
-    return results[0]==="W" ? Math.max(best,1) : best;
+    var results = matches.map(function(s){ return getResult(s,name); });
+    var best=0, cur=0;
+    results.forEach(function(r){ if(r==="W"){cur++;best=Math.max(best,cur);}else{cur=0;} });
+    return best;
   }
 
   function computeBestPartner(name) {
     var partners = {};
     sessions.forEach(function(s) {
-      var inT1 = [s.t1p1,s.t1p2].indexOf(name) > -1;
-      var inT2 = [s.t2p1,s.t2p2].indexOf(name) > -1;
+      var inT1 = playerInT1(s,name);
+      var inT2 = [s.t2p1,s.t2p2].indexOf(name)>-1;
       if (!inT1&&!inT2) return;
       var teammates = inT1 ? [s.t1p1,s.t1p2] : [s.t2p1,s.t2p2];
-      var t1w=Number(s.t1wins), t2w=Number(s.t2wins);
-      var won = inT1 ? t1w>t2w : t2w>t1w;
+      var won = inT1 ? Number(s.t1wins)>Number(s.t2wins) : Number(s.t2wins)>Number(s.t1wins);
       teammates.forEach(function(p) {
         if (!p||p===name||p==="undefined") return;
         if (!partners[p]) partners[p]={won:0,total:0};
@@ -540,63 +545,60 @@
     });
     var best=null, bestRate=-1;
     Object.keys(partners).forEach(function(p) {
-      var rate = partners[p].total ? partners[p].won/partners[p].total : 0;
-      if (rate>bestRate||(rate===bestRate&&partners[p].total>(best?partners[best].total:0))) { bestRate=rate; best=p; }
+      var r = partners[p].total ? partners[p].won/partners[p].total : 0;
+      if (r>bestRate) { bestRate=r; best=p; }
     });
     return best;
   }
 
-  function computeToughestOpponent(name) {
-    var opponents = {};
+  function computeToughest(name) {
+    var opps = {};
     sessions.forEach(function(s) {
-      var inT1 = [s.t1p1,s.t1p2].indexOf(name) > -1;
-      var inT2 = [s.t2p1,s.t2p2].indexOf(name) > -1;
+      var inT1 = playerInT1(s,name);
+      var inT2 = [s.t2p1,s.t2p2].indexOf(name)>-1;
       if (!inT1&&!inT2) return;
-      var opp = inT1 ? [s.t2p1,s.t2p2] : [s.t1p1,s.t1p2];
-      var t1w=Number(s.t1wins), t2w=Number(s.t2wins);
-      var lost = inT1 ? t1w<t2w : t2w<t1w;
-      opp.forEach(function(p) {
+      var oppTeam = inT1 ? [s.t2p1,s.t2p2] : [s.t1p1,s.t1p2];
+      var lost = inT1 ? Number(s.t1wins)<Number(s.t2wins) : Number(s.t2wins)<Number(s.t1wins);
+      oppTeam.forEach(function(p) {
         if (!p||p==="undefined") return;
-        if (!opponents[p]) opponents[p]={losses:0,total:0};
-        opponents[p].total++;
-        if (lost) opponents[p].losses++;
+        if (!opps[p]) opps[p]={losses:0};
+        if (lost) opps[p].losses++;
       });
     });
-    var toughest=null, mostLosses=-1;
-    Object.keys(opponents).forEach(function(p) {
-      if (opponents[p].losses>mostLosses) { mostLosses=opponents[p].losses; toughest=p; }
-    });
+    var toughest=null, most=-1;
+    Object.keys(opps).forEach(function(p) { if(opps[p].losses>most){most=opps[p].losses;toughest=p;} });
     return toughest;
   }
 
   function computeH2H(p1, p2) {
-    var h2hMatches = sessions.filter(function(s) {
-      var t1 = [s.t1p1,s.t1p2];
-      var t2 = [s.t2p1,s.t2p2];
+    var matches = sessions.filter(function(s) {
+      var t1=[s.t1p1,s.t1p2], t2=[s.t2p1,s.t2p2];
       return (t1.indexOf(p1)>-1&&t2.indexOf(p2)>-1)||(t1.indexOf(p2)>-1&&t2.indexOf(p1)>-1);
     }).sort(function(a,b){ return a.id-b.id; });
-    var p1wins=0, p2wins=0;
-    h2hMatches.forEach(function(s) {
-      var p1inT1 = [s.t1p1,s.t1p2].indexOf(p1)>-1;
-      var t1w=Number(s.t1wins), t2w=Number(s.t2wins);
-      if (p1inT1) { p1wins+=t1w; p2wins+=t2w; }
-      else { p1wins+=t2w; p2wins+=t1w; }
+    var p1w=0, p2w=0;
+    matches.forEach(function(s) {
+      var inT1 = playerInT1(s,p1);
+      if (inT1) { p1w+=Number(s.t1wins); p2w+=Number(s.t2wins); }
+      else { p1w+=Number(s.t2wins); p2w+=Number(s.t1wins); }
     });
-    return { p1wins:p1wins, p2wins:p2wins, matches:h2hMatches };
+    return { p1wins:p1w, p2wins:p2w, matches:matches };
   }
 
   function computeIndividual() {
     var players = {};
     sessions.forEach(function(s) {
+      var w = weight(s);
       [s.t1p1,s.t1p2].forEach(function(name) {
         if (!name||name==="undefined"||name==="") return;
         if (!players[name]) players[name]={name:name,won:0,lost:0};
-        var w=s.gameType==="11"?0.5:1; players[name].won+=Number(s.t1wins)*w; players[name].lost+=Number(s.t2wins)*w;
+        players[name].won += Number(s.t1wins)*w;
+        players[name].lost += Number(s.t2wins)*w;
       });
       [s.t2p1,s.t2p2].forEach(function(name) {
         if (!name||name==="undefined"||name==="") return;
         if (!players[name]) players[name]={name:name,won:0,lost:0};
-        var w2=s.gameType==="11"?0.5:1; players[name].won+=Number(s.t2wins)*w2; players[name].lost+=Number(s.t1wins)*w2;
+        players[name].won += Number(s.t2wins)*w;
+        players[name].lost += Number(s.t1wins)*w;
       });
     });
     return Object.values(players).sort(function(a,b){
@@ -608,10 +610,11 @@
   function computePairs() {
     var pairs = {};
     sessions.forEach(function(s) {
+      var w = weight(s);
       var p1=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
       var p2=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
-      var wp=s.gameType==="11"?0.5:1; if (p1) { if(!pairs[p1]) pairs[p1]={name:p1,won:0,lost:0}; pairs[p1].won+=Number(s.t1wins)*wp; pairs[p1].lost+=Number(s.t2wins)*wp; }
-      if (p2) { if(!pairs[p2]) pairs[p2]={name:p2,won:0,lost:0}; pairs[p2].won+=Number(s.t2wins)*wp; pairs[p2].lost+=Number(s.t1wins)*wp; }
+      if (p1) { if(!pairs[p1]) pairs[p1]={name:p1,won:0,lost:0}; pairs[p1].won+=Number(s.t1wins)*w; pairs[p1].lost+=Number(s.t2wins)*w; }
+      if (p2) { if(!pairs[p2]) pairs[p2]={name:p2,won:0,lost:0}; pairs[p2].won+=Number(s.t2wins)*w; pairs[p2].lost+=Number(s.t1wins)*w; }
     });
     return Object.values(pairs).sort(function(a,b){
       var ra=a.won+a.lost?a.won/(a.won+a.lost):0, rb=b.won+b.lost?b.won/(b.won+b.lost):0;
@@ -620,45 +623,47 @@
   }
 
   // ── RENDER LEADERBOARD ───────────────────────────────────────────
-  function renderLbRows(data, containerId, showStreak, clickable) {
+  function lbRowHTML(p, i, clickable) {
     var medals=["🥇","🥈","🥉"];
-    if (!data.length) { setHTML(containerId, emptyHTML()); return; }
+    var total=p.won+p.lost, rate=total?Math.round(p.won/total*100):0, low=rate<50;
+    var streakHTML="";
     if (clickable) {
-      setHTML(containerId, '<div class="tap-hint">Tap a player to see stats</div>'+data.map(function(p,i){
-        var total=p.won+p.lost, rate=total?Math.round(p.won/total*100):0, low=rate<50;
-        var streak=computeStreaks(p.name);
-        var streakHTML="";
-        if (streak&&streak.count>=2) {
-          if (streak.type==="W") streakHTML='<div class="lb-streak hot">🔥 Won last '+streak.count+'</div>';
-          else if (streak.type==="L") streakHTML='<div class="lb-streak cold">❄️ Lost last '+streak.count+'</div>';
-        }
-        return '<div class="lb-row r'+Math.min(i,2)+'" data-player="'+p.name+'">' +
-          '<div class="lb-rank">'+(medals[i]||("#"+(i+1)))+'</div>' +
-          '<div style="flex:1"><div class="lb-name">'+p.name+'</div>'+streakHTML+'</div>' +
-          '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div><div class="lb-detail">'+p.won+'W — '+p.lost+'L</div>' +
-          '<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'" style="width:'+rate+'%"></div></div></div></div>';
-      }).join("")+'<div class="count">'+sessions.length+' match'+(sessions.length!==1?"es":"")+" recorded</div>");
+      var streak=computeStreaks(p.name);
+      if (streak&&streak.count>=2) {
+        if (streak.type==="W") streakHTML='<div class="lb-streak hot">🔥 Won last '+streak.count+'</div>';
+        else if (streak.type==="L") streakHTML='<div class="lb-streak cold">❄️ Lost last '+streak.count+'</div>';
+      }
+    }
+    var cls = "lb-row r"+Math.min(i,2)+(clickable?' data-player="'+p.name+'"':'');
+    return '<div class="'+cls+'">' +
+      '<div class="lb-rank">'+(medals[i]||("#"+(i+1)))+'</div>' +
+      '<div style="flex:1"><div class="lb-name">'+p.name+'</div>'+streakHTML+'</div>' +
+      '<div class="lb-stats">' +
+        '<div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div>' +
+        '<div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div>' +
+        '<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div>' +
+      '</div></div>';
+  }
+
+  function renderLbSection(data, containerId, clickable) {
+    if (!data.length) { H(containerId, empty()); return; }
+    var html = (clickable ? '<div class="tap-hint">Tap a player to see stats</div>' : "") +
+      data.map(function(p,i){ return lbRowHTML(p,i,clickable); }).join("") +
+      '<div class="count">'+sessions.length+' match'+(sessions.length!==1?"es":"")+" recorded</div>";
+    H(containerId, html);
+    if (clickable) {
       document.querySelectorAll(".lb-row[data-player]").forEach(function(row) {
         row.addEventListener("click", function(){ showPlayerStats(this.getAttribute("data-player")); });
       });
-    } else {
-      setHTML(containerId, data.map(function(p,i){
-        var total=p.won+p.lost, rate=total?Math.round(p.won/total*100):0, low=rate<50;
-        return '<div class="lb-row r'+Math.min(i,2)+'">' +
-          '<div class="lb-rank">'+(medals[i]||("#"+(i+1)))+'</div>' +
-          '<div style="flex:1"><div class="lb-name">'+p.name+'</div></div>' +
-          '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div><div class="lb-detail">'+p.won+'W — '+p.lost+'L</div>' +
-          '<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div></div></div>';
-      }).join("")+'<div class="count">'+sessions.length+' match'+(sessions.length!==1?"es":"")+" recorded</div>");
     }
   }
 
   function renderLeaderboard() {
-    renderLbRows(computeIndividual(),"lb-individual",true,true);
-    renderLbRows(computePairs(),"lb-pairs",false,false);
+    renderLbSection(computeIndividual(), "lb-individual", true);
+    renderLbSection(computePairs(), "lb-pairs", false);
   }
 
-  // ── PLAYER STATS PAGE ────────────────────────────────────────────
+  // ── PLAYER STATS ─────────────────────────────────────────────────
   function showPlayerStats(name) {
     currentPlayer = name;
     var individual = computeIndividual();
@@ -667,121 +672,110 @@
 
     var total = player.won+player.lost;
     var rate = total ? Math.round(player.won/total*100) : 0;
-    var streak = computeStreaks(name);
     var bestStreak = computeBestStreak(name);
     var bestPartner = computeBestPartner(name);
-    var toughest = computeToughestOpponent(name);
+    var toughest = computeToughest(name);
 
-    // Header
-    document.getElementById("player-avatar").textContent = name.charAt(0).toUpperCase();
-    document.getElementById("player-name-big").textContent = name;
-    var rateEl = document.getElementById("player-winrate");
-    rateEl.textContent = rate+"%";
-    rateEl.className = "player-winrate"+(rate<50?" low":"");
-    document.getElementById("player-record").textContent = player.won+"W — "+player.lost+"L • "+total+" matches";
-
-    // Stats grid
-    var streakLabel = streak ? (streak.type==="W"?"🔥 Won last "+streak.count : streak.type==="L"?"❄️ Lost last "+streak.count : "—") : "—";
-    // Compute 21pt and 11pt breakdown
-    var matches21 = getPlayerMatches(name).filter(function(s){ return (s.gameType||"21")==="21"; });
-    var matches11 = getPlayerMatches(name).filter(function(s){ return s.gameType==="11"; });
+    // 21pt and 11pt breakdown
     var won21=0, lost21=0, won11=0, lost11=0;
-    matches21.forEach(function(s){
-      var inT1=[s.t1p1,s.t1p2].indexOf(name)>-1;
-      won21 += inT1?Number(s.t1wins):Number(s.t2wins);
-      lost21 += inT1?Number(s.t2wins):Number(s.t1wins);
-    });
-    matches11.forEach(function(s){
-      var inT1=[s.t1p1,s.t1p2].indexOf(name)>-1;
-      won11 += inT1?Number(s.t1wins):Number(s.t2wins);
-      lost11 += inT1?Number(s.t2wins):Number(s.t1wins);
+    getPlayerMatches(name).forEach(function(s) {
+      var inT1 = playerInT1(s,name);
+      var myW = inT1 ? Number(s.t1wins) : Number(s.t2wins);
+      var myL = inT1 ? Number(s.t2wins) : Number(s.t1wins);
+      if ((s.gameType||"21")==="11") { won11+=myW; lost11+=myL; }
+      else { won21+=myW; lost21+=myL; }
     });
     var rate21 = (won21+lost21) ? Math.round(won21/(won21+lost21)*100) : 0;
     var rate11 = (won11+lost11) ? Math.round(won11/(won11+lost11)*100) : 0;
+    var total21 = won21+lost21, total11 = won11+lost11;
 
-    document.getElementById("stats-grid").innerHTML =
-      '<div class="stat-box"><div class="stat-box-val accent">'+bestStreak+'</div><div class="stat-box-label">Best Win Streak</div></div>' +
-      '<div class="stat-box"><div class="stat-box-val">'+total+'</div><div class="stat-box-label">Total Matches</div></div>' +
-      '<div class="stat-box"><div class="stat-box-val accent" style="font-size:14px">'+(bestPartner||"—")+'</div><div class="stat-box-label">Best Partner</div></div>' +
-      '<div class="stat-box"><div class="stat-box-val loss" style="font-size:14px">'+(toughest||"—")+'</div><div class="stat-box-label">Toughest Opponent</div></div>' +
-      '<div class="stat-box" style="grid-column:span 2"><div style="display:flex;justify-content:space-around">' +
-        '<div style="text-align:center"><div class="stat-box-val accent">'+rate21+'%</div><div class="stat-box-label">21pt Win Rate</div><div style="font-size:11px;color:var(--muted);font-family:monospace">'+won21+'W — '+lost21+'L</div></div>' +
-        '<div style="width:1px;background:var(--border)"></div>' +
-        '<div style="text-align:center"><div class="stat-box-val accent">'+rate11+'%</div><div class="stat-box-label">11pt Win Rate</div><div style="font-size:11px;color:var(--muted);font-family:monospace">'+won11+'W — '+lost11+'L</div></div>' +
-      '</div></div>';
+    document.getElementById("p-avatar").textContent = name.charAt(0).toUpperCase();
+    document.getElementById("p-name").textContent = name;
+    var rateEl = document.getElementById("p-winrate");
+    rateEl.textContent = rate+"%";
+    rateEl.className = "player-winrate"+(rate<50?" low":"");
+    document.getElementById("p-record").textContent = player.won.toFixed(1)+"W — "+player.lost.toFixed(1)+"L • "+getPlayerMatches(name).length+" matches";
 
-    // H2H list — find all opponents
+    H("stats-grid",
+      '<div class="stat-box"><div class="stat-val accent">'+bestStreak+'</div><div class="stat-lbl">Best Win Streak</div></div>' +
+      '<div class="stat-box"><div class="stat-val">'+getPlayerMatches(name).length+'</div><div class="stat-lbl">Total Matches</div></div>' +
+      '<div class="stat-box"><div class="stat-val accent" style="font-size:14px">'+(bestPartner||"—")+'</div><div class="stat-lbl">Best Partner</div></div>' +
+      '<div class="stat-box"><div class="stat-val loss" style="font-size:14px">'+(toughest||"—")+'</div><div class="stat-lbl">Toughest Opponent</div></div>' +
+      '<div class="stat-box wide">' +
+        '<div class="gt-split">' +
+          '<div class="gt-split-item">' +
+            '<div class="stat-val accent">'+rate21+'%</div>' +
+            '<div class="stat-lbl">21pt Win Rate</div>' +
+            '<div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:4px">'+won21+'W — '+lost21+'L'+(total21?' ('+total21+' matches)':'')+'</div>' +
+          '</div>' +
+          '<div class="gt-divider"></div>' +
+          '<div class="gt-split-item">' +
+            '<div class="stat-val accent">'+rate11+'%</div>' +
+            '<div class="stat-lbl">11pt Win Rate</div>' +
+            '<div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:4px">'+won11+'W — '+lost11+'L'+(total11?' ('+total11+' matches)':'')+'</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+
+    // H2H list
     var opponents = {};
     sessions.forEach(function(s) {
-      var inT1=[s.t1p1,s.t1p2].indexOf(name)>-1;
-      var inT2=[s.t2p1,s.t2p2].indexOf(name)>-1;
+      var inT1=playerInT1(s,name), inT2=[s.t2p1,s.t2p2].indexOf(name)>-1;
       if (!inT1&&!inT2) return;
-      var opp = inT1 ? [s.t2p1,s.t2p2] : [s.t1p1,s.t1p2];
-      opp.forEach(function(p){ if(p&&p!=="undefined"&&p!==name) opponents[p]=true; });
+      var oppTeam = inT1?[s.t2p1,s.t2p2]:[s.t1p1,s.t1p2];
+      oppTeam.forEach(function(p){ if(p&&p!=="undefined"&&p!==name) opponents[p]=true; });
     });
-
     var oppNames = Object.keys(opponents);
     if (!oppNames.length) {
-      setHTML("h2h-list", '<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">No opponents yet</div>');
+      H("h2h-list", '<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">No opponents yet</div>');
     } else {
-      var h2hHTML = oppNames.map(function(opp) {
-        var h2h = computeH2H(name, opp);
-        var cls = h2h.p1wins>h2h.p2wins?"win":h2h.p1wins<h2h.p2wins?"loss":"draw";
+      var html = oppNames.map(function(opp) {
+        var h2h=computeH2H(name,opp);
+        var cls=h2h.p1wins>h2h.p2wins?"win":h2h.p1wins<h2h.p2wins?"loss":"draw";
         return '<div class="h2h-row" data-opp="'+opp+'">' +
-          '<div class="h2h-opponent">vs '+opp+'</div>' +
+          '<div class="h2h-opp">vs '+opp+'</div>' +
           '<div class="h2h-score '+cls+'">'+h2h.p1wins+' — '+h2h.p2wins+'</div>' +
-          '<div class="h2h-arrow">›</div>' +
+          '<div class="h2h-arr">›</div>' +
         '</div>';
       }).join("");
-      setHTML("h2h-list", h2hHTML);
+      H("h2h-list", html);
       document.querySelectorAll(".h2h-row").forEach(function(row) {
         row.addEventListener("click", function(){ showH2H(name, this.getAttribute("data-opp")); });
       });
     }
-
     showTab("player");
   }
 
-  // ── HEAD TO HEAD PAGE ────────────────────────────────────────────
+  // ── HEAD TO HEAD ─────────────────────────────────────────────────
   function showH2H(p1, p2) {
-    currentH2HOpponent = p2;
     var h2h = computeH2H(p1, p2);
-
     document.getElementById("h2h-p1-name").textContent = p1;
     document.getElementById("h2h-p2-name").textContent = p2;
-
-    var p1ScoreEl = document.getElementById("h2h-p1-score");
-    var p2ScoreEl = document.getElementById("h2h-p2-score");
-    p1ScoreEl.textContent = h2h.p1wins;
-    p2ScoreEl.textContent = h2h.p2wins;
-    p1ScoreEl.className = "h2h-player-score"+(h2h.p1wins<h2h.p2wins?" loss":"");
-    p2ScoreEl.className = "h2h-player-score"+(h2h.p2wins<h2h.p1wins?" loss":"");
-
+    var s1=document.getElementById("h2h-p1-score"), s2=document.getElementById("h2h-p2-score");
+    s1.textContent=h2h.p1wins; s2.textContent=h2h.p2wins;
+    s1.className="h2h-pscore"+(h2h.p1wins<h2h.p2wins?" loss":"");
+    s2.className="h2h-pscore"+(h2h.p2wins<h2h.p1wins?" loss":"");
     if (h2h.matches.length) {
-      var last = h2h.matches[h2h.matches.length-1];
-      document.getElementById("h2h-last").textContent = "Last played: "+formatDate(last.date);
-    } else {
-      document.getElementById("h2h-last").textContent = "";
-    }
+      var last=h2h.matches[h2h.matches.length-1];
+      document.getElementById("h2h-last").textContent="Last played: "+formatDate(last.date);
+    } else { document.getElementById("h2h-last").textContent=""; }
 
-    // Match history
-    var matchHTML = h2h.matches.reverse().map(function(s) {
-      var p1inT1=[s.t1p1,s.t1p2].indexOf(p1)>-1;
+    var html = h2h.matches.slice().reverse().map(function(s) {
+      var inT1=playerInT1(s,p1);
       var t1w=Number(s.t1wins), t2w=Number(s.t2wins);
-      var p1won = p1inT1?t1w>t2w:t2w>t1w;
-      var isDraw = t1w===t2w;
-      var rc = isDraw?"d":p1won?"w":"l";
-      var rl = isDraw?"Draw":p1won?"Won":"Lost";
+      var p1won=inT1?t1w>t2w:t2w>t1w, isDraw=t1w===t2w;
+      var rc=isDraw?"d":p1won?"w":"l", rl=isDraw?"Draw":p1won?"Won":"Lost";
       var t1names=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
       var t2names=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
       return '<div class="h2h-match-row">' +
         '<div class="h2h-match-date">'+formatDate(s.date)+'</div>' +
-        '<div class="h2h-match-teams">'+t1names+' <span style="color:var(--muted)">vs</span> '+t2names+'<br><span style="color:var(--muted);font-size:11px">'+t1w+' — '+t2w+'</span> <span style="font-size:10px;color:var(--muted);background:var(--surface2);border-radius:4px;padding:2px 5px">'+((s.gameType||"21")==="11"?"11pt":"21pt")+'</span></div>' +
+        '<div class="h2h-match-info">'+t1names+' vs '+t2names+'<br>' +
+          '<span style="color:var(--muted);font-size:11px;font-family:monospace">'+t1w+' — '+t2w+'</span> '+gtBadge(s)+'</div>' +
         '<div class="h2h-match-result '+rc+'">'+rl+'</div>' +
       '</div>';
     }).join("");
-
-    setHTML("h2h-matches", matchHTML||'<div style="color:var(--muted);text-align:center;padding:20px">No matches yet</div>');
+    H("h2h-matches", html||'<div style="color:var(--muted);text-align:center;padding:20px">No matches yet</div>');
     showTab("h2h");
   }
 
@@ -792,16 +786,15 @@
       if (currentFilter==="loss") return Number(s.t1wins)<Number(s.t2wins);
       return true;
     });
-    if (!filtered.length) { setHTML("history-content", emptyHTML("No sessions here!")); return; }
+    if (!filtered.length) { H("history-content", empty("No sessions here!")); return; }
     var grouped={};
     filtered.forEach(function(s){ var d=s.date||"unknown"; if(!grouped[d]) grouped[d]=[]; grouped[d].push(s); });
-    var dates=Object.keys(grouped).sort(function(a,b){return b.localeCompare(a);});
-    var html=dates.map(function(date){
-      var cards=grouped[date].map(function(s){
+    var dates=Object.keys(grouped).sort(function(a,b){ return b.localeCompare(a); });
+    var html=dates.map(function(date) {
+      var cards=grouped[date].map(function(s) {
         var t1w=Number(s.t1wins), t2w=Number(s.t2wins);
         var isWin=t1w>t2w, isDraw=t1w===t2w;
         var rc=isDraw?"draw":isWin?"":"loss", rl=isDraw?"Draw":isWin?"Won":"Lost";
-        var gtLabel=s.gameType==="11"?"11pt":"21pt";
         var total=t1w+t2w;
         var t1names=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
         var t2names=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
@@ -809,25 +802,35 @@
         for(var i=0;i<t1w;i++) dots+='<span class="dot">W</span>';
         for(var i=0;i<t2w;i++) dots+='<span class="dot l">L</span>';
         return '<div class="session-card '+rc+'">' +
-          '<div class="card-top"><span class="badge '+rc+'">'+rl+'</span><span style="font-size:10px;color:var(--muted);background:var(--surface2);border-radius:4px;padding:2px 6px;flex-shrink:0'>'+gtLabel+'</span><span class="card-name">'+t1names+' vs '+t2names+'</span>' +
-          '<div class="card-actions"><button class="edit-btn" data-key="'+s.firebaseKey+'">✏️</button><button class="del-btn" data-key="'+s.firebaseKey+'">✕</button></div></div>' +
+          '<div class="card-top">' +
+            '<span class="badge '+rc+'">'+rl+'</span>' +
+            gtBadge(s) +
+            '<span class="card-name">'+t1names+' vs '+t2names+'</span>' +
+            '<div class="card-actions">' +
+              '<button class="edit-btn" data-key="'+s.firebaseKey+'">✏️</button>' +
+              '<button class="del-btn" data-key="'+s.firebaseKey+'">✕</button>' +
+            '</div>' +
+          '</div>' +
           '<div class="teams-row">' +
             '<div class="team-block"><div class="team-names">'+t1names+'</div><div class="team-score'+(isWin?"":isDraw?"":' loss')+'">'+t1w+'</div></div>' +
             '<div class="vs">vs</div>' +
             '<div class="team-block"><div class="team-names">'+t2names+'</div><div class="team-score'+(isWin?" loss":isDraw?"":"")+'">'+t2w+'</div></div>' +
-          '</div><div class="match-total">'+total+' matches played</div><div class="dots">'+dots+'</div></div>';
+          '</div>' +
+          '<div class="match-total">'+total+' matches played</div>' +
+          '<div class="dots">'+dots+'</div>' +
+        '</div>';
       }).join("");
       return '<div class="day-label">'+formatDate(date)+'</div>'+cards;
     }).join("");
-    setHTML("history-content", html);
+    H("history-content", html);
     document.querySelectorAll(".del-btn").forEach(function(btn){
       btn.addEventListener("click", function(){ remove(ref(db,"matches/"+this.getAttribute("data-key"))); });
     });
     document.querySelectorAll(".edit-btn").forEach(function(btn){
       btn.addEventListener("click", function(){
         var key=this.getAttribute("data-key");
-        var session=sessions.find(function(s){return s.firebaseKey===key;});
-        if (session) startEdit(session);
+        var s=sessions.find(function(x){ return x.firebaseKey===key; });
+        if (s) startEdit(s);
       });
     });
   }
