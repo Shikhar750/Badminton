@@ -682,11 +682,33 @@
 
     // Stats grid
     var streakLabel = streak ? (streak.type==="W"?"🔥 Won last "+streak.count : streak.type==="L"?"❄️ Lost last "+streak.count : "—") : "—";
+    // Compute 21pt and 11pt breakdown
+    var matches21 = getPlayerMatches(name).filter(function(s){ return (s.gameType||"21")==="21"; });
+    var matches11 = getPlayerMatches(name).filter(function(s){ return s.gameType==="11"; });
+    var won21=0, lost21=0, won11=0, lost11=0;
+    matches21.forEach(function(s){
+      var inT1=[s.t1p1,s.t1p2].indexOf(name)>-1;
+      won21 += inT1?Number(s.t1wins):Number(s.t2wins);
+      lost21 += inT1?Number(s.t2wins):Number(s.t1wins);
+    });
+    matches11.forEach(function(s){
+      var inT1=[s.t1p1,s.t1p2].indexOf(name)>-1;
+      won11 += inT1?Number(s.t1wins):Number(s.t2wins);
+      lost11 += inT1?Number(s.t2wins):Number(s.t1wins);
+    });
+    var rate21 = (won21+lost21) ? Math.round(won21/(won21+lost21)*100) : 0;
+    var rate11 = (won11+lost11) ? Math.round(won11/(won11+lost11)*100) : 0;
+
     document.getElementById("stats-grid").innerHTML =
       '<div class="stat-box"><div class="stat-box-val accent">'+bestStreak+'</div><div class="stat-box-label">Best Win Streak</div></div>' +
       '<div class="stat-box"><div class="stat-box-val">'+total+'</div><div class="stat-box-label">Total Matches</div></div>' +
       '<div class="stat-box"><div class="stat-box-val accent" style="font-size:14px">'+(bestPartner||"—")+'</div><div class="stat-box-label">Best Partner</div></div>' +
-      '<div class="stat-box"><div class="stat-box-val loss" style="font-size:14px">'+(toughest||"—")+'</div><div class="stat-box-label">Toughest Opponent</div></div>';
+      '<div class="stat-box"><div class="stat-box-val loss" style="font-size:14px">'+(toughest||"—")+'</div><div class="stat-box-label">Toughest Opponent</div></div>' +
+      '<div class="stat-box" style="grid-column:span 2"><div style="display:flex;justify-content:space-around">' +
+        '<div style="text-align:center"><div class="stat-box-val accent">'+rate21+'%</div><div class="stat-box-label">21pt Win Rate</div><div style="font-size:11px;color:var(--muted);font-family:monospace">'+won21+'W — '+lost21+'L</div></div>' +
+        '<div style="width:1px;background:var(--border)"></div>' +
+        '<div style="text-align:center"><div class="stat-box-val accent">'+rate11+'%</div><div class="stat-box-label">11pt Win Rate</div><div style="font-size:11px;color:var(--muted);font-family:monospace">'+won11+'W — '+lost11+'L</div></div>' +
+      '</div></div>';
 
     // H2H list — find all opponents
     var opponents = {};
@@ -754,7 +776,7 @@
       var t2names=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
       return '<div class="h2h-match-row">' +
         '<div class="h2h-match-date">'+formatDate(s.date)+'</div>' +
-        '<div class="h2h-match-teams">'+t1names+' <span style="color:var(--muted)">vs</span> '+t2names+'<br><span style="color:var(--muted);font-size:11px">'+t1w+' — '+t2w+'</span></div>' +
+        '<div class="h2h-match-teams">'+t1names+' <span style="color:var(--muted)">vs</span> '+t2names+'<br><span style="color:var(--muted);font-size:11px">'+t1w+' — '+t2w+'</span> <span style="font-size:10px;color:var(--muted);background:var(--surface2);border-radius:4px;padding:2px 5px">'+((s.gameType||"21")==="11"?"11pt":"21pt")+'</span></div>' +
         '<div class="h2h-match-result '+rc+'">'+rl+'</div>' +
       '</div>';
     }).join("");
@@ -787,7 +809,7 @@
         for(var i=0;i<t1w;i++) dots+='<span class="dot">W</span>';
         for(var i=0;i<t2w;i++) dots+='<span class="dot l">L</span>';
         return '<div class="session-card '+rc+'">' +
-          '<div class="card-top"><span class="badge '+rc+'">'+rl+'</span><span style="font-size:10px;color:var(--muted);background:var(--surface2);border-radius:4px;padding:2px 6px;flex-shrink:0">+gtLabel+</span><span class="card-name">'+t1names+' vs '+t2names+'</span>' +
+          '<div class="card-top"><span class="badge '+rc+'">'+rl+'</span><span style="font-size:10px;color:var(--muted);background:var(--surface2);border-radius:4px;padding:2px 6px;flex-shrink:0'>'+gtLabel+'</span><span class="card-name">'+t1names+' vs '+t2names+'</span>' +
           '<div class="card-actions"><button class="edit-btn" data-key="'+s.firebaseKey+'">✏️</button><button class="del-btn" data-key="'+s.firebaseKey+'">✕</button></div></div>' +
           '<div class="teams-row">' +
             '<div class="team-block"><div class="team-names">'+t1names+'</div><div class="team-score'+(isWin?"":isDraw?"":' loss')+'">'+t1w+'</div></div>' +
