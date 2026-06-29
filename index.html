@@ -50,9 +50,9 @@
     .badge{display:inline-block;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase;background:var(--accent-dim);color:var(--accent)}
     .badge.loss{background:var(--loss-dim);color:var(--loss)}
     .badge.draw{background:rgba(107,114,128,0.15);color:var(--muted)}
-    .gt-badge{font-size:10px;color:var(--muted);background:var(--surface2);border-radius:4px;padding:2px 6px;font-family:'Space Mono',monospace}
-    .card-name{font-weight:600;flex:1;font-size:13px;line-height:1.4;min-width:120px}
-    .card-actions{display:flex;gap:4px;flex-shrink:0;margin-left:auto}
+    .gt-badge{font-size:10px;color:var(--muted);background:var(--surface2);border-radius:4px;padding:2px 6px;font-family:'Space Mono',monospace;flex-shrink:0}
+    .card-name{font-weight:600;flex:1;font-size:13px;line-height:1.4}
+    .card-actions{display:flex;gap:4px;margin-left:auto}
     .del-btn,.edit-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:6px}
     .edit-btn:hover{color:var(--accent)}.del-btn:hover{color:var(--loss)}
     .teams-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
@@ -117,9 +117,8 @@
     .stat-val{font-size:20px;font-weight:700;font-family:'Space Mono',monospace;color:var(--text)}
     .stat-val.accent{color:var(--accent)}.stat-val.loss{color:var(--loss)}
     .stat-lbl{font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px}
-    .gt-split{display:flex;justify-content:space-around}
-    .gt-split-item{text-align:center}
-    .gt-divider{width:1px;background:var(--border)}
+    .gt-split{display:flex;justify-content:space-around;align-items:center}
+    .gt-divider{width:1px;height:40px;background:var(--border)}
     .sec-hdr{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-family:'Space Mono',monospace;padding-left:2px}
     .h2h-row{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer}
     .h2h-row:hover{border-color:rgba(255,255,255,0.2)}
@@ -156,7 +155,6 @@
     <div class="nav-tab" id="nav-add">＋ Add</div>
   </div>
 
-  <!-- LEADERBOARD -->
   <div class="tab active" id="tab-leaderboard">
     <div class="sub-tabs">
       <div class="sub-tab active" id="sub-individual">👤 Individual</div>
@@ -166,7 +164,6 @@
     <div id="lb-pairs" style="display:none"></div>
   </div>
 
-  <!-- HISTORY -->
   <div class="tab" id="tab-history">
     <div class="filter-row">
       <div class="filter-tab active" id="filter-all">All</div>
@@ -176,14 +173,10 @@
     <div id="history-content"></div>
   </div>
 
-  <!-- ADD/EDIT -->
   <div class="tab" id="tab-add">
     <div class="form-card">
       <div class="form-title" id="form-title">Add Doubles Match</div>
-      <div class="fg">
-        <label>Date</label>
-        <input type="date" id="inp-date"/>
-      </div>
+      <div class="fg"><label>Date</label><input type="date" id="inp-date"/></div>
       <div class="team-sec">
         <div class="team-sec-label">🟢 Your Team <span style="font-weight:400;color:var(--muted)">(pick 2)</span></div>
         <div class="sel-hint" id="t1-hint">0 of 2 selected</div>
@@ -221,21 +214,19 @@
     </div>
   </div>
 
-  <!-- PLAYER STATS -->
   <div class="tab" id="tab-player">
     <button class="back-btn" id="back-from-player">← Back to Rankings</button>
     <div class="player-header">
       <div class="player-avatar" id="p-avatar">S</div>
       <div class="player-name-big" id="p-name">Player</div>
       <div class="player-winrate" id="p-winrate">0%</div>
-      <div class="player-record" id="p-record">0W — 0L • 0 matches</div>
+      <div class="player-record" id="p-record">0W — 0L</div>
     </div>
     <div class="stats-grid" id="stats-grid"></div>
     <div class="sec-hdr">Head to Head</div>
     <div id="h2h-list"></div>
   </div>
 
-  <!-- HEAD TO HEAD -->
   <div class="tab" id="tab-h2h">
     <button class="back-btn" id="back-from-h2h">← Back to Player</button>
     <div class="h2h-header">
@@ -261,13 +252,12 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, push, remove, update, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-  var DB_URL = "https://badminton-7ef03-default-rtdb.asia-southeast1.firebasedatabase.app";
-  var app = initializeApp({ databaseURL: DB_URL });
+  var app = initializeApp({ databaseURL: "https://badminton-7ef03-default-rtdb.asia-southeast1.firebasedatabase.app" });
   var db = getDatabase(app);
   var matchesRef = ref(db, "matches");
   var squadRef = ref(db, "squad");
-
   var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
   var sessions = [];
   var squadPlayers = [];
   var currentFilter = "all";
@@ -277,562 +267,284 @@
   var gameType = "21";
   var currentPlayer = null;
 
-  // ── INIT ────────────────────────────────────────────────────────
   document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
 
-  // ── NAV LISTENERS ───────────────────────────────────────────────
+  // NAV
+  function showTab(name) {
+    ["leaderboard","history","add","player","h2h"].forEach(function(t) {
+      document.getElementById("tab-"+t).classList.remove("active");
+      var n = document.getElementById("nav-"+t);
+      if (n) n.classList.remove("active");
+    });
+    document.getElementById("tab-"+name).classList.add("active");
+    var n = document.getElementById("nav-"+name);
+    if (n) n.classList.add("active");
+  }
+
   document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
   document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
   document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); });
   document.getElementById("refresh-btn").addEventListener("click", renderAll);
   document.getElementById("sub-individual").addEventListener("click", function(){
-    this.classList.add("active");
-    document.getElementById("sub-pairs").classList.remove("active");
-    document.getElementById("lb-individual").style.display = "block";
-    document.getElementById("lb-pairs").style.display = "none";
+    this.classList.add("active"); document.getElementById("sub-pairs").classList.remove("active");
+    document.getElementById("lb-individual").style.display="block"; document.getElementById("lb-pairs").style.display="none";
   });
   document.getElementById("sub-pairs").addEventListener("click", function(){
-    this.classList.add("active");
-    document.getElementById("sub-individual").classList.remove("active");
-    document.getElementById("lb-pairs").style.display = "block";
-    document.getElementById("lb-individual").style.display = "none";
+    this.classList.add("active"); document.getElementById("sub-individual").classList.remove("active");
+    document.getElementById("lb-pairs").style.display="block"; document.getElementById("lb-individual").style.display="none";
   });
-  document.getElementById("filter-all").addEventListener("click", function(){ setFilter("all", this); });
-  document.getElementById("filter-win").addEventListener("click", function(){ setFilter("win", this); });
-  document.getElementById("filter-loss").addEventListener("click", function(){ setFilter("loss", this); });
+  document.getElementById("filter-all").addEventListener("click", function(){ setFilter("all",this); });
+  document.getElementById("filter-win").addEventListener("click", function(){ setFilter("win",this); });
+  document.getElementById("filter-loss").addEventListener("click", function(){ setFilter("loss",this); });
   document.getElementById("save-btn").addEventListener("click", handleSave);
   document.getElementById("cancel-btn").addEventListener("click", function(){ resetForm(); showTab("history"); });
   document.getElementById("add-player-btn").addEventListener("click", addNewPlayer);
   document.getElementById("new-player-input").addEventListener("keydown", function(e){ if(e.key==="Enter") addNewPlayer(); });
-  document.getElementById("btn-21").addEventListener("click", function(){
-    gameType = "21";
-    this.classList.add("active");
-    document.getElementById("btn-11").classList.remove("active");
-  });
-  document.getElementById("btn-11").addEventListener("click", function(){
-    gameType = "11";
-    this.classList.add("active");
-    document.getElementById("btn-21").classList.remove("active");
-  });
+  document.getElementById("btn-21").addEventListener("click", function(){ gameType="21"; this.classList.add("active"); document.getElementById("btn-11").classList.remove("active"); });
+  document.getElementById("btn-11").addEventListener("click", function(){ gameType="11"; this.classList.add("active"); document.getElementById("btn-21").classList.remove("active"); });
   document.getElementById("back-from-player").addEventListener("click", function(){ showTab("leaderboard"); });
   document.getElementById("back-from-h2h").addEventListener("click", function(){ showPlayerStats(currentPlayer); });
 
-  // ── FIREBASE LISTENERS ──────────────────────────────────────────
-  onValue(squadRef, function(snapshot) {
-    var data = snapshot.val();
-    squadPlayers = data ? (Array.isArray(data) ? data : Object.values(data)) : [];
-    renderChips();
-    renderSquadTags();
+  // FIREBASE
+  onValue(squadRef, function(snap) {
+    var d = snap.val();
+    squadPlayers = d ? (Array.isArray(d) ? d : Object.values(d)) : [];
+    renderChips(); renderSquadTags();
   });
-
-  onValue(matchesRef, function(snapshot) {
-    var data = snapshot.val();
+  onValue(matchesRef, function(snap) {
+    var d = snap.val();
     sessions = [];
-    if (data) {
-      Object.keys(data).forEach(function(key) {
-        var s = data[key];
-        s.firebaseKey = key;
-        sessions.push(s);
-      });
-      sessions.sort(function(a,b){ return b.id - a.id; });
-    }
+    if (d) { Object.keys(d).forEach(function(k){ var s=d[k]; s.firebaseKey=k; sessions.push(s); }); }
+    sessions.sort(function(a,b){ return b.id-a.id; });
     renderAll();
   });
 
-  // ── HELPERS ─────────────────────────────────────────────────────
-  function showTab(name) {
-    ["leaderboard","history","add","player","h2h"].forEach(function(t){
-      document.getElementById("tab-"+t).classList.remove("active");
-      var nav = document.getElementById("nav-"+t);
-      if (nav) nav.classList.remove("active");
-    });
-    document.getElementById("tab-"+name).classList.add("active");
-    var nav = document.getElementById("nav-"+name);
-    if (nav) nav.classList.add("active");
-  }
-
-  function setFilter(f, el) {
-    currentFilter = f;
-    ["all","win","loss"].forEach(function(x){ document.getElementById("filter-"+x).classList.remove("active"); });
-    el.classList.add("active");
-    renderHistory();
-  }
-
-  function formatDate(d) {
-    if (!d) return "Unknown";
-    var p = d.split("-");
-    if (p.length === 3) return p[2] + " " + MONTHS[parseInt(p[1])-1] + " " + p[0];
-    return d;
-  }
-
-  function H(id, html) { document.getElementById(id).innerHTML = html; }
-  function empty(msg) { return '<div class="empty"><div class="empty-icon">🏸</div><p>'+(msg||"No matches yet!")+'</p></div>'; }
+  // HELPERS
+  function setFilter(f,el) { currentFilter=f; ["all","win","loss"].forEach(function(x){ document.getElementById("filter-"+x).classList.remove("active"); }); el.classList.add("active"); renderHistory(); }
+  function fmtDate(d) { if(!d) return "Unknown"; var p=d.split("-"); if(p.length===3) return p[2]+" "+MONTHS[parseInt(p[1])-1]+" "+p[0]; return d; }
+  function H(id,html) { document.getElementById(id).innerHTML=html; }
+  function emptyHTML(msg) { return '<div class="empty"><div class="empty-icon">🏸</div><p>'+(msg||"No matches yet!")+'</p></div>'; }
   function renderAll() { renderLeaderboard(); renderHistory(); }
-  function weight(s) { return (s.gameType === "11") ? 0.5 : 1; }
+  function wt(s) { return s.gameType==="11" ? 0.5 : 1; }
   function gtBadge(s) { return '<span class="gt-badge">'+(s.gameType==="11"?"11pt":"21pt")+'</span>'; }
+  function inT1(s,n) { return [s.t1p1,s.t1p2].indexOf(n)>-1; }
+  function inMatch(s,n) { return [s.t1p1,s.t1p2,s.t2p1,s.t2p2].indexOf(n)>-1; }
+  function getResult(s,n) { var a=inT1(s,n), t1=Number(s.t1wins), t2=Number(s.t2wins); if(a) return t1>t2?"W":t1<t2?"L":"D"; return t2>t1?"W":t2<t1?"L":"D"; }
+  function playerMatches(n) { return sessions.filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; }); }
 
-  // ── SQUAD ────────────────────────────────────────────────────────
+  // SQUAD
   function renderSquadTags() {
     var el = document.getElementById("squad-tags");
-    if (!squadPlayers.length) {
-      el.innerHTML = '<div style="color:var(--muted);font-size:12px;margin-bottom:8px">No players yet</div>';
-      return;
-    }
-    el.innerHTML = squadPlayers.map(function(p) {
-      return '<span class="squad-tag">'+p+'<button class="squad-del" data-name="'+p+'">✕</button></span>';
-    }).join("");
-    el.querySelectorAll(".squad-del").forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        var name = this.getAttribute("data-name");
-        var newSquad = squadPlayers.filter(function(p){ return p !== name; });
-        set(squadRef, newSquad.length ? newSquad : null);
-      });
-    });
+    if (!squadPlayers.length) { el.innerHTML='<div style="color:var(--muted);font-size:12px;margin-bottom:8px">No players yet</div>'; return; }
+    el.innerHTML = squadPlayers.map(function(p){ return '<span class="squad-tag">'+p+'<button class="squad-del" data-name="'+p+'">✕</button></span>'; }).join("");
+    el.querySelectorAll(".squad-del").forEach(function(btn){ btn.addEventListener("click", function(){ var n=this.getAttribute("data-name"); set(squadRef, squadPlayers.filter(function(p){ return p!==n; }).length ? squadPlayers.filter(function(p){ return p!==n; }) : null); }); });
   }
-
   async function addNewPlayer() {
-    var input = document.getElementById("new-player-input");
-    var name = input.value.trim();
-    if (!name || squadPlayers.indexOf(name) > -1) { input.value = ""; return; }
-    await set(squadRef, squadPlayers.concat([name]));
-    input.value = "";
+    var inp=document.getElementById("new-player-input"), n=inp.value.trim();
+    if(!n||squadPlayers.indexOf(n)>-1) { inp.value=""; return; }
+    await set(squadRef, squadPlayers.concat([n])); inp.value="";
   }
 
-  // ── CHIPS ────────────────────────────────────────────────────────
+  // CHIPS
   function renderChips() {
-    if (!squadPlayers.length) {
-      var msg = '<div style="color:var(--muted);font-size:12px">Add players in Manage Squad below</div>';
-      H("t1-chips", msg); H("t2-chips", msg); return;
-    }
+    if (!squadPlayers.length) { var m='<div style="color:var(--muted);font-size:12px">Add players in Manage Squad below</div>'; H("t1-chips",m); H("t2-chips",m); return; }
     function make(cid, team) {
-      var el = document.getElementById(cid);
-      el.innerHTML = squadPlayers.map(function(p) {
-        var inT1 = t1Selected.indexOf(p) > -1;
-        var inT2 = t2Selected.indexOf(p) > -1;
-        var cls = "chip";
-        if (team==="t1" && inT1) cls += " sel-t1";
-        else if (team==="t2" && inT2) cls += " sel-t2";
-        else if ((team==="t1"&&inT2)||(team==="t2"&&inT1)) cls += " dis";
+      var el=document.getElementById(cid);
+      el.innerHTML=squadPlayers.map(function(p){
+        var i1=t1Selected.indexOf(p)>-1, i2=t2Selected.indexOf(p)>-1;
+        var cls="chip"; if(team==="t1"&&i1) cls+=" sel-t1"; else if(team==="t2"&&i2) cls+=" sel-t2"; else if((team==="t1"&&i2)||(team==="t2"&&i1)) cls+=" dis";
         return '<button class="'+cls+'" data-p="'+p+'" data-team="'+team+'">'+p+'</button>';
       }).join("");
-      el.querySelectorAll(".chip:not(.dis)").forEach(function(btn) {
-        btn.addEventListener("click", function() {
-          var p = this.getAttribute("data-p"), t = this.getAttribute("data-team");
-          var arr = t==="t1" ? t1Selected : t2Selected;
-          var idx = arr.indexOf(p);
-          if (idx > -1) arr.splice(idx, 1);
-          else if (arr.length < 2) arr.push(p);
-          renderChips();
-        });
-      });
+      el.querySelectorAll(".chip:not(.dis)").forEach(function(btn){ btn.addEventListener("click", function(){ var p=this.getAttribute("data-p"),t=this.getAttribute("data-team"),arr=t==="t1"?t1Selected:t2Selected,idx=arr.indexOf(p); if(idx>-1) arr.splice(idx,1); else if(arr.length<2) arr.push(p); renderChips(); }); });
     }
     make("t1-chips","t1"); make("t2-chips","t2");
-    document.getElementById("t1-hint").textContent = t1Selected.length+" of 2 selected"+(t1Selected.length?": "+t1Selected.join(" & "):"");
-    document.getElementById("t2-hint").textContent = t2Selected.length+" of 2 selected"+(t2Selected.length?": "+t2Selected.join(" & "):"");
+    document.getElementById("t1-hint").textContent=t1Selected.length+" of 2 selected"+(t1Selected.length?": "+t1Selected.join(" & "):"");
+    document.getElementById("t2-hint").textContent=t2Selected.length+" of 2 selected"+(t2Selected.length?": "+t2Selected.join(" & "):"");
   }
 
-  // ── FORM ─────────────────────────────────────────────────────────
+  // FORM
   function resetForm() {
-    editingKey = null; t1Selected = []; t2Selected = []; gameType = "21";
-    document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
-    document.getElementById("t1wins").value = "";
-    document.getElementById("t2wins").value = "";
-    document.getElementById("form-err").style.display = "none";
-    document.getElementById("form-suc").style.display = "none";
-    document.getElementById("save-btn").textContent = "Save Match";
-    document.getElementById("cancel-btn").style.display = "none";
-    document.getElementById("form-title").textContent = "Add Doubles Match";
-    document.getElementById("btn-21").classList.add("active");
-    document.getElementById("btn-11").classList.remove("active");
+    editingKey=null; t1Selected=[]; t2Selected=[]; gameType="21";
+    document.getElementById("inp-date").value=new Date().toISOString().split("T")[0];
+    document.getElementById("t1wins").value=""; document.getElementById("t2wins").value="";
+    document.getElementById("form-err").style.display="none"; document.getElementById("form-suc").style.display="none";
+    document.getElementById("save-btn").textContent="Save Match"; document.getElementById("cancel-btn").style.display="none";
+    document.getElementById("form-title").textContent="Add Doubles Match";
+    document.getElementById("btn-21").classList.add("active"); document.getElementById("btn-11").classList.remove("active");
     renderChips();
   }
-
   function startEdit(s) {
-    editingKey = s.firebaseKey;
-    t1Selected = [s.t1p1,s.t1p2].filter(function(n){ return n&&n!=="undefined"; });
-    t2Selected = [s.t2p1,s.t2p2].filter(function(n){ return n&&n!=="undefined"; });
-    gameType = s.gameType || "21";
-    document.getElementById("inp-date").value = s.date;
-    document.getElementById("t1wins").value = s.t1wins;
-    document.getElementById("t2wins").value = s.t2wins;
-    document.getElementById("save-btn").textContent = "Update Match";
-    document.getElementById("cancel-btn").style.display = "block";
-    document.getElementById("form-title").textContent = "Edit Match";
-    document.getElementById("btn-21").classList.toggle("active", gameType==="21");
-    document.getElementById("btn-11").classList.toggle("active", gameType==="11");
+    editingKey=s.firebaseKey; gameType=s.gameType||"21";
+    t1Selected=[s.t1p1,s.t1p2].filter(function(n){ return n&&n!=="undefined"; });
+    t2Selected=[s.t2p1,s.t2p2].filter(function(n){ return n&&n!=="undefined"; });
+    document.getElementById("inp-date").value=s.date;
+    document.getElementById("t1wins").value=s.t1wins; document.getElementById("t2wins").value=s.t2wins;
+    document.getElementById("save-btn").textContent="Update Match"; document.getElementById("cancel-btn").style.display="block";
+    document.getElementById("form-title").textContent="Edit Match";
+    document.getElementById("btn-21").classList.toggle("active",gameType==="21");
+    document.getElementById("btn-11").classList.toggle("active",gameType==="11");
     renderChips(); showTab("add");
   }
-
   async function handleSave() {
-    var date = document.getElementById("inp-date").value;
-    var t1wins = document.getElementById("t1wins").value;
-    var t2wins = document.getElementById("t2wins").value;
-    var errEl = document.getElementById("form-err");
-    var sucEl = document.getElementById("form-suc");
-    var btn = document.getElementById("save-btn");
-    errEl.style.display = "none"; sucEl.style.display = "none";
-    if (!date || t1wins==="" || t2wins==="") { errEl.textContent="Please fill in all fields!"; errEl.style.display="block"; return; }
-    if (t1Selected.length!==2 || t2Selected.length!==2) { errEl.textContent="Please select 2 players for each team!"; errEl.style.display="block"; return; }
+    var date=document.getElementById("inp-date").value, t1w=document.getElementById("t1wins").value, t2w=document.getElementById("t2wins").value;
+    var errEl=document.getElementById("form-err"), sucEl=document.getElementById("form-suc"), btn=document.getElementById("save-btn");
+    errEl.style.display="none"; sucEl.style.display="none";
+    if(!date||t1w===""||t2w==="") { errEl.textContent="Please fill in all fields!"; errEl.style.display="block"; return; }
+    if(t1Selected.length!==2||t2Selected.length!==2) { errEl.textContent="Please select 2 players for each team!"; errEl.style.display="block"; return; }
     btn.disabled=true; btn.textContent=editingKey?"Updating...":"Saving...";
-    var existingId = editingKey ? sessions.find(function(s){ return s.firebaseKey===editingKey; }).id : Date.now();
-    var matchData = {
-      id: existingId, date: date, gameType: gameType,
-      t1p1: t1Selected[0], t1p2: t1Selected[1],
-      t2p1: t2Selected[0], t2p2: t2Selected[1],
-      t1wins: parseInt(t1wins), t2wins: parseInt(t2wins)
-    };
+    var eid=editingKey?sessions.find(function(s){ return s.firebaseKey===editingKey; }).id:Date.now();
+    var data={id:eid,date:date,gameType:gameType,t1p1:t1Selected[0],t1p2:t1Selected[1],t2p1:t2Selected[0],t2p2:t2Selected[1],t1wins:parseInt(t1w),t2wins:parseInt(t2w)};
     try {
-      if (editingKey) { await update(ref(db,"matches/"+editingKey), matchData); sucEl.textContent="✓ Updated!"; }
-      else { await push(matchesRef, matchData); sucEl.textContent="✓ Saved! Everyone can see it now."; }
+      if(editingKey) { await update(ref(db,"matches/"+editingKey),data); sucEl.textContent="✓ Updated!"; }
+      else { await push(matchesRef,data); sucEl.textContent="✓ Saved!"; }
       sucEl.style.display="block"; resetForm();
-      setTimeout(function(){ sucEl.style.display="none"; showTab("history"); }, 1500);
+      setTimeout(function(){ sucEl.style.display="none"; showTab("history"); },1500);
     } catch(e) { errEl.textContent="Failed: "+e.message; errEl.style.display="block"; }
     btn.disabled=false; btn.textContent=editingKey?"Update Match":"Save Match";
   }
 
-  // ── CALCULATIONS ─────────────────────────────────────────────────
-  function playerInMatch(s, name) {
-    return [s.t1p1,s.t1p2,s.t2p1,s.t2p2].indexOf(name) > -1;
+  // CALCULATIONS
+  function computeStreaks(n) {
+    var m=playerMatches(n); if(!m.length) return null;
+    var r=m.map(function(s){ return getResult(s,n); }), last=r[r.length-1], streak=1;
+    for(var i=r.length-2;i>=0;i--) { if(r[i]===last) streak++; else break; }
+    return {type:last,count:streak};
   }
-
-  function playerInT1(s, name) {
-    return [s.t1p1,s.t1p2].indexOf(name) > -1;
+  function computeBestStreak(n) {
+    var m=playerMatches(n); if(!m.length) return 0;
+    var r=m.map(function(s){ return getResult(s,n); }), best=0, cur=0;
+    r.forEach(function(x){ if(x==="W"){cur++;best=Math.max(best,cur);}else{cur=0;} }); return best;
   }
-
-  function getResult(s, name) {
-    var inT1 = playerInT1(s, name);
-    var t1w = Number(s.t1wins), t2w = Number(s.t2wins);
-    if (inT1) return t1w>t2w ? "W" : t1w<t2w ? "L" : "D";
-    return t2w>t1w ? "W" : t2w<t1w ? "L" : "D";
+  function computeBestPartner(n) {
+    var p={};
+    sessions.forEach(function(s){ var a=inT1(s,n), b=[s.t2p1,s.t2p2].indexOf(n)>-1; if(!a&&!b) return; var t=a?[s.t1p1,s.t1p2]:[s.t2p1,s.t2p2], won=a?Number(s.t1wins)>Number(s.t2wins):Number(s.t2wins)>Number(s.t1wins); t.forEach(function(x){ if(!x||x===n||x==="undefined") return; if(!p[x]) p[x]={won:0,tot:0}; p[x].tot++; if(won) p[x].won++; }); });
+    var best=null, br=-1; Object.keys(p).forEach(function(x){ var r=p[x].tot?p[x].won/p[x].tot:0; if(r>br){br=r;best=x;} }); return best;
   }
-
-  function getPlayerMatches(name) {
-    return sessions.filter(function(s){ return playerInMatch(s,name); }).sort(function(a,b){ return a.id-b.id; });
+  function computeToughest(n) {
+    var o={};
+    sessions.forEach(function(s){ var a=inT1(s,n), b=[s.t2p1,s.t2p2].indexOf(n)>-1; if(!a&&!b) return; var t=a?[s.t2p1,s.t2p2]:[s.t1p1,s.t1p2], lost=a?Number(s.t1wins)<Number(s.t2wins):Number(s.t2wins)<Number(s.t1wins); t.forEach(function(x){ if(!x||x==="undefined") return; if(!o[x]) o[x]=0; if(lost) o[x]++; }); });
+    var best=null, m=-1; Object.keys(o).forEach(function(x){ if(o[x]>m){m=o[x];best=x;} }); return best;
   }
-
-  function computeStreaks(name) {
-    var matches = getPlayerMatches(name);
-    if (!matches.length) return null;
-    var results = matches.map(function(s){ return getResult(s,name); });
-    var last = results[results.length-1], streak=1;
-    for (var i=results.length-2;i>=0;i--) { if(results[i]===last) streak++; else break; }
-    return { type:last, count:streak };
+  function computeH2H(p1,p2) {
+    var m=sessions.filter(function(s){ var t1=[s.t1p1,s.t1p2],t2=[s.t2p1,s.t2p2]; return (t1.indexOf(p1)>-1&&t2.indexOf(p2)>-1)||(t1.indexOf(p2)>-1&&t2.indexOf(p1)>-1); }).sort(function(a,b){ return a.id-b.id; });
+    var p1w=0,p2w=0; m.forEach(function(s){ if(inT1(s,p1)){p1w+=Number(s.t1wins);p2w+=Number(s.t2wins);}else{p1w+=Number(s.t2wins);p2w+=Number(s.t1wins);} });
+    return {p1wins:p1w,p2wins:p2w,matches:m};
   }
-
-  function computeBestStreak(name) {
-    var matches = getPlayerMatches(name);
-    if (!matches.length) return 0;
-    var results = matches.map(function(s){ return getResult(s,name); });
-    var best=0, cur=0;
-    results.forEach(function(r){ if(r==="W"){cur++;best=Math.max(best,cur);}else{cur=0;} });
-    return best;
-  }
-
-  function computeBestPartner(name) {
-    var partners = {};
-    sessions.forEach(function(s) {
-      var inT1 = playerInT1(s,name);
-      var inT2 = [s.t2p1,s.t2p2].indexOf(name)>-1;
-      if (!inT1&&!inT2) return;
-      var teammates = inT1 ? [s.t1p1,s.t1p2] : [s.t2p1,s.t2p2];
-      var won = inT1 ? Number(s.t1wins)>Number(s.t2wins) : Number(s.t2wins)>Number(s.t1wins);
-      teammates.forEach(function(p) {
-        if (!p||p===name||p==="undefined") return;
-        if (!partners[p]) partners[p]={won:0,total:0};
-        partners[p].total++;
-        if (won) partners[p].won++;
-      });
-    });
-    var best=null, bestRate=-1;
-    Object.keys(partners).forEach(function(p) {
-      var r = partners[p].total ? partners[p].won/partners[p].total : 0;
-      if (r>bestRate) { bestRate=r; best=p; }
-    });
-    return best;
-  }
-
-  function computeToughest(name) {
-    var opps = {};
-    sessions.forEach(function(s) {
-      var inT1 = playerInT1(s,name);
-      var inT2 = [s.t2p1,s.t2p2].indexOf(name)>-1;
-      if (!inT1&&!inT2) return;
-      var oppTeam = inT1 ? [s.t2p1,s.t2p2] : [s.t1p1,s.t1p2];
-      var lost = inT1 ? Number(s.t1wins)<Number(s.t2wins) : Number(s.t2wins)<Number(s.t1wins);
-      oppTeam.forEach(function(p) {
-        if (!p||p==="undefined") return;
-        if (!opps[p]) opps[p]={losses:0};
-        if (lost) opps[p].losses++;
-      });
-    });
-    var toughest=null, most=-1;
-    Object.keys(opps).forEach(function(p) { if(opps[p].losses>most){most=opps[p].losses;toughest=p;} });
-    return toughest;
-  }
-
-  function computeH2H(p1, p2) {
-    var matches = sessions.filter(function(s) {
-      var t1=[s.t1p1,s.t1p2], t2=[s.t2p1,s.t2p2];
-      return (t1.indexOf(p1)>-1&&t2.indexOf(p2)>-1)||(t1.indexOf(p2)>-1&&t2.indexOf(p1)>-1);
-    }).sort(function(a,b){ return a.id-b.id; });
-    var p1w=0, p2w=0;
-    matches.forEach(function(s) {
-      var inT1 = playerInT1(s,p1);
-      if (inT1) { p1w+=Number(s.t1wins); p2w+=Number(s.t2wins); }
-      else { p1w+=Number(s.t2wins); p2w+=Number(s.t1wins); }
-    });
-    return { p1wins:p1w, p2wins:p2w, matches:matches };
-  }
-
   function computeIndividual() {
-    var players = {};
-    sessions.forEach(function(s) {
-      var w = weight(s);
-      [s.t1p1,s.t1p2].forEach(function(name) {
-        if (!name||name==="undefined"||name==="") return;
-        if (!players[name]) players[name]={name:name,won:0,lost:0};
-        players[name].won += Number(s.t1wins)*w;
-        players[name].lost += Number(s.t2wins)*w;
-      });
-      [s.t2p1,s.t2p2].forEach(function(name) {
-        if (!name||name==="undefined"||name==="") return;
-        if (!players[name]) players[name]={name:name,won:0,lost:0};
-        players[name].won += Number(s.t2wins)*w;
-        players[name].lost += Number(s.t1wins)*w;
-      });
-    });
-    return Object.values(players).sort(function(a,b){
-      var ra=a.won+a.lost?a.won/(a.won+a.lost):0, rb=b.won+b.lost?b.won/(b.won+b.lost):0;
-      return rb-ra||b.won-a.won;
-    });
+    var p={};
+    sessions.forEach(function(s){ var w=wt(s); [s.t1p1,s.t1p2].forEach(function(n){ if(!n||n==="undefined"||n==="") return; if(!p[n]) p[n]={name:n,won:0,lost:0}; p[n].won+=Number(s.t1wins)*w; p[n].lost+=Number(s.t2wins)*w; }); [s.t2p1,s.t2p2].forEach(function(n){ if(!n||n==="undefined"||n==="") return; if(!p[n]) p[n]={name:n,won:0,lost:0}; p[n].won+=Number(s.t2wins)*w; p[n].lost+=Number(s.t1wins)*w; }); });
+    return Object.values(p).sort(function(a,b){ var ra=a.won+a.lost?a.won/(a.won+a.lost):0,rb=b.won+b.lost?b.won/(b.won+b.lost):0; return rb-ra||b.won-a.won; });
   }
-
   function computePairs() {
-    var pairs = {};
-    sessions.forEach(function(s) {
-      var w = weight(s);
-      var p1=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
-      var p2=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
-      if (p1) { if(!pairs[p1]) pairs[p1]={name:p1,won:0,lost:0}; pairs[p1].won+=Number(s.t1wins)*w; pairs[p1].lost+=Number(s.t2wins)*w; }
-      if (p2) { if(!pairs[p2]) pairs[p2]={name:p2,won:0,lost:0}; pairs[p2].won+=Number(s.t2wins)*w; pairs[p2].lost+=Number(s.t1wins)*w; }
-    });
-    return Object.values(pairs).sort(function(a,b){
-      var ra=a.won+a.lost?a.won/(a.won+a.lost):0, rb=b.won+b.lost?b.won/(b.won+b.lost):0;
-      return rb-ra||b.won-a.won;
-    });
+    var p={};
+    sessions.forEach(function(s){ var w=wt(s); var p1=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & "); var p2=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & "); if(p1){if(!p[p1])p[p1]={name:p1,won:0,lost:0};p[p1].won+=Number(s.t1wins)*w;p[p1].lost+=Number(s.t2wins)*w;} if(p2){if(!p[p2])p[p2]={name:p2,won:0,lost:0};p[p2].won+=Number(s.t2wins)*w;p[p2].lost+=Number(s.t1wins)*w;} });
+    return Object.values(p).sort(function(a,b){ var ra=a.won+a.lost?a.won/(a.won+a.lost):0,rb=b.won+b.lost?b.won/(b.won+b.lost):0; return rb-ra||b.won-a.won; });
   }
 
-  // ── RENDER LEADERBOARD ───────────────────────────────────────────
-  function lbRowHTML(p, i, clickable) {
-    var medals=["🥇","🥈","🥉"];
-    var total=p.won+p.lost, rate=total?Math.round(p.won/total*100):0, low=rate<50;
-    var streakHTML="";
-    if (clickable) {
-      var streak=computeStreaks(p.name);
-      if (streak&&streak.count>=2) {
-        if (streak.type==="W") streakHTML='<div class="lb-streak hot">🔥 Won last '+streak.count+'</div>';
-        else if (streak.type==="L") streakHTML='<div class="lb-streak cold">❄️ Lost last '+streak.count+'</div>';
-      }
-    }
-    var cls = "lb-row r"+Math.min(i,2)+(clickable?' data-player="'+p.name+'"':'');
-    return '<div class="'+cls+'">' +
-      '<div class="lb-rank">'+(medals[i]||("#"+(i+1)))+'</div>' +
-      '<div style="flex:1"><div class="lb-name">'+p.name+'</div>'+streakHTML+'</div>' +
-      '<div class="lb-stats">' +
-        '<div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div>' +
-        '<div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div>' +
-        '<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div>' +
-      '</div></div>';
-  }
-
-  function renderLbSection(data, containerId, clickable) {
-    if (!data.length) { H(containerId, empty()); return; }
-    var html = (clickable ? '<div class="tap-hint">Tap a player to see stats</div>' : "") +
-      data.map(function(p,i){ return lbRowHTML(p,i,clickable); }).join("") +
-      '<div class="count">'+sessions.length+' match'+(sessions.length!==1?"es":"")+" recorded</div>";
-    H(containerId, html);
-    if (clickable) {
-      document.querySelectorAll(".lb-row[data-player]").forEach(function(row) {
-        row.addEventListener("click", function(){ showPlayerStats(this.getAttribute("data-player")); });
-      });
-    }
-  }
-
+  // LEADERBOARD
   function renderLeaderboard() {
-    renderLbSection(computeIndividual(), "lb-individual", true);
-    renderLbSection(computePairs(), "lb-pairs", false);
+    var medals=["🥇","🥈","🥉"];
+    function rows(data, clickable) {
+      if(!data.length) return emptyHTML();
+      return (clickable?'<div class="tap-hint">Tap a player to see stats</div>':"")+
+        data.map(function(p,i){
+          var tot=p.won+p.lost, rate=tot?Math.round(p.won/tot*100):0, low=rate<50;
+          var sHTML="";
+          if(clickable){ var st=computeStreaks(p.name); if(st&&st.count>=2){ if(st.type==="W") sHTML='<div class="lb-streak hot">🔥 Won last '+st.count+'</div>'; else if(st.type==="L") sHTML='<div class="lb-streak cold">❄️ Lost last '+st.count+'</div>'; } }
+          return '<div class="lb-row r'+Math.min(i,2)+'"'+(clickable?' data-player="'+p.name+'"':'')+'>'+
+            '<div class="lb-rank">'+(medals[i]||("#"+(i+1)))+'</div>'+
+            '<div style="flex:1"><div class="lb-name">'+p.name+'</div>'+sHTML+'</div>'+
+            '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div></div></div>';
+        }).join("")+'<div class="count">'+sessions.length+' match'+(sessions.length!==1?"es":"")+" recorded</div>";
+    }
+    H("lb-individual", rows(computeIndividual(),true));
+    H("lb-pairs", rows(computePairs(),false));
+    document.querySelectorAll('[data-player]').forEach(function(row){ row.addEventListener("click", function(){ showPlayerStats(this.getAttribute("data-player")); }); });
   }
 
-  // ── PLAYER STATS ─────────────────────────────────────────────────
+  // PLAYER STATS
   function showPlayerStats(name) {
-    currentPlayer = name;
-    var individual = computeIndividual();
-    var player = individual.find(function(p){ return p.name===name; });
-    if (!player) return;
+    currentPlayer=name;
+    var ind=computeIndividual(), pl=ind.find(function(p){ return p.name===name; });
+    if(!pl) return;
+    var tot=pl.won+pl.lost, rate=tot?Math.round(pl.won/tot*100):0;
+    var bs=computeBestStreak(name), bp=computeBestPartner(name), tg=computeToughest(name);
+    var pm=playerMatches(name);
 
-    var total = player.won+player.lost;
-    var rate = total ? Math.round(player.won/total*100) : 0;
-    var bestStreak = computeBestStreak(name);
-    var bestPartner = computeBestPartner(name);
-    var toughest = computeToughest(name);
+    // 21pt / 11pt breakdown
+    var w21=0,l21=0,w11=0,l11=0;
+    pm.forEach(function(s){ var a=inT1(s,name); var mw=a?Number(s.t1wins):Number(s.t2wins); var ml=a?Number(s.t2wins):Number(s.t1wins); if((s.gameType||"21")==="11"){w11+=mw;l11+=ml;}else{w21+=mw;l21+=ml;} });
+    var r21=(w21+l21)?Math.round(w21/(w21+l21)*100):0, r11=(w11+l11)?Math.round(w11/(w11+l11)*100):0;
 
-    // 21pt and 11pt breakdown
-    var won21=0, lost21=0, won11=0, lost11=0;
-    getPlayerMatches(name).forEach(function(s) {
-      var inT1 = playerInT1(s,name);
-      var myW = inT1 ? Number(s.t1wins) : Number(s.t2wins);
-      var myL = inT1 ? Number(s.t2wins) : Number(s.t1wins);
-      if ((s.gameType||"21")==="11") { won11+=myW; lost11+=myL; }
-      else { won21+=myW; lost21+=myL; }
-    });
-    var rate21 = (won21+lost21) ? Math.round(won21/(won21+lost21)*100) : 0;
-    var rate11 = (won11+lost11) ? Math.round(won11/(won11+lost11)*100) : 0;
-    var total21 = won21+lost21, total11 = won11+lost11;
-
-    document.getElementById("p-avatar").textContent = name.charAt(0).toUpperCase();
-    document.getElementById("p-name").textContent = name;
-    var rateEl = document.getElementById("p-winrate");
-    rateEl.textContent = rate+"%";
-    rateEl.className = "player-winrate"+(rate<50?" low":"");
-    document.getElementById("p-record").textContent = player.won.toFixed(1)+"W — "+player.lost.toFixed(1)+"L • "+getPlayerMatches(name).length+" matches";
+    document.getElementById("p-avatar").textContent=name.charAt(0).toUpperCase();
+    document.getElementById("p-name").textContent=name;
+    var re=document.getElementById("p-winrate"); re.textContent=rate+"%"; re.className="player-winrate"+(rate<50?" low":"");
+    document.getElementById("p-record").textContent=pl.won.toFixed(1)+"W — "+pl.lost.toFixed(1)+"L • "+pm.length+" matches";
 
     H("stats-grid",
-      '<div class="stat-box"><div class="stat-val accent">'+bestStreak+'</div><div class="stat-lbl">Best Win Streak</div></div>' +
-      '<div class="stat-box"><div class="stat-val">'+getPlayerMatches(name).length+'</div><div class="stat-lbl">Total Matches</div></div>' +
-      '<div class="stat-box"><div class="stat-val accent" style="font-size:14px">'+(bestPartner||"—")+'</div><div class="stat-lbl">Best Partner</div></div>' +
-      '<div class="stat-box"><div class="stat-val loss" style="font-size:14px">'+(toughest||"—")+'</div><div class="stat-lbl">Toughest Opponent</div></div>' +
-      '<div class="stat-box wide">' +
-        '<div class="gt-split">' +
-          '<div class="gt-split-item">' +
-            '<div class="stat-val accent">'+rate21+'%</div>' +
-            '<div class="stat-lbl">21pt Win Rate</div>' +
-            '<div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:4px">'+won21+'W — '+lost21+'L'+(total21?' ('+total21+' matches)':'')+'</div>' +
-          '</div>' +
-          '<div class="gt-divider"></div>' +
-          '<div class="gt-split-item">' +
-            '<div class="stat-val accent">'+rate11+'%</div>' +
-            '<div class="stat-lbl">11pt Win Rate</div>' +
-            '<div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:4px">'+won11+'W — '+lost11+'L'+(total11?' ('+total11+' matches)':'')+'</div>' +
-          '</div>' +
-        '</div>' +
-      '</div>'
+      '<div class="stat-box"><div class="stat-val accent">'+bs+'</div><div class="stat-lbl">Best Streak</div></div>'+
+      '<div class="stat-box"><div class="stat-val">'+pm.length+'</div><div class="stat-lbl">Total Matches</div></div>'+
+      '<div class="stat-box"><div class="stat-val accent" style="font-size:14px">'+(bp||"—")+'</div><div class="stat-lbl">Best Partner</div></div>'+
+      '<div class="stat-box"><div class="stat-val loss" style="font-size:14px">'+(tg||"—")+'</div><div class="stat-lbl">Toughest Opp</div></div>'+
+      '<div class="stat-box wide"><div class="gt-split">'+
+        '<div style="text-align:center"><div class="stat-val accent">'+r21+'%</div><div class="stat-lbl">21pt Win Rate</div><div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:4px">'+w21+'W — '+l21+'L</div></div>'+
+        '<div class="gt-divider"></div>'+
+        '<div style="text-align:center"><div class="stat-val accent">'+r11+'%</div><div class="stat-lbl">11pt Win Rate</div><div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:4px">'+w11+'W — '+l11+'L</div></div>'+
+      '</div></div>'
     );
 
-    // H2H list
-    var opponents = {};
-    sessions.forEach(function(s) {
-      var inT1=playerInT1(s,name), inT2=[s.t2p1,s.t2p2].indexOf(name)>-1;
-      if (!inT1&&!inT2) return;
-      var oppTeam = inT1?[s.t2p1,s.t2p2]:[s.t1p1,s.t1p2];
-      oppTeam.forEach(function(p){ if(p&&p!=="undefined"&&p!==name) opponents[p]=true; });
-    });
-    var oppNames = Object.keys(opponents);
-    if (!oppNames.length) {
-      H("h2h-list", '<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">No opponents yet</div>');
-    } else {
-      var html = oppNames.map(function(opp) {
-        var h2h=computeH2H(name,opp);
-        var cls=h2h.p1wins>h2h.p2wins?"win":h2h.p1wins<h2h.p2wins?"loss":"draw";
-        return '<div class="h2h-row" data-opp="'+opp+'">' +
-          '<div class="h2h-opp">vs '+opp+'</div>' +
-          '<div class="h2h-score '+cls+'">'+h2h.p1wins+' — '+h2h.p2wins+'</div>' +
-          '<div class="h2h-arr">›</div>' +
-        '</div>';
-      }).join("");
-      H("h2h-list", html);
-      document.querySelectorAll(".h2h-row").forEach(function(row) {
-        row.addEventListener("click", function(){ showH2H(name, this.getAttribute("data-opp")); });
-      });
+    var opps={};
+    sessions.forEach(function(s){ var a=inT1(s,name), b=[s.t2p1,s.t2p2].indexOf(name)>-1; if(!a&&!b) return; var t=a?[s.t2p1,s.t2p2]:[s.t1p1,s.t1p2]; t.forEach(function(p){ if(p&&p!=="undefined"&&p!==name) opps[p]=true; }); });
+    var on=Object.keys(opps);
+    if(!on.length) { H("h2h-list",'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">No opponents yet</div>'); }
+    else {
+      H("h2h-list", on.map(function(o){ var h=computeH2H(name,o), cls=h.p1wins>h.p2wins?"win":h.p1wins<h.p2wins?"loss":"draw"; return '<div class="h2h-row" data-opp="'+o+'"><div class="h2h-opp">vs '+o+'</div><div class="h2h-score '+cls+'">'+h.p1wins+' — '+h.p2wins+'</div><div class="h2h-arr">›</div></div>'; }).join(""));
+      document.querySelectorAll(".h2h-row").forEach(function(r){ r.addEventListener("click", function(){ showH2H(name,this.getAttribute("data-opp")); }); });
     }
     showTab("player");
   }
 
-  // ── HEAD TO HEAD ─────────────────────────────────────────────────
-  function showH2H(p1, p2) {
-    var h2h = computeH2H(p1, p2);
-    document.getElementById("h2h-p1-name").textContent = p1;
-    document.getElementById("h2h-p2-name").textContent = p2;
+  // HEAD TO HEAD
+  function showH2H(p1,p2) {
+    var h=computeH2H(p1,p2);
+    document.getElementById("h2h-p1-name").textContent=p1; document.getElementById("h2h-p2-name").textContent=p2;
     var s1=document.getElementById("h2h-p1-score"), s2=document.getElementById("h2h-p2-score");
-    s1.textContent=h2h.p1wins; s2.textContent=h2h.p2wins;
-    s1.className="h2h-pscore"+(h2h.p1wins<h2h.p2wins?" loss":"");
-    s2.className="h2h-pscore"+(h2h.p2wins<h2h.p1wins?" loss":"");
-    if (h2h.matches.length) {
-      var last=h2h.matches[h2h.matches.length-1];
-      document.getElementById("h2h-last").textContent="Last played: "+formatDate(last.date);
-    } else { document.getElementById("h2h-last").textContent=""; }
-
-    var html = h2h.matches.slice().reverse().map(function(s) {
-      var inT1=playerInT1(s,p1);
-      var t1w=Number(s.t1wins), t2w=Number(s.t2wins);
-      var p1won=inT1?t1w>t2w:t2w>t1w, isDraw=t1w===t2w;
-      var rc=isDraw?"d":p1won?"w":"l", rl=isDraw?"Draw":p1won?"Won":"Lost";
-      var t1names=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
-      var t2names=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
-      return '<div class="h2h-match-row">' +
-        '<div class="h2h-match-date">'+formatDate(s.date)+'</div>' +
-        '<div class="h2h-match-info">'+t1names+' vs '+t2names+'<br>' +
-          '<span style="color:var(--muted);font-size:11px;font-family:monospace">'+t1w+' — '+t2w+'</span> '+gtBadge(s)+'</div>' +
-        '<div class="h2h-match-result '+rc+'">'+rl+'</div>' +
-      '</div>';
-    }).join("");
-    H("h2h-matches", html||'<div style="color:var(--muted);text-align:center;padding:20px">No matches yet</div>');
+    s1.textContent=h.p1wins; s2.textContent=h.p2wins;
+    s1.className="h2h-pscore"+(h.p1wins<h.p2wins?" loss":""); s2.className="h2h-pscore"+(h.p2wins<h.p1wins?" loss":"");
+    document.getElementById("h2h-last").textContent=h.matches.length?"Last played: "+fmtDate(h.matches[h.matches.length-1].date):"";
+    H("h2h-matches", h.matches.slice().reverse().map(function(s){
+      var a=inT1(s,p1), t1w=Number(s.t1wins), t2w=Number(s.t2wins);
+      var won=a?t1w>t2w:t2w>t1w, draw=t1w===t2w;
+      var rc=draw?"d":won?"w":"l", rl=draw?"Draw":won?"Won":"Lost";
+      var t1n=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
+      var t2n=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
+      return '<div class="h2h-match-row"><div class="h2h-match-date">'+fmtDate(s.date)+'</div><div class="h2h-match-info">'+t1n+' vs '+t2n+'<br><span style="color:var(--muted);font-size:11px;font-family:monospace">'+t1w+' — '+t2w+'</span> '+gtBadge(s)+'</div><div class="h2h-match-result '+rc+'">'+rl+'</div></div>';
+    }).join("")||'<div style="color:var(--muted);text-align:center;padding:20px">No matches yet</div>');
     showTab("h2h");
   }
 
-  // ── HISTORY ──────────────────────────────────────────────────────
+  // HISTORY
   function renderHistory() {
-    var filtered = sessions.filter(function(s) {
-      if (currentFilter==="win") return Number(s.t1wins)>Number(s.t2wins);
-      if (currentFilter==="loss") return Number(s.t1wins)<Number(s.t2wins);
-      return true;
-    });
-    if (!filtered.length) { H("history-content", empty("No sessions here!")); return; }
-    var grouped={};
-    filtered.forEach(function(s){ var d=s.date||"unknown"; if(!grouped[d]) grouped[d]=[]; grouped[d].push(s); });
-    var dates=Object.keys(grouped).sort(function(a,b){ return b.localeCompare(a); });
-    var html=dates.map(function(date) {
-      var cards=grouped[date].map(function(s) {
-        var t1w=Number(s.t1wins), t2w=Number(s.t2wins);
-        var isWin=t1w>t2w, isDraw=t1w===t2w;
+    var f=sessions.filter(function(s){ if(currentFilter==="win") return Number(s.t1wins)>Number(s.t2wins); if(currentFilter==="loss") return Number(s.t1wins)<Number(s.t2wins); return true; });
+    if(!f.length) { H("history-content",emptyHTML("No sessions here!")); return; }
+    var g={};
+    f.forEach(function(s){ var d=s.date||"unknown"; if(!g[d]) g[d]=[]; g[d].push(s); });
+    var dates=Object.keys(g).sort(function(a,b){ return b.localeCompare(a); });
+    H("history-content", dates.map(function(date){
+      return '<div class="day-label">'+fmtDate(date)+'</div>'+g[date].map(function(s){
+        var t1w=Number(s.t1wins), t2w=Number(s.t2wins), isWin=t1w>t2w, isDraw=t1w===t2w;
         var rc=isDraw?"draw":isWin?"":"loss", rl=isDraw?"Draw":isWin?"Won":"Lost";
-        var total=t1w+t2w;
-        var t1names=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
-        var t2names=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
-        var dots="";
-        for(var i=0;i<t1w;i++) dots+='<span class="dot">W</span>';
-        for(var i=0;i<t2w;i++) dots+='<span class="dot l">L</span>';
-        return '<div class="session-card '+rc+'">' +
-          '<div class="card-top">' +
-            '<span class="badge '+rc+'">'+rl+'</span>' +
-            gtBadge(s) +
-            '<span class="card-name">'+t1names+' vs '+t2names+'</span>' +
-            '<div class="card-actions">' +
-              '<button class="edit-btn" data-key="'+s.firebaseKey+'">✏️</button>' +
-              '<button class="del-btn" data-key="'+s.firebaseKey+'">✕</button>' +
-            '</div>' +
-          '</div>' +
-          '<div class="teams-row">' +
-            '<div class="team-block"><div class="team-names">'+t1names+'</div><div class="team-score'+(isWin?"":isDraw?"":' loss')+'">'+t1w+'</div></div>' +
-            '<div class="vs">vs</div>' +
-            '<div class="team-block"><div class="team-names">'+t2names+'</div><div class="team-score'+(isWin?" loss":isDraw?"":"")+'">'+t2w+'</div></div>' +
-          '</div>' +
-          '<div class="match-total">'+total+' matches played</div>' +
-          '<div class="dots">'+dots+'</div>' +
-        '</div>';
+        var t1n=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
+        var t2n=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
+        var dots=""; for(var i=0;i<t1w;i++) dots+='<span class="dot">W</span>'; for(var i=0;i<t2w;i++) dots+='<span class="dot l">L</span>';
+        return '<div class="session-card '+rc+'">'+
+          '<div class="card-top"><span class="badge '+rc+'">'+rl+'</span>'+gtBadge(s)+'<span class="card-name">'+t1n+' vs '+t2n+'</span><div class="card-actions"><button class="edit-btn" data-key="'+s.firebaseKey+'">✏️</button><button class="del-btn" data-key="'+s.firebaseKey+'">✕</button></div></div>'+
+          '<div class="teams-row"><div class="team-block"><div class="team-names">'+t1n+'</div><div class="team-score'+(isWin?"":isDraw?"":' loss')+'">'+t1w+'</div></div><div class="vs">vs</div><div class="team-block"><div class="team-names">'+t2n+'</div><div class="team-score'+(isWin?" loss":isDraw?"":"")+'">'+t2w+'</div></div></div>'+
+          '<div class="match-total">'+(t1w+t2w)+' matches played</div><div class="dots">'+dots+'</div></div>';
       }).join("");
-      return '<div class="day-label">'+formatDate(date)+'</div>'+cards;
-    }).join("");
-    H("history-content", html);
-    document.querySelectorAll(".del-btn").forEach(function(btn){
-      btn.addEventListener("click", function(){ remove(ref(db,"matches/"+this.getAttribute("data-key"))); });
-    });
-    document.querySelectorAll(".edit-btn").forEach(function(btn){
-      btn.addEventListener("click", function(){
-        var key=this.getAttribute("data-key");
-        var s=sessions.find(function(x){ return x.firebaseKey===key; });
-        if (s) startEdit(s);
-      });
-    });
+    }).join(""));
+    document.querySelectorAll(".del-btn").forEach(function(b){ b.addEventListener("click", function(){ remove(ref(db,"matches/"+this.getAttribute("data-key"))); }); });
+    document.querySelectorAll(".edit-btn").forEach(function(b){ b.addEventListener("click", function(){ var s=sessions.find(function(x){ return x.firebaseKey===this.getAttribute("data-key"); }.bind(this)); if(s) startEdit(s); }); });
   }
 </script>
 </body>
