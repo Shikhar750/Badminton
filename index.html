@@ -98,6 +98,8 @@
     .add-row{display:flex;gap:8px;margin-top:10px}
     .add-input{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;flex:1;font-family:'Space Grotesk',sans-serif}
     .add-input:focus{border-color:var(--accent)}
+    .game-type-btn{flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:"Space Grotesk",sans-serif;transition:all 0.2s}
+    .game-type-btn.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
     .add-btn{background:var(--accent);color:#0f1117;border:none;border-radius:10px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
     .save-btn{width:100%;background:var(--accent);color:#0f1117;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;font-family:'Space Grotesk',sans-serif}
     .save-btn:disabled{opacity:0.6;cursor:not-allowed}
@@ -213,6 +215,13 @@
           <button class="add-btn" id="add-player-btn">Add</button>
         </div>
       </div>
+      <div class="fg">
+        <label>Game Type</label>
+        <div style="display:flex;gap:8px">
+          <button class="game-type-btn active" id="btn-21" data-type="21">21 pts</button>
+          <button class="game-type-btn" id="btn-11" data-type="11">11 pts</button>
+        </div>
+      </div>
       <div class="frow">
         <div class="fg"><label>Your Team Won</label><input type="number" id="t1wins" placeholder="3" min="0"/></div>
         <div class="fg"><label>They Won</label><input type="number" id="t2wins" placeholder="1" min="0"/></div>
@@ -280,6 +289,7 @@
   var t2Selected = [];
   var currentPlayer = null;
   var currentH2HOpponent = null;
+  var gameType = "21";
 
   document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
 
@@ -305,6 +315,8 @@
   document.getElementById("filter-loss").addEventListener("click", function(){ setFilter("loss", this); });
   document.getElementById("save-btn").addEventListener("click", handleSave);
   document.getElementById("cancel-btn").addEventListener("click", function(){ resetForm(); showTab("history"); });
+  document.getElementById("btn-21").addEventListener("click", function(){ gameType="21"; document.getElementById("btn-21").classList.add("active"); document.getElementById("btn-11").classList.remove("active"); });
+  document.getElementById("btn-11").addEventListener("click", function(){ gameType="11"; document.getElementById("btn-11").classList.add("active"); document.getElementById("btn-21").classList.remove("active"); });
   document.getElementById("add-player-btn").addEventListener("click", addNewPlayer);
   document.getElementById("new-player-input").addEventListener("keydown", function(e){ if(e.key==="Enter") addNewPlayer(); });
   document.getElementById("back-from-player").addEventListener("click", function(){ showTab("leaderboard"); });
@@ -442,6 +454,9 @@
     t2Selected = [session.t2p1,session.t2p2].filter(function(n){ return n&&n!=="undefined"; });
     document.getElementById("inp-date").value = session.date;
     document.getElementById("t1wins").value = session.t1wins;
+    gameType = session.gameType||"21";
+    document.getElementById("btn-21").classList.toggle("active", gameType==="21");
+    document.getElementById("btn-11").classList.toggle("active", gameType==="11");
     document.getElementById("t2wins").value = session.t2wins;
     document.getElementById("save-btn").textContent = "Update Match";
     document.getElementById("cancel-btn").style.display = "block";
@@ -461,7 +476,7 @@
     if (t1Selected.length!==2||t2Selected.length!==2) { errEl.textContent="Please select 2 players for each team!"; errEl.style.display="block"; return; }
     btn.disabled=true; btn.textContent=editingKey?"Updating...":"Saving...";
     var existingId = editingKey ? sessions.find(function(s){ return s.firebaseKey===editingKey; }).id : Date.now();
-    var matchData = { id:existingId, date:date, t1p1:t1Selected[0], t1p2:t1Selected[1], t2p1:t2Selected[0], t2p2:t2Selected[1], t1wins:parseInt(t1wins), t2wins:parseInt(t2wins) };
+    var matchData = { id:existingId, date:date, t1p1:t1Selected[0], t1p2:t1Selected[1], t2p1:t2Selected[0], t2p2:t2Selected[1], t1wins:parseInt(t1wins), t2wins:parseInt(t2wins), gameType:gameType };
     try {
       if (editingKey) { await update(ref(db,"matches/"+editingKey), matchData); sucEl.textContent="✓ Updated!"; }
       else { await push(matchesRef, matchData); sucEl.textContent="✓ Saved! Everyone can see it now."; }
@@ -576,12 +591,12 @@
       [s.t1p1,s.t1p2].forEach(function(name) {
         if (!name||name==="undefined"||name==="") return;
         if (!players[name]) players[name]={name:name,won:0,lost:0};
-        players[name].won+=Number(s.t1wins); players[name].lost+=Number(s.t2wins);
+        var w=s.gameType==="11"?0.5:1; players[name].won+=Number(s.t1wins)*w; players[name].lost+=Number(s.t2wins)*w;
       });
       [s.t2p1,s.t2p2].forEach(function(name) {
         if (!name||name==="undefined"||name==="") return;
         if (!players[name]) players[name]={name:name,won:0,lost:0};
-        players[name].won+=Number(s.t2wins); players[name].lost+=Number(s.t1wins);
+        var w2=s.gameType==="11"?0.5:1; players[name].won+=Number(s.t2wins)*w2; players[name].lost+=Number(s.t1wins)*w2;
       });
     });
     return Object.values(players).sort(function(a,b){
@@ -595,8 +610,8 @@
     sessions.forEach(function(s) {
       var p1=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
       var p2=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
-      if (p1) { if(!pairs[p1]) pairs[p1]={name:p1,won:0,lost:0}; pairs[p1].won+=Number(s.t1wins); pairs[p1].lost+=Number(s.t2wins); }
-      if (p2) { if(!pairs[p2]) pairs[p2]={name:p2,won:0,lost:0}; pairs[p2].won+=Number(s.t2wins); pairs[p2].lost+=Number(s.t1wins); }
+      var wp=s.gameType==="11"?0.5:1; if (p1) { if(!pairs[p1]) pairs[p1]={name:p1,won:0,lost:0}; pairs[p1].won+=Number(s.t1wins)*wp; pairs[p1].lost+=Number(s.t2wins)*wp; }
+      if (p2) { if(!pairs[p2]) pairs[p2]={name:p2,won:0,lost:0}; pairs[p2].won+=Number(s.t2wins)*wp; pairs[p2].lost+=Number(s.t1wins)*wp; }
     });
     return Object.values(pairs).sort(function(a,b){
       var ra=a.won+a.lost?a.won/(a.won+a.lost):0, rb=b.won+b.lost?b.won/(b.won+b.lost):0;
@@ -764,6 +779,7 @@
         var t1w=Number(s.t1wins), t2w=Number(s.t2wins);
         var isWin=t1w>t2w, isDraw=t1w===t2w;
         var rc=isDraw?"draw":isWin?"":"loss", rl=isDraw?"Draw":isWin?"Won":"Lost";
+        var gtLabel=s.gameType==="11"?"11pt":"21pt";
         var total=t1w+t2w;
         var t1names=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
         var t2names=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
@@ -771,7 +787,7 @@
         for(var i=0;i<t1w;i++) dots+='<span class="dot">W</span>';
         for(var i=0;i<t2w;i++) dots+='<span class="dot l">L</span>';
         return '<div class="session-card '+rc+'">' +
-          '<div class="card-top"><span class="badge '+rc+'">'+rl+'</span><span class="card-name">'+t1names+' vs '+t2names+'</span>' +
+          '<div class="card-top"><span class="badge '+rc+'">'+rl+'</span><span style="font-size:10px;color:var(--muted);background:var(--surface2);border-radius:4px;padding:2px 6px;flex-shrink:0">+gtLabel+</span><span class="card-name">'+t1names+' vs '+t2names+'</span>' +
           '<div class="card-actions"><button class="edit-btn" data-key="'+s.firebaseKey+'">✏️</button><button class="del-btn" data-key="'+s.firebaseKey+'">✕</button></div></div>' +
           '<div class="teams-row">' +
             '<div class="team-block"><div class="team-names">'+t1names+'</div><div class="team-score'+(isWin?"":isDraw?"":' loss')+'">'+t1w+'</div></div>' +
