@@ -348,7 +348,7 @@
   }
 
   document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
-  document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); attachCardListeners(document.getElementById("history-content")); });
+  document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
   document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); });
   document.getElementById("refresh-btn").addEventListener("click", renderAll);
   document.getElementById("sub-individual").addEventListener("click", function(){ this.classList.add("active"); document.getElementById("sub-pairs").classList.remove("active"); document.getElementById("lb-individual").style.display="block"; document.getElementById("lb-pairs").style.display="none"; });
@@ -503,6 +503,8 @@
     btn.disabled=false;btn.textContent=editingKey?"Update Match":"Save Match";
   }
 
+  setupDelegation();
+
   // CALCULATIONS
   function computeStreaks(n) {
     var m=playerMatches(n);if(!m.length)return null;
@@ -623,75 +625,90 @@
   }
 
   function attachCardListeners(container) {
-    // Expand/collapse
-    container.querySelectorAll(".card-summary").forEach(function(el) {
-      el.addEventListener("click", function() {
-        var body=this.parentElement.querySelector(".card-body");
-        var arrow=this.querySelector(".expand-arrow");
-        var isOpen=body.classList.contains("open");
-        body.classList.toggle("open",!isOpen);
-        arrow.classList.toggle("open",!isOpen);
-      });
-    });
-    // Edit
-    container.querySelectorAll(".edit-btn").forEach(function(btn) {
-      btn.addEventListener("click", function(e) {
+    // no-op - using event delegation instead
+  }
+
+  // Single delegated listener on history container - survives tab switches
+  function setupDelegation() {
+    var hc = document.getElementById("history-content");
+    hc.addEventListener("click", async function(e) {
+      var t = e.target;
+
+      // Expand/collapse summary
+      var summary = t.closest(".card-summary");
+      if (summary) {
+        var body = summary.parentElement.querySelector(".card-body");
+        var arrow = summary.querySelector(".expand-arrow");
+        var isOpen = body.classList.contains("open");
+        body.classList.toggle("open", !isOpen);
+        if (arrow) arrow.classList.toggle("open", !isOpen);
+        return;
+      }
+
+      // Edit button
+      var editBtn = t.closest(".edit-btn");
+      if (editBtn) {
         e.stopPropagation();
-        var s=sessions.find(function(x){return x.firebaseKey===btn.getAttribute("data-key");});
-        if(s)startEdit(s);
-      });
-    });
-    // Delete
-    container.querySelectorAll(".del-btn").forEach(function(btn) {
-      btn.addEventListener("click", function(e) {
+        var s = sessions.find(function(x){ return x.firebaseKey === editBtn.getAttribute("data-key"); });
+        if (s) startEdit(s);
+        return;
+      }
+
+      // Delete button
+      var delBtn = t.closest(".del-btn");
+      if (delBtn) {
         e.stopPropagation();
-        remove(ref(db,"matches/"+btn.getAttribute("data-key")));
-      });
-    });
-    // Add/Edit scores button
-    container.querySelectorAll(".add-scores-btn").forEach(function(btn) {
-      btn.addEventListener("click", function(e) {
+        remove(ref(db, "matches/" + delBtn.getAttribute("data-key")));
+        return;
+      }
+
+      // Add/Edit scores button
+      var addScoresBtn = t.closest(".add-scores-btn");
+      if (addScoresBtn) {
         e.stopPropagation();
-        var card=this.closest(".session-card");
-        var form=card.querySelector(".score-form");
-        var scoresSection=card.querySelector(".scores-section");
-        form.style.display="block";
-        btn.style.display="none";
-        if(scoresSection)scoresSection.style.display="none";
-      });
-    });
-    // Cancel scores
-    container.querySelectorAll(".score-cancel-btn").forEach(function(btn) {
-      btn.addEventListener("click", function(e) {
+        var card = addScoresBtn.closest(".session-card");
+        var form = card.querySelector(".score-form");
+        var scoresSection = card.querySelector(".scores-section");
+        form.style.display = "block";
+        addScoresBtn.style.display = "none";
+        if (scoresSection) scoresSection.style.display = "none";
+        return;
+      }
+
+      // Cancel scores
+      var cancelBtn = t.closest(".score-cancel-btn");
+      if (cancelBtn) {
         e.stopPropagation();
-        var card=this.closest(".session-card");
-        var form=card.querySelector(".score-form");
-        var addBtn=card.querySelector(".add-scores-btn");
-        var scoresSection=card.querySelector(".scores-section");
-        form.style.display="none";
-        addBtn.style.display="block";
-        if(scoresSection)scoresSection.style.display="block";
-      });
-    });
-    // Save scores
-    container.querySelectorAll(".score-save-btn").forEach(function(btn) {
-      btn.addEventListener("click", async function(e) {
+        var card = cancelBtn.closest(".session-card");
+        var form = card.querySelector(".score-form");
+        var addBtn = card.querySelector(".add-scores-btn");
+        var scoresSection = card.querySelector(".scores-section");
+        form.style.display = "none";
+        addBtn.style.display = "block";
+        if (scoresSection) scoresSection.style.display = "block";
+        return;
+      }
+
+      // Save scores
+      var saveScoresBtn = t.closest(".score-save-btn");
+      if (saveScoresBtn) {
         e.stopPropagation();
-        var key=this.getAttribute("data-key");
-        var total=parseInt(this.getAttribute("data-total"));
-        var card=this.closest(".session-card");
-        var scores=[];
-        for(var i=0;i<total;i++){
-          var t1v=card.querySelector('[data-game="'+i+'"][data-team="t1"]').value;
-          var t2v=card.querySelector('[data-game="'+i+'"][data-team="t2"]').value;
-          scores.push({t1:parseInt(t1v)||0,t2:parseInt(t2v)||0});
+        var key = saveScoresBtn.getAttribute("data-key");
+        var total = parseInt(saveScoresBtn.getAttribute("data-total"));
+        var card = saveScoresBtn.closest(".session-card");
+        var scores = [];
+        for (var i = 0; i < total; i++) {
+          var t1v = card.querySelector('[data-game="' + i + '"][data-team="t1"]').value;
+          var t2v = card.querySelector('[data-game="' + i + '"][data-team="t2"]').value;
+          scores.push({ t1: parseInt(t1v) || 0, t2: parseInt(t2v) || 0 });
         }
-        try{
-          await update(ref(db,"matches/"+key),{scores:scores});
-          btn.textContent="✓ Saved!";
-          setTimeout(function(){btn.textContent="Save Scores";},1500);
-        }catch(err){btn.textContent="Failed!";}
-      });
+        try {
+          await update(ref(db, "matches/" + key), { scores: scores });
+          saveScoresBtn.textContent = "✓ Saved!";
+          setTimeout(function(){ saveScoresBtn.textContent = "Save Scores"; }, 1500);
+        } catch(err) { saveScoresBtn.textContent = "Failed!"; }
+        return;
+      }
     });
   }
 
