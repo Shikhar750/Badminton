@@ -348,7 +348,7 @@
   }
 
   document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
-  document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
+  document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); attachCardListeners(document.getElementById("history-content")); });
   document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); });
   document.getElementById("refresh-btn").addEventListener("click", renderAll);
   document.getElementById("sub-individual").addEventListener("click", function(){ this.classList.add("active"); document.getElementById("sub-pairs").classList.remove("active"); document.getElementById("lb-individual").style.display="block"; document.getElementById("lb-pairs").style.display="none"; });
