@@ -204,6 +204,7 @@
     <div class="nav-tab active" id="nav-leaderboard">🏆 Rankings</div>
     <div class="nav-tab" id="nav-history">📋 History</div>
     <div class="nav-tab" id="nav-add">＋ Add</div>
+    <div class="nav-tab" id="nav-rules">📜 Rules</div>
   </div>
 
   <!-- LEADERBOARD -->
@@ -308,6 +309,51 @@
     <div class="sec-hdr">Match History</div>
     <div id="h2h-matches"></div>
   </div>
+  <!-- RULES -->
+  <div class="tab" id="tab-rules">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:12px">
+      <div style="font-size:16px;font-weight:700;margin-bottom:20px;text-align:center">🏸 Squad Rules</div>
+
+      <div style="margin-bottom:20px">
+        <div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;margin-bottom:10px">Logging Matches</div>
+        <div style="font-size:14px;color:var(--text);line-height:1.8">
+          📝 All matches played must be logged on the same day<br>
+          🚫 No exceptions unless agreed by the group beforehand
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
+
+      <div style="margin-bottom:20px">
+        <div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;margin-bottom:10px">Match Lock</div>
+        <div style="font-size:14px;color:var(--text);line-height:1.8">
+          🔒 All matches lock at 10am the next morning<br>
+          ✏️ No additions, edits or deletions after lock<br>
+          👑 Admin can edit locked matches with PIN
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
+
+      <div style="margin-bottom:20px">
+        <div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;margin-bottom:10px">Deletion</div>
+        <div style="font-size:14px;color:var(--text);line-height:1.8">
+          🗑️ Deletion requires majority WhatsApp group approval<br>
+          💬 Raise it in the group chat first
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
+
+      <div>
+        <div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;margin-bottom:10px">Spirit of the Game</div>
+        <div style="font-size:14px;color:var(--text);line-height:1.8">
+          🏆 If you played it, it goes on the board<br>
+          😄 Sore losers will be publicly shamed
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script type="module">
@@ -320,6 +366,7 @@
   var squadRef = ref(db, "squad");
   var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+  var ADMIN_PIN = "1234"; // ← CHANGE THIS TO YOUR SECRET PIN
   var sessions = [];
   var squadPlayers = [];
   var dateFilter = "all";
@@ -332,12 +379,30 @@
   var historyPage = 0;
   var PAGE_SIZE = 10;
   var allHistoryLoaded = false;
+  var adminUnlocked = false;
+
+  function isLocked(s) {
+    if (!s.date) return false;
+    var matchDate = new Date(s.date);
+    var lockTime = new Date(matchDate);
+    lockTime.setDate(lockTime.getDate() + 1);
+    lockTime.setHours(10, 0, 0, 0);
+    return new Date() > lockTime;
+  }
+
+  function checkAdmin() {
+    if (adminUnlocked) return true;
+    var pin = prompt("Enter admin PIN:");
+    if (pin === ADMIN_PIN) { adminUnlocked = true; return true; }
+    alert("Wrong PIN!");
+    return false;
+  }
 
   document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
 
   // NAV
   function showTab(name) {
-    ["leaderboard","history","add","player","h2h"].forEach(function(t) {
+    ["leaderboard","history","add","player","h2h","rules"].forEach(function(t) {
       document.getElementById("tab-"+t).classList.remove("active");
       var n = document.getElementById("nav-"+t);
       if (n) n.classList.remove("active");
@@ -350,6 +415,7 @@
   document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
   document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
   document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); });
+  document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); });
   document.getElementById("refresh-btn").addEventListener("click", renderAll);
   document.getElementById("sub-individual").addEventListener("click", function(){ this.classList.add("active"); document.getElementById("sub-pairs").classList.remove("active"); document.getElementById("lb-individual").style.display="block"; document.getElementById("lb-pairs").style.display="none"; });
   document.getElementById("sub-pairs").addEventListener("click", function(){ this.classList.add("active"); document.getElementById("sub-individual").classList.remove("active"); document.getElementById("lb-pairs").style.display="block"; document.getElementById("lb-individual").style.display="none"; });
@@ -491,6 +557,17 @@
     errEl.style.display="none";sucEl.style.display="none";
     if(!date||t1w===""||t2w===""){errEl.textContent="Please fill in all fields!";errEl.style.display="block";return;}
     if(t1Selected.length!==2||t2Selected.length!==2){errEl.textContent="Please select 2 players for each team!";errEl.style.display="block";return;}
+    // Check if trying to add/edit a locked match date
+    if (!editingKey) {
+      var chosenDate = new Date(date);
+      var lockTime = new Date(chosenDate);
+      lockTime.setDate(lockTime.getDate() + 1);
+      lockTime.setHours(10, 0, 0, 0);
+      if (new Date() > lockTime && !checkAdmin()) {
+        errEl.textContent = "This date is locked (past 10am next day). Admin PIN required.";
+        errEl.style.display = "block"; return;
+      }
+    }
     btn.disabled=true;btn.textContent=editingKey?"Updating...":"Saving...";
     var eid=editingKey?sessions.find(function(s){return s.firebaseKey===editingKey;}).id:Date.now();
     var data={id:eid,date:date,gameType:gameType,t1p1:t1Selected[0],t1p2:t1Selected[1],t2p1:t2Selected[0],t2p2:t2Selected[1],t1wins:parseInt(t1w),t2wins:parseInt(t2w)};
@@ -566,6 +643,7 @@
 
   // SESSION CARD HTML (collapsed)
   function sessionCardHTML(s) {
+    var locked = isLocked(s);
     var t1w=Number(s.t1wins),t2w=Number(s.t2wins),isWin=t1w>t2w,isDraw=t1w===t2w;
     var rc=isDraw?"draw":isWin?"":"loss",rl=isDraw?"Draw":isWin?"Won":"Lost";
     var t1n=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
@@ -598,12 +676,14 @@
         '<span class="summary-teams">'+t1n+' vs '+t2n+'</span>'+
         '<span class="summary-score'+(isWin?"":" loss")+'">'+t1w+'—'+t2w+'</span>'+
         (hasScores?'<span class="has-scores">📊</span>':'')+
+        (locked?'<span style="font-size:11px">🔒</span>':'')+
         '<span class="expand-arrow">›</span>'+
       '</div>'+
       '<div class="card-body">'+
         '<div class="card-actions">'+
-          '<button class="edit-btn" data-key="'+s.firebaseKey+'">✏️ Edit</button>'+
-          '<button class="del-btn" data-key="'+s.firebaseKey+'">✕ Delete</button>'+
+          (locked ? '<span style="font-size:12px;color:var(--muted);font-family:monospace">🔒 Locked</span>' : '')+
+          '<button class="edit-btn" data-key="'+s.firebaseKey+'" data-locked="'+locked+'">✏️ Edit</button>'+
+          '<button class="del-btn" data-key="'+s.firebaseKey+'" data-locked="'+locked+'">✕ Delete</button>'+
         '</div>'+
         '<div class="teams-row">'+
           '<div class="team-block"><div class="team-names">'+t1n+'</div><div class="team-score'+(isWin?"":isDraw?"":' loss')+'">'+t1w+'</div></div>'+
@@ -619,7 +699,7 @@
           '<button class="score-save-btn" data-key="'+s.firebaseKey+'" data-total="'+totalGames+'">Save Scores</button>'+
           '<button class="score-cancel-btn">Cancel</button>'+
         '</div>'+
-        '<button class="add-scores-btn" data-key="'+s.firebaseKey+'">'+(hasScores?"✏️ Edit Scores":"📊 Add Scores")+'</button>'+
+        (!locked ? '<button class="add-scores-btn" data-key="'+s.firebaseKey+'">'+(hasScores?"✏️ Edit Scores":"📊 Add Scores")+'</button>' : '')+
       '</div>'+
     '</div>';
   }
@@ -649,6 +729,8 @@
       var editBtn = t.closest(".edit-btn");
       if (editBtn) {
         e.stopPropagation();
+        var locked = editBtn.getAttribute("data-locked") === "true";
+        if (locked && !checkAdmin()) return;
         var s = sessions.find(function(x){ return x.firebaseKey === editBtn.getAttribute("data-key"); });
         if (s) startEdit(s);
         return;
@@ -658,6 +740,8 @@
       var delBtn = t.closest(".del-btn");
       if (delBtn) {
         e.stopPropagation();
+        var locked = delBtn.getAttribute("data-locked") === "true";
+        if (locked && !checkAdmin()) return;
         remove(ref(db, "matches/" + delBtn.getAttribute("data-key")));
         return;
       }
