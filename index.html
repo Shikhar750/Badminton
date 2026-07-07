@@ -209,6 +209,10 @@
 
   <!-- LEADERBOARD -->
   <div class="tab active" id="tab-leaderboard">
+    <div class="sub-tabs" id="period-tabs">
+      <div class="sub-tab active" id="period-month">📅 This Month</div>
+      <div class="sub-tab" id="period-alltime">⏳ All Time</div>
+    </div>
     <div class="sub-tabs">
       <div class="sub-tab active" id="sub-individual">👤 Individual</div>
       <div class="sub-tab" id="sub-pairs">👥 Pairs</div>
@@ -380,6 +384,7 @@
   var PAGE_SIZE = 10;
   var allHistoryLoaded = false;
   var adminUnlocked = false;
+  var leaderboardPeriod = "month"; // "month" or "alltime"
 
   function isLocked(s) {
     if (!s.date) return false;
@@ -417,6 +422,18 @@
   document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); });
   document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); });
   document.getElementById("refresh-btn").addEventListener("click", renderAll);
+  document.getElementById("period-month").addEventListener("click", function(){
+    leaderboardPeriod = "month";
+    this.classList.add("active");
+    document.getElementById("period-alltime").classList.remove("active");
+    renderLeaderboard();
+  });
+  document.getElementById("period-alltime").addEventListener("click", function(){
+    leaderboardPeriod = "alltime";
+    this.classList.add("active");
+    document.getElementById("period-month").classList.remove("active");
+    renderLeaderboard();
+  });
   document.getElementById("sub-individual").addEventListener("click", function(){ this.classList.add("active"); document.getElementById("sub-pairs").classList.remove("active"); document.getElementById("lb-individual").style.display="block"; document.getElementById("lb-pairs").style.display="none"; });
   document.getElementById("sub-pairs").addEventListener("click", function(){ this.classList.add("active"); document.getElementById("sub-individual").classList.remove("active"); document.getElementById("lb-pairs").style.display="block"; document.getElementById("lb-individual").style.display="none"; });
   document.getElementById("save-btn").addEventListener("click", handleSave);
@@ -609,20 +626,32 @@
     var p1w=0,p2w=0;m.forEach(function(s){if(inT1(s,p1)){p1w+=Number(s.t1wins);p2w+=Number(s.t2wins);}else{p1w+=Number(s.t2wins);p2w+=Number(s.t1wins);}});
     return{p1wins:p1w,p2wins:p2w,matches:m};
   }
+  function getSessionsForPeriod() {
+    if (leaderboardPeriod === "alltime") return sessions;
+    var now = new Date();
+    return sessions.filter(function(s) {
+      if (!s.date) return false;
+      var d = new Date(s.date);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+  }
   function computeIndividual() {
     var p={};
-    sessions.forEach(function(s){var w=wt(s);[s.t1p1,s.t1p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t1wins)*w;p[n].lost+=Number(s.t2wins)*w;});[s.t2p1,s.t2p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t2wins)*w;p[n].lost+=Number(s.t1wins)*w;});});
+    var src = getSessionsForPeriod();
+    src.forEach(function(s){var w=wt(s);[s.t1p1,s.t1p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t1wins)*w;p[n].lost+=Number(s.t2wins)*w;});[s.t2p1,s.t2p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t2wins)*w;p[n].lost+=Number(s.t1wins)*w;});});
     return Object.values(p).sort(function(a,b){var ra=a.won+a.lost?a.won/(a.won+a.lost):0,rb=b.won+b.lost?b.won/(b.won+b.lost):0;return rb-ra||b.won-a.won;});
   }
   function computePairs() {
     var p={};
-    sessions.forEach(function(s){var w=wt(s);var p1=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");var p2=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");if(p1){if(!p[p1])p[p1]={name:p1,won:0,lost:0};p[p1].won+=Number(s.t1wins)*w;p[p1].lost+=Number(s.t2wins)*w;}if(p2){if(!p[p2])p[p2]={name:p2,won:0,lost:0};p[p2].won+=Number(s.t2wins)*w;p[p2].lost+=Number(s.t1wins)*w;}});
+    var src = getSessionsForPeriod();
+    src.forEach(function(s){var w=wt(s);var p1=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");var p2=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");if(p1){if(!p[p1])p[p1]={name:p1,won:0,lost:0};p[p1].won+=Number(s.t1wins)*w;p[p1].lost+=Number(s.t2wins)*w;}if(p2){if(!p[p2])p[p2]={name:p2,won:0,lost:0};p[p2].won+=Number(s.t2wins)*w;p[p2].lost+=Number(s.t1wins)*w;}});
     return Object.values(p).sort(function(a,b){var ra=a.won+a.lost?a.won/(a.won+a.lost):0,rb=b.won+b.lost?b.won/(b.won+b.lost):0;return rb-ra||b.won-a.won;});
   }
 
   // LEADERBOARD
   function renderLeaderboard() {
     var medals=["🥇","🥈","🥉"];
+    var periodSessions = getSessionsForPeriod();
     function rows(data,clickable){
       if(!data.length)return emptyHTML();
       return(clickable?'<div class="tap-hint">Tap a player to see stats</div>':"")+
@@ -634,7 +663,7 @@
             '<div class="lb-rank">'+(medals[i]||("#"+(i+1)))+'</div>'+
             '<div style="flex:1"><div class="lb-name">'+p.name+'</div>'+sHTML+'</div>'+
             '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div></div></div>';
-        }).join("")+'<div class="count">'+sessions.length+' match'+(sessions.length!==1?"es":"")+" recorded</div>";
+        }).join("")+'<div class="count">'+periodSessions.length+' match'+(periodSessions.length!==1?"es":"")+" recorded</div>";
     }
     H("lb-individual",rows(computeIndividual(),true));
     H("lb-pairs",rows(computePairs(),false));
