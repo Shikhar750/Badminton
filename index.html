@@ -357,6 +357,24 @@
         </div>
       </div>
     </div>
+
+    <!-- ADMIN ADJUSTMENTS -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;text-align:center">👑 Admin: Monthly Adjustments</div>
+      <div class="fg">
+        <label>Player</label>
+        <select id="adj-player" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;width:100%;font-family:'Space Grotesk',sans-serif"></select>
+      </div>
+      <div class="frow">
+        <div class="fg"><label>Brownie %</label><input type="number" id="adj-brownie" placeholder="e.g. 1.5" step="0.1"/></div>
+        <div class="fg"><label>Negative %</label><input type="number" id="adj-negative" placeholder="e.g. -1" step="0.1"/></div>
+      </div>
+      <div class="fg"><label>Reason (for negative points)</label><input type="text" id="adj-reason" placeholder="e.g. refused designated partner"/></div>
+      <div class="err" id="adj-err"></div>
+      <div class="suc" id="adj-suc"></div>
+      <button class="save-btn" id="adj-save-btn">Apply Adjustment (PIN required)</button>
+      <div class="hint">Applies to: <span id="adj-month-label"></span></div>
+    </div>
   </div>
 </div>
 
@@ -368,6 +386,8 @@
   var db = getDatabase(app);
   var matchesRef = ref(db, "matches");
   var squadRef = ref(db, "squad");
+  var adjustmentsRef = ref(db, "monthlyAdjustments");
+  var adjustmentsRef = ref(db, "monthlyAdjustments");
   var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   var ADMIN_PIN = "7789";
@@ -385,6 +405,13 @@
   var allHistoryLoaded = false;
   var adminUnlocked = false;
   var leaderboardPeriod = "month"; // "month" or "alltime"
+  var monthlyAdjustments = {}; // { "2026-07": { "Shikhar": {brownie:1.5, negative:-1, negativeReason:"..."} } }
+  var currentMonthAdjustments = {}; // { playerName: { brownie, negative, reasons: [] } }
+
+  function getMonthKey(d) {
+    d = d || new Date();
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
+  }
 
   function isLocked(s) {
     if (!s.date) return false;
@@ -420,7 +447,7 @@
   document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
   document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
   document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); });
-  document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); });
+  document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); populateAdjPlayerDropdown(); });
   document.getElementById("refresh-btn").addEventListener("click", renderAll);
   document.getElementById("period-month").addEventListener("click", function(){
     leaderboardPeriod = "month";
@@ -489,6 +516,10 @@
     historyPage = 0;
     renderAll();
   });
+  onValue(adjustmentsRef, function(snap) {
+    monthlyAdjustments = snap.val() || {};
+    renderLeaderboard();
+  });
 
   // HELPERS
   function fmtDate(d) { if(!d) return "Unknown"; var p=d.split("-"); if(p.length===3) return p[2]+" "+MONTHS[parseInt(p[1])-1]+" "+p[0]; return d; }
@@ -531,6 +562,51 @@
     if(!n||squadPlayers.indexOf(n)>-1){inp.value="";return;}
     await set(squadRef,squadPlayers.concat([n]));inp.value="";
   }
+
+  // ADMIN MONTHLY ADJUSTMENTS
+  function populateAdjPlayerDropdown() {
+    var sel = document.getElementById("adj-player");
+    var monthKey = getCurrentMonthKey();
+    document.getElementById("adj-month-label").textContent = monthKey;
+    sel.innerHTML = squadPlayers.map(function(p){ return '<option value="'+p+'">'+p+'</option>'; }).join("");
+  }
+
+  document.getElementById("adj-save-btn").addEventListener("click", async function() {
+    var errEl = document.getElementById("adj-err");
+    var sucEl = document.getElementById("adj-suc");
+    errEl.style.display="none"; sucEl.style.display="none";
+
+    var player = document.getElementById("adj-player").value;
+    var brownieVal = document.getElementById("adj-brownie").value;
+    var negativeVal = document.getElementById("adj-negative").value;
+    var reason = document.getElementById("adj-reason").value.trim();
+
+    if (!player) { errEl.textContent="Please select a player!"; errEl.style.display="block"; return; }
+    if (brownieVal==="" && negativeVal==="") { errEl.textContent="Enter a brownie or negative value!"; errEl.style.display="block"; return; }
+    if (negativeVal && parseFloat(negativeVal) < 0 && !reason) { errEl.textContent="Reason required for negative points!"; errEl.style.display="block"; return; }
+
+    if (!checkAdmin()) return;
+
+    var monthKey = getCurrentMonthKey();
+    var path = "monthlyAdjustments/" + monthKey + "/" + player;
+    var data = {
+      brownie: brownieVal ? parseFloat(brownieVal) : 0,
+      negative: negativeVal ? parseFloat(negativeVal) : 0,
+      negativeReason: reason
+    };
+
+    try {
+      await update(ref(db, path), data);
+      sucEl.textContent = "✓ Applied to " + player + " for " + monthKey;
+      sucEl.style.display = "block";
+      document.getElementById("adj-brownie").value = "";
+      document.getElementById("adj-negative").value = "";
+      document.getElementById("adj-reason").value = "";
+    } catch(e) {
+      errEl.textContent = "Failed: " + e.message;
+      errEl.style.display = "block";
+    }
+  });
 
   // CHIPS
   function renderChips() {
@@ -656,6 +732,19 @@
     var played = getPlayerMatchDaysThisMonth(name);
     return played >= total * 0.5;
   }
+  function getCurrentMonthKey() {
+    var now = new Date();
+    var m = now.getMonth()+1;
+    return now.getFullYear() + "-" + (m<10?"0"+m:m);
+  }
+  function getAdjustmentFor(name) {
+    var key = getCurrentMonthKey();
+    if (monthlyAdjustments[key] && monthlyAdjustments[key][name]) {
+      var a = monthlyAdjustments[key][name];
+      return { brownie: Number(a.brownie)||0, negative: Number(a.negative)||0, negativeReason: a.negativeReason||"" };
+    }
+    return { brownie: 0, negative: 0, negativeReason: "" };
+  }
   function computeIndividual() {
     var p={};
     var src = getSessionsForPeriod();
@@ -666,14 +755,25 @@
         pl.qualified = isQualifiedThisMonth(pl.name);
         pl.matchDaysPlayed = getPlayerMatchDaysThisMonth(pl.name);
         pl.matchDaysNeeded = Math.ceil(getTotalMatchDaysThisMonth() * 0.5);
+        var adj = getAdjustmentFor(pl.name);
+        pl.brownie = adj.brownie;
+        pl.negative = adj.negative;
+        pl.negativeReason = adj.negativeReason;
+        var rawRate = pl.won+pl.lost ? (pl.won/(pl.won+pl.lost))*100 : 0;
+        pl.rawRate = rawRate;
+        pl.effectiveScore = rawRate + adj.brownie + adj.negative;
       });
     } else {
-      arr.forEach(function(pl) { pl.qualified = true; });
+      arr.forEach(function(pl) {
+        pl.qualified = true;
+        pl.brownie = 0; pl.negative = 0; pl.negativeReason = "";
+        pl.rawRate = pl.won+pl.lost ? (pl.won/(pl.won+pl.lost))*100 : 0;
+        pl.effectiveScore = pl.rawRate;
+      });
     }
     return arr.sort(function(a,b){
       if (a.qualified !== b.qualified) return a.qualified ? -1 : 1; // qualified players first
-      var ra=a.won+a.lost?a.won/(a.won+a.lost):0,rb=b.won+b.lost?b.won/(b.won+b.lost):0;
-      return rb-ra||b.won-a.won;
+      return b.effectiveScore-a.effectiveScore||b.won-a.won;
     });
   }
   function computePairs() {
@@ -701,14 +801,17 @@
               '<div class="lb-rank">—</div>'+
               '<div style="flex:1"><div class="lb-name">'+p.name+'</div>'+sHTML+
                 '<div style="font-size:11px;color:var(--muted);margin-top:2px">Played '+p.matchDaysPlayed+' of '+p.matchDaysNeeded+' required match days</div></div>'+
-              '<div class="lb-stats"><div style="font-size:12px;color:var(--muted);font-weight:700">Building Data</div></div></div>';
+              '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'" style="font-size:16px">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">Building Data</div></div></div>';
           }
 
           var rankIdx = qualifiedRank;
           qualifiedRank++;
+          var adjHTML = "";
+          if (p.brownie > 0) adjHTML += '<div style="font-size:11px;color:#FFD700;margin-top:2px">🍪 +'+p.brownie+'% brownie</div>';
+          if (p.negative < 0) adjHTML += '<div style="font-size:11px;color:var(--loss);margin-top:2px" title="'+(p.negativeReason||"")+'">⚠️ '+p.negative+'% penalty</div>';
           return '<div class="lb-row r'+Math.min(rankIdx,2)+'" data-player="'+p.name+'">'+
             '<div class="lb-rank">'+(medals[rankIdx]||("#"+(rankIdx+1)))+'</div>'+
-            '<div style="flex:1"><div class="lb-name">'+p.name+'</div>'+sHTML+'</div>'+
+            '<div style="flex:1"><div class="lb-name">'+p.name+'</div>'+sHTML+adjHTML+'</div>'+
             '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div></div></div>';
         }).join("")+'<div class="count">'+periodSessions.length+' match'+(periodSessions.length!==1?"es":"")+" recorded</div>";
     }
