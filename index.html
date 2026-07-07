@@ -1063,10 +1063,10 @@
   var lineupSelected = [];
 
   function renderLineupChips() {
-    var pool = getHistoricallyActivePlayers();
+    var pool = squadPlayers; // full Manage Squad list, not just those with existing match history
     var el = document.getElementById("lineup-chips");
     if (!pool.length) {
-      el.innerHTML = '<div style="color:var(--muted);font-size:12px">No match history yet — play a match first</div>';
+      el.innerHTML = '<div style="color:var(--muted);font-size:12px">Add players in Manage Squad below first</div>';
       return;
     }
     el.innerHTML = pool.map(function(p) {
