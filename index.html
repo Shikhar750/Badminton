@@ -242,13 +242,12 @@
     <div class="form-card">
       <div class="form-title">🎲 Suggest Today's Lineup</div>
       <div class="fg">
-        <label>How many playing today?</label>
-        <div style="display:flex;gap:8px">
-          <button class="gt-btn" id="lineup-4-btn">4</button>
-          <button class="gt-btn" id="lineup-5-btn">5</button>
-          <button class="gt-btn" id="lineup-6-btn">6</button>
-        </div>
+        <label>Who's playing today? <span style="font-weight:400;color:var(--muted)">(pick 4, 5, or 6)</span></label>
+        <div class="sel-hint" id="lineup-sel-hint">0 selected</div>
+        <div class="chips-wrap" id="lineup-chips"></div>
       </div>
+      <button class="save-btn" id="lineup-suggest-btn" style="margin-top:12px">Suggest Lineup</button>
+      <div class="err" id="lineup-err"></div>
       <div id="lineup-result"></div>
       <div class="hint">Based on This Month's pairing history — least-paired combos suggested first</div>
     </div>
@@ -477,10 +476,7 @@
 
   document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
   document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
-  document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); });
-  document.getElementById("lineup-4-btn").addEventListener("click", function(){ renderLineupSuggestion(4); });
-  document.getElementById("lineup-5-btn").addEventListener("click", function(){ renderLineupSuggestion(5); });
-  document.getElementById("lineup-6-btn").addEventListener("click", function(){ renderLineupSuggestion(6); });
+  document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); renderLineupChips(); });
   document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); populateAdjPlayerDropdown(); populateOverridePanel(); });
   document.getElementById("refresh-btn").addEventListener("click", renderAll);
   document.getElementById("period-month").addEventListener("click", function(){
@@ -1033,13 +1029,8 @@
     return results;
   }
 
-  function suggestLineup(playerCount) {
-    var pool = getHistoricallyActivePlayers();
-    if (pool.length < playerCount) {
-      return { error: "Only " + pool.length + " players have match history — need at least " + playerCount + ". Add players via matches first, or pick a smaller count." };
-    }
-    // Use the most recently active N players if pool is larger than needed (simple heuristic: just take first N alphabetically for determinism if too many)
-    var players = pool.slice(0, playerCount);
+  function suggestLineup(players) {
+    var playerCount = players.length;
     var counts = computePairingCountsThisMonth();
 
     if (playerCount === 4) {
@@ -1069,13 +1060,48 @@
     }
   }
 
-  function renderLineupSuggestion(playerCount) {
-    var result = suggestLineup(playerCount);
-    var el = document.getElementById("lineup-result");
-    if (result.error) {
-      el.innerHTML = '<div style="color:var(--loss);font-size:13px;margin-top:12px">'+result.error+'</div>';
+  var lineupSelected = [];
+
+  function renderLineupChips() {
+    var pool = getHistoricallyActivePlayers();
+    var el = document.getElementById("lineup-chips");
+    if (!pool.length) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:12px">No match history yet — play a match first</div>';
       return;
     }
+    el.innerHTML = pool.map(function(p) {
+      var sel = lineupSelected.indexOf(p) > -1;
+      return '<button class="chip'+(sel?" sel-t1":"")+'" data-lp="'+p+'">'+p+'</button>';
+    }).join("");
+    el.querySelectorAll(".chip").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var p = this.getAttribute("data-lp");
+        var idx = lineupSelected.indexOf(p);
+        if (idx > -1) lineupSelected.splice(idx, 1);
+        else if (lineupSelected.length < 6) lineupSelected.push(p);
+        renderLineupChips();
+      });
+    });
+    document.getElementById("lineup-sel-hint").textContent = lineupSelected.length + " selected" + (lineupSelected.length ? ": " + lineupSelected.join(", ") : "");
+  }
+
+  document.getElementById("lineup-suggest-btn").addEventListener("click", function() {
+    var errEl = document.getElementById("lineup-err");
+    var resultEl = document.getElementById("lineup-result");
+    errEl.style.display = "none";
+    resultEl.innerHTML = "";
+    var n = lineupSelected.length;
+    if (n !== 4 && n !== 5 && n !== 6) {
+      errEl.textContent = "Please select exactly 4, 5, or 6 players (currently " + n + " selected)";
+      errEl.style.display = "block";
+      return;
+    }
+    renderLineupSuggestion(lineupSelected.slice());
+  });
+
+  function renderLineupSuggestion(players) {
+    var result = suggestLineup(players);
+    var el = document.getElementById("lineup-result");
     var noDataNote = result.score === 0 ? '<div style="font-size:11px;color:var(--muted);margin-top:6px">✨ Fresh pairing — haven\'t played together this month yet</div>' : '<div style="font-size:11px;color:var(--muted);margin-top:6px">Best available combo (some overlap unavoidable this month)</div>';
     var html = '<div style="margin-top:12px">' +
       '<div class="team-block" style="margin-bottom:8px"><div class="team-names" style="font-size:14px">🟢 '+result.teams[0].join(" & ")+'</div></div>' +
