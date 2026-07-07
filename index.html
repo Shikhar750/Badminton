@@ -373,6 +373,7 @@
       <div class="err" id="adj-err"></div>
       <div class="suc" id="adj-suc"></div>
       <button class="save-btn" id="adj-save-btn">Apply Adjustment (PIN required)</button>
+      <button class="cancel-btn" id="adj-clear-btn" style="margin-top:8px">Clear This Player's Adjustment (PIN required)</button>
       <div class="hint">Applies to: <span id="adj-month-label"></span></div>
     </div>
   </div>
@@ -386,7 +387,6 @@
   var db = getDatabase(app);
   var matchesRef = ref(db, "matches");
   var squadRef = ref(db, "squad");
-  var adjustmentsRef = ref(db, "monthlyAdjustments");
   var adjustmentsRef = ref(db, "monthlyAdjustments");
   var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -404,14 +404,10 @@
   var PAGE_SIZE = 10;
   var allHistoryLoaded = false;
   var adminUnlocked = false;
+  var sessionsLoaded = false;
+  var adjustmentsLoaded = false;
   var leaderboardPeriod = "month"; // "month" or "alltime"
   var monthlyAdjustments = {}; // { "2026-07": { "Shikhar": {brownie:1.5, negative:-1, negativeReason:"..."} } }
-  var currentMonthAdjustments = {}; // { playerName: { brownie, negative, reasons: [] } }
-
-  function getMonthKey(d) {
-    d = d || new Date();
-    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
-  }
 
   function isLocked(s) {
     if (!s.date) return false;
@@ -514,11 +510,15 @@
     if (d) { Object.keys(d).forEach(function(k){ var s=d[k]; s.firebaseKey=k; sessions.push(s); }); }
     sessions.sort(function(a,b){ return b.id-a.id; });
     historyPage = 0;
+    sessionsLoaded = true;
     renderAll();
+    runAutoBrownieAssignment();
   });
   onValue(adjustmentsRef, function(snap) {
     monthlyAdjustments = snap.val() || {};
+    adjustmentsLoaded = true;
     renderLeaderboard();
+    runAutoBrownieAssignment();
   });
 
   // HELPERS
@@ -598,6 +598,32 @@
     try {
       await update(ref(db, path), data);
       sucEl.textContent = "✓ Applied to " + player + " for " + monthKey;
+      sucEl.style.display = "block";
+      document.getElementById("adj-brownie").value = "";
+      document.getElementById("adj-negative").value = "";
+      document.getElementById("adj-reason").value = "";
+    } catch(e) {
+      errEl.textContent = "Failed: " + e.message;
+      errEl.style.display = "block";
+    }
+  });
+
+  document.getElementById("adj-clear-btn").addEventListener("click", async function() {
+    var errEl = document.getElementById("adj-err");
+    var sucEl = document.getElementById("adj-suc");
+    errEl.style.display="none"; sucEl.style.display="none";
+
+    var player = document.getElementById("adj-player").value;
+    if (!player) { errEl.textContent="Please select a player!"; errEl.style.display="block"; return; }
+
+    if (!checkAdmin()) return;
+
+    var monthKey = getCurrentMonthKey();
+    var path = "monthlyAdjustments/" + monthKey + "/" + player;
+
+    try {
+      await remove(ref(db, path));
+      sucEl.textContent = "✓ Cleared adjustment for " + player + " (" + monthKey + ")";
       sucEl.style.display = "block";
       document.getElementById("adj-brownie").value = "";
       document.getElementById("adj-negative").value = "";
@@ -736,6 +762,81 @@
     var now = new Date();
     var m = now.getMonth()+1;
     return now.getFullYear() + "-" + (m<10?"0"+m:m);
+  }
+  function getPreviousMonthKey() {
+    var now = new Date();
+    var prevMonth = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    var m = prevMonth.getMonth()+1;
+    return prevMonth.getFullYear() + "-" + (m<10?"0"+m:m);
+  }
+  // Computes qualified standings for a SPECIFIC month (e.g. "2026-06"), independent of the live UI's current-month view.
+  // Used for calculating last month's winner/runner-up to auto-assign brownie points.
+  function computeQualifiedStandingsForMonth(monthKey) {
+    var parts = monthKey.split("-");
+    var year = parseInt(parts[0]), month = parseInt(parts[1]) - 1; // JS months are 0-indexed
+    var monthSessions = sessions.filter(function(s) {
+      if (!s.date) return false;
+      var d = new Date(s.date);
+      return d.getFullYear() === year && d.getMonth() === month;
+    });
+    if (!monthSessions.length) return [];
+
+    var totalDays = {};
+    monthSessions.forEach(function(s){ if (s.date) totalDays[s.date] = true; });
+    var totalMatchDays = Object.keys(totalDays).length;
+
+    var p = {};
+    monthSessions.forEach(function(s) {
+      var w = wt(s);
+      [s.t1p1,s.t1p2].forEach(function(n){ if(!n||n==="undefined"||n==="") return; if(!p[n]) p[n]={name:n,won:0,lost:0,days:{}}; p[n].won+=Number(s.t1wins)*w; p[n].lost+=Number(s.t2wins)*w; if(s.date) p[n].days[s.date]=true; });
+      [s.t2p1,s.t2p2].forEach(function(n){ if(!n||n==="undefined"||n==="") return; if(!p[n]) p[n]={name:n,won:0,lost:0,days:{}}; p[n].won+=Number(s.t2wins)*w; p[n].lost+=Number(s.t1wins)*w; if(s.date) p[n].days[s.date]=true; });
+    });
+
+    var arr = Object.values(p);
+    arr.forEach(function(pl) {
+      var daysPlayed = Object.keys(pl.days).length;
+      pl.qualified = totalMatchDays === 0 ? true : daysPlayed >= totalMatchDays * 0.5;
+      pl.rawRate = pl.won+pl.lost ? (pl.won/(pl.won+pl.lost))*100 : 0;
+    });
+
+    return arr.filter(function(pl){ return pl.qualified; })
+               .sort(function(a,b){ return b.rawRate-a.rawRate || b.won-a.won; });
+  }
+  // One-time check per month: has last month's brownie/negative been auto-assigned yet?
+  // Runs quietly whenever the app loads, after both sessions and adjustments have loaded from Firebase.
+  var autoBrownieCheckDone = false;
+  async function runAutoBrownieAssignment() {
+    if (autoBrownieCheckDone) return;
+    if (!sessionsLoaded || !adjustmentsLoaded) return; // wait until BOTH have loaded from Firebase
+    if (!sessions.length) return; // no match data at all yet
+    autoBrownieCheckDone = true; // prevent re-running multiple times per session
+
+    var prevKey = getPreviousMonthKey();
+    var currentKey = getCurrentMonthKey();
+
+    // Skip if already processed (marker written after assignment)
+    if (monthlyAdjustments[currentKey] && monthlyAdjustments[currentKey]._autoBrownieAppliedFor === prevKey) {
+      return;
+    }
+
+    var standings = computeQualifiedStandingsForMonth(prevKey);
+    if (standings.length === 0) return; // no qualified players last month, nothing to award
+
+    var winner = standings[0];
+    var runnerUp = standings.length > 1 ? standings[1] : null;
+
+    var updates = {};
+    updates[currentKey + "/" + winner.name + "/brownie"] = 1.5;
+    if (runnerUp) updates[currentKey + "/" + runnerUp.name + "/brownie"] = 0.5;
+    updates[currentKey + "/_autoBrownieAppliedFor"] = prevKey;
+
+    try {
+      await update(adjustmentsRef, updates);
+      console.log("Auto brownie assigned for", currentKey, "based on", prevKey, "winner:", winner.name, runnerUp ? "runner-up: "+runnerUp.name : "");
+    } catch(e) {
+      console.log("Auto brownie assignment failed:", e.message);
+      autoBrownieCheckDone = false; // allow retry on next load if it failed
+    }
   }
   function getAdjustmentFor(name) {
     var key = getCurrentMonthKey();
