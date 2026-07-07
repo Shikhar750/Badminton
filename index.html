@@ -635,11 +635,46 @@
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
   }
+  function getTotalMatchDaysThisMonth() {
+    var src = getSessionsForPeriod();
+    var days = {};
+    src.forEach(function(s){ if (s.date) days[s.date] = true; });
+    return Object.keys(days).length;
+  }
+  function getPlayerMatchDaysThisMonth(name) {
+    var src = getSessionsForPeriod();
+    var days = {};
+    src.forEach(function(s) {
+      if (!s.date) return;
+      if ([s.t1p1,s.t1p2,s.t2p1,s.t2p2].indexOf(name) > -1) days[s.date] = true;
+    });
+    return Object.keys(days).length;
+  }
+  function isQualifiedThisMonth(name) {
+    var total = getTotalMatchDaysThisMonth();
+    if (total === 0) return true; // no data yet, don't penalize
+    var played = getPlayerMatchDaysThisMonth(name);
+    return played >= total * 0.5;
+  }
   function computeIndividual() {
     var p={};
     var src = getSessionsForPeriod();
     src.forEach(function(s){var w=wt(s);[s.t1p1,s.t1p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t1wins)*w;p[n].lost+=Number(s.t2wins)*w;});[s.t2p1,s.t2p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t2wins)*w;p[n].lost+=Number(s.t1wins)*w;});});
-    return Object.values(p).sort(function(a,b){var ra=a.won+a.lost?a.won/(a.won+a.lost):0,rb=b.won+b.lost?b.won/(b.won+b.lost):0;return rb-ra||b.won-a.won;});
+    var arr = Object.values(p);
+    if (leaderboardPeriod === "month") {
+      arr.forEach(function(pl) {
+        pl.qualified = isQualifiedThisMonth(pl.name);
+        pl.matchDaysPlayed = getPlayerMatchDaysThisMonth(pl.name);
+        pl.matchDaysNeeded = Math.ceil(getTotalMatchDaysThisMonth() * 0.5);
+      });
+    } else {
+      arr.forEach(function(pl) { pl.qualified = true; });
+    }
+    return arr.sort(function(a,b){
+      if (a.qualified !== b.qualified) return a.qualified ? -1 : 1; // qualified players first
+      var ra=a.won+a.lost?a.won/(a.won+a.lost):0,rb=b.won+b.lost?b.won/(b.won+b.lost):0;
+      return rb-ra||b.won-a.won;
+    });
   }
   function computePairs() {
     var p={};
@@ -654,13 +689,25 @@
     var periodSessions = getSessionsForPeriod();
     function rows(data,clickable){
       if(!data.length)return emptyHTML();
+      var qualifiedRank = 0;
       return(clickable?'<div class="tap-hint">Tap a player to see stats</div>':"")+
-        data.map(function(p,i){
+        data.map(function(p){
           var tot=p.won+p.lost,rate=tot?Math.round(p.won/tot*100):0,low=rate<50;
           var sHTML="";
           if(clickable){var st=computeStreaks(p.name);if(st&&st.count>=2){if(st.type==="W")sHTML='<div class="lb-streak hot">🔥 Won last '+st.count+'</div>';else if(st.type==="L")sHTML='<div class="lb-streak cold">❄️ Lost last '+st.count+'</div>';}}
-          return '<div class="lb-row r'+Math.min(i,2)+'" data-player="'+p.name+'">'+
-            '<div class="lb-rank">'+(medals[i]||("#"+(i+1)))+'</div>'+
+
+          if (p.qualified === false) {
+            return '<div class="lb-row" data-player="'+p.name+'" style="opacity:0.6">'+
+              '<div class="lb-rank">—</div>'+
+              '<div style="flex:1"><div class="lb-name">'+p.name+'</div>'+sHTML+
+                '<div style="font-size:11px;color:var(--muted);margin-top:2px">Played '+p.matchDaysPlayed+' of '+p.matchDaysNeeded+' required match days</div></div>'+
+              '<div class="lb-stats"><div style="font-size:12px;color:var(--muted);font-weight:700">Building Data</div></div></div>';
+          }
+
+          var rankIdx = qualifiedRank;
+          qualifiedRank++;
+          return '<div class="lb-row r'+Math.min(rankIdx,2)+'" data-player="'+p.name+'">'+
+            '<div class="lb-rank">'+(medals[rankIdx]||("#"+(rankIdx+1)))+'</div>'+
             '<div style="flex:1"><div class="lb-name">'+p.name+'</div>'+sHTML+'</div>'+
             '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div></div></div>';
         }).join("")+'<div class="count">'+periodSessions.length+' match'+(periodSessions.length!==1?"es":"")+" recorded</div>";
