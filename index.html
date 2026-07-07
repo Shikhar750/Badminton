@@ -240,6 +240,20 @@
   <!-- ADD/EDIT -->
   <div class="tab" id="tab-add">
     <div class="form-card">
+      <div class="form-title">🎲 Suggest Today's Lineup</div>
+      <div class="fg">
+        <label>How many playing today?</label>
+        <div style="display:flex;gap:8px">
+          <button class="gt-btn" id="lineup-4-btn">4</button>
+          <button class="gt-btn" id="lineup-5-btn">5</button>
+          <button class="gt-btn" id="lineup-6-btn">6</button>
+        </div>
+      </div>
+      <div id="lineup-result"></div>
+      <div class="hint">Based on This Month's pairing history — least-paired combos suggested first</div>
+    </div>
+
+    <div class="form-card">
       <div class="form-title" id="form-title">Add Doubles Match</div>
       <div class="fg"><label>Date</label><input type="date" id="inp-date"/></div>
       <div class="team-sec">
@@ -464,6 +478,9 @@
   document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
   document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
   document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); });
+  document.getElementById("lineup-4-btn").addEventListener("click", function(){ renderLineupSuggestion(4); });
+  document.getElementById("lineup-5-btn").addEventListener("click", function(){ renderLineupSuggestion(5); });
+  document.getElementById("lineup-6-btn").addEventListener("click", function(){ renderLineupSuggestion(6); });
   document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); populateAdjPlayerDropdown(); populateOverridePanel(); });
   document.getElementById("refresh-btn").addEventListener("click", renderAll);
   document.getElementById("period-month").addEventListener("click", function(){
@@ -558,11 +575,27 @@
   function getResult(s,n) { var a=inT1(s,n),t1=Number(s.t1wins),t2=Number(s.t2wins); if(a) return t1>t2?"W":t1<t2?"L":"D"; return t2>t1?"W":t2<t1?"L":"D"; }
   function playerMatches(n) { return sessions.filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; }); }
 
+  function getDateNDaysAgoString(n) {
+    var d = new Date();
+    d.setDate(d.getDate() - n);
+    var y = d.getFullYear();
+    var m = String(d.getMonth()+1).padStart(2,"0");
+    var day = String(d.getDate()).padStart(2,"0");
+    return y + "-" + m + "-" + day;
+  }
   function isInDateRange(s) {
     if (dateFilter==="all") return true;
-    var now = new Date(), matchDate = new Date(s.date);
-    if (dateFilter==="week") { var weekAgo=new Date(now); weekAgo.setDate(weekAgo.getDate()-7); return matchDate>=weekAgo; }
-    if (dateFilter==="month") { return matchDate.getMonth()===now.getMonth()&&matchDate.getFullYear()===now.getFullYear(); }
+    if (!s.date) return false;
+    if (dateFilter==="week") {
+      var weekAgoStr = getDateNDaysAgoString(7);
+      return s.date >= weekAgoStr; // pure string comparison, avoids timezone parsing bugs
+    }
+    if (dateFilter==="month") {
+      var now = new Date();
+      var nowMonthStr = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
+      var matchMonthStr = s.date.substring(0,7); // "2026-07-15" -> "2026-07"
+      return matchMonthStr === nowMonthStr; // pure string comparison, avoids timezone parsing bugs
+    }
     return true;
   }
   function isResultMatch(s) {
@@ -952,13 +985,120 @@
     }
     return { brownie: 0, negative: 0, negativeReason: "" };
   }
+  function getHistoricallyActivePlayers() {
+    var names = {};
+    sessions.forEach(function(s) {
+      [s.t1p1,s.t1p2,s.t2p1,s.t2p2].forEach(function(n){ if(n && n!=="undefined" && n!=="") names[n]=true; });
+    });
+    return Object.keys(names);
+  }
+
+  // ── SUGGEST TODAY'S LINEUP ──────────────────────────────────────
+  function getPairKey(a, b) { return [a,b].sort().join("|"); }
+  function computePairingCountsThisMonth() {
+    var counts = {};
+    var src = getSessionsForPeriod(); // respects current month + any override, since leaderboardPeriod defaults to "month"
+    src.forEach(function(s) {
+      var t1 = [s.t1p1, s.t1p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
+      var t2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
+      if (t1.length === 2) { var k = getPairKey(t1[0], t1[1]); counts[k] = (counts[k]||0) + 1; }
+      if (t2.length === 2) { var k2 = getPairKey(t2[0], t2[1]); counts[k2] = (counts[k2]||0) + 1; }
+    });
+    return counts;
+  }
+  function getPairCount(counts, a, b) { return counts[getPairKey(a,b)] || 0; }
+
+  function allTeamSplitsOf4(four) {
+    return [
+      [[four[0],four[1]],[four[2],four[3]]],
+      [[four[0],four[2]],[four[1],four[3]]],
+      [[four[0],four[3]],[four[1],four[2]]],
+    ];
+  }
+  function bestSplitFor4(four, counts) {
+    var best = null, bestScore = Infinity;
+    allTeamSplitsOf4(four).forEach(function(c) {
+      var score = getPairCount(counts, c[0][0], c[0][1]) + getPairCount(counts, c[1][0], c[1][1]);
+      if (score < bestScore) { bestScore = score; best = c; }
+    });
+    return { teams: best, score: bestScore };
+  }
+  function combinationsOf(arr, k) {
+    var results = [];
+    function helper(start, combo) {
+      if (combo.length === k) { results.push(combo.slice()); return; }
+      for (var i = start; i < arr.length; i++) { combo.push(arr[i]); helper(i+1, combo); combo.pop(); }
+    }
+    helper(0, []);
+    return results;
+  }
+
+  function suggestLineup(playerCount) {
+    var pool = getHistoricallyActivePlayers();
+    if (pool.length < playerCount) {
+      return { error: "Only " + pool.length + " players have match history — need at least " + playerCount + ". Add players via matches first, or pick a smaller count." };
+    }
+    // Use the most recently active N players if pool is larger than needed (simple heuristic: just take first N alphabetically for determinism if too many)
+    var players = pool.slice(0, playerCount);
+    var counts = computePairingCountsThisMonth();
+
+    if (playerCount === 4) {
+      var r4 = bestSplitFor4(players, counts);
+      return { teams: r4.teams, waiting: null, sitOut: null, score: r4.score };
+    }
+    if (playerCount === 5) {
+      var best=null, bestScore=Infinity, bestSitOut=null;
+      players.forEach(function(sitOut) {
+        var remaining = players.filter(function(p){ return p!==sitOut; });
+        var r = bestSplitFor4(remaining, counts);
+        if (r.score < bestScore) { bestScore=r.score; best=r.teams; bestSitOut=sitOut; }
+      });
+      return { teams: best, waiting: null, sitOut: bestSitOut, score: bestScore };
+    }
+    if (playerCount === 6) {
+      var starting4Options = combinationsOf(players, 4);
+      var best6=null, bestScore6=Infinity, bestWaiting=null;
+      starting4Options.forEach(function(four) {
+        var waiting = players.filter(function(p){ return four.indexOf(p)===-1; });
+        var r = bestSplitFor4(four, counts);
+        var waitingScore = getPairCount(counts, waiting[0], waiting[1]);
+        var total = r.score + waitingScore;
+        if (total < bestScore6) { bestScore6=total; best6=r.teams; bestWaiting=waiting; }
+      });
+      return { teams: best6, waiting: bestWaiting, sitOut: null, score: bestScore6 };
+    }
+  }
+
+  function renderLineupSuggestion(playerCount) {
+    var result = suggestLineup(playerCount);
+    var el = document.getElementById("lineup-result");
+    if (result.error) {
+      el.innerHTML = '<div style="color:var(--loss);font-size:13px;margin-top:12px">'+result.error+'</div>';
+      return;
+    }
+    var noDataNote = result.score === 0 ? '<div style="font-size:11px;color:var(--muted);margin-top:6px">✨ Fresh pairing — haven\'t played together this month yet</div>' : '<div style="font-size:11px;color:var(--muted);margin-top:6px">Best available combo (some overlap unavoidable this month)</div>';
+    var html = '<div style="margin-top:12px">' +
+      '<div class="team-block" style="margin-bottom:8px"><div class="team-names" style="font-size:14px">🟢 '+result.teams[0].join(" & ")+'</div></div>' +
+      '<div style="text-align:center;color:var(--muted);font-family:monospace;font-size:12px;margin:4px 0">vs</div>' +
+      '<div class="team-block"><div class="team-names" style="font-size:14px">🔴 '+result.teams[1].join(" & ")+'</div></div>';
+    if (result.sitOut) {
+      html += '<div style="text-align:center;font-size:12px;color:var(--muted);margin-top:10px">⏳ Sitting out: '+result.sitOut+'</div>';
+    }
+    if (result.waiting) {
+      html += '<div style="text-align:center;font-size:12px;color:var(--muted);margin-top:10px">⏳ Waiting pair: '+result.waiting.join(" & ")+'</div>';
+    }
+    html += noDataNote + '</div>';
+    el.innerHTML = html;
+  }
+
   function computeIndividual() {
     var p={};
-    // Seed every squad member first (0W/0L) so brownie/negative points and squad membership
-    // still show correctly even when "This Month" has zero matches (e.g. right after a month override,
-    // or genuinely day 1 of a new month before anyone's played yet).
+    // Seed players who have actually played at least one match historically (0W/0L if nothing this period)
+    // so brownie/negative points and their row still show correctly even when "This Month" has zero
+    // matches (e.g. right after a month override, or genuinely day 1 of a new month before anyone's played yet).
+    // Uses match history, NOT the raw Manage Squad list, since that list may contain stale/unused names.
     if (leaderboardPeriod === "month") {
-      squadPlayers.forEach(function(n){ if(n) p[n]={name:n,won:0,lost:0}; });
+      getHistoricallyActivePlayers().forEach(function(n){ p[n]={name:n,won:0,lost:0}; });
     }
     var src = getSessionsForPeriod();
     src.forEach(function(s){var w=wt(s);[s.t1p1,s.t1p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t1wins)*w;p[n].lost+=Number(s.t2wins)*w;});[s.t2p1,s.t2p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t2wins)*w;p[n].lost+=Number(s.t1wins)*w;});});
