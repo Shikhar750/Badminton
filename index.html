@@ -376,6 +376,25 @@
       <button class="cancel-btn" id="adj-clear-btn" style="margin-top:8px">Clear This Player's Adjustment (PIN required)</button>
       <div class="hint">Applies to: <span id="adj-month-label"></span></div>
     </div>
+
+    <!-- MONTH START OVERRIDE -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:8px;text-align:center">👑 Admin: Month Start Override</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;text-align:center">Use this if the current month's "This Month" leaderboard should ignore early matches and start counting fresh from a later date (e.g. a one-off session that shouldn't count toward this month's ranking). All Time is never affected.</div>
+      <div class="fg">
+        <label>Override applies to month</label>
+        <input type="text" id="override-month-label" disabled style="opacity:0.7"/>
+      </div>
+      <div class="fg">
+        <label>Start counting "This Month" from</label>
+        <input type="date" id="override-date-input"/>
+      </div>
+      <div class="err" id="override-err"></div>
+      <div class="suc" id="override-suc"></div>
+      <button class="save-btn" id="override-set-btn">Set Override (PIN required)</button>
+      <button class="cancel-btn" id="override-clear-btn" style="margin-top:8px">Clear Override for This Month (PIN required)</button>
+      <div class="hint" id="override-current-status">No override currently set for this month</div>
+    </div>
   </div>
 </div>
 
@@ -388,6 +407,7 @@
   var matchesRef = ref(db, "matches");
   var squadRef = ref(db, "squad");
   var adjustmentsRef = ref(db, "monthlyAdjustments");
+  var monthOverridesRef = ref(db, "settings/monthOverrides");
   var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   var ADMIN_PIN = "7789";
@@ -408,6 +428,7 @@
   var adjustmentsLoaded = false;
   var leaderboardPeriod = "month"; // "month" or "alltime"
   var monthlyAdjustments = {}; // { "2026-07": { "Shikhar": {brownie:1.5, negative:-1, negativeReason:"..."} } }
+  var monthOverrides = {}; // { "2026-07": "2026-07-10" } -- if set, "This Month" only counts matches on/after this date
 
   function isLocked(s) {
     if (!s.date) return false;
@@ -443,7 +464,7 @@
   document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
   document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
   document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); });
-  document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); populateAdjPlayerDropdown(); });
+  document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); populateAdjPlayerDropdown(); populateOverridePanel(); });
   document.getElementById("refresh-btn").addEventListener("click", renderAll);
   document.getElementById("period-month").addEventListener("click", function(){
     leaderboardPeriod = "month";
@@ -520,6 +541,10 @@
     renderLeaderboard();
     runAutoBrownieAssignment();
   });
+  onValue(monthOverridesRef, function(snap) {
+    monthOverrides = snap.val() || {};
+    renderLeaderboard();
+  });
 
   // HELPERS
   function fmtDate(d) { if(!d) return "Unknown"; var p=d.split("-"); if(p.length===3) return p[2]+" "+MONTHS[parseInt(p[1])-1]+" "+p[0]; return d; }
@@ -570,6 +595,61 @@
     document.getElementById("adj-month-label").textContent = monthKey;
     sel.innerHTML = squadPlayers.map(function(p){ return '<option value="'+p+'">'+p+'</option>'; }).join("");
   }
+
+  function populateOverridePanel() {
+    var monthKey = getCurrentMonthKey();
+    document.getElementById("override-month-label").value = monthKey;
+    var existing = monthOverrides[monthKey];
+    var statusEl = document.getElementById("override-current-status");
+    if (existing) {
+      statusEl.textContent = "Currently overridden: only counting matches from " + existing + " onward for This Month";
+      document.getElementById("override-date-input").value = existing;
+    } else {
+      statusEl.textContent = "No override currently set for this month";
+      document.getElementById("override-date-input").value = "";
+    }
+  }
+
+  document.getElementById("override-set-btn").addEventListener("click", async function() {
+    var errEl = document.getElementById("override-err");
+    var sucEl = document.getElementById("override-suc");
+    errEl.style.display="none"; sucEl.style.display="none";
+
+    var dateVal = document.getElementById("override-date-input").value;
+    if (!dateVal) { errEl.textContent="Please pick a start date!"; errEl.style.display="block"; return; }
+
+    if (!checkAdmin()) return;
+
+    var monthKey = getCurrentMonthKey();
+    try {
+      await update(monthOverridesRef, { [monthKey]: dateVal });
+      sucEl.textContent = "✓ " + monthKey + " will now only count matches from " + dateVal + " onward";
+      sucEl.style.display = "block";
+      populateOverridePanel();
+    } catch(e) {
+      errEl.textContent = "Failed: " + e.message;
+      errEl.style.display = "block";
+    }
+  });
+
+  document.getElementById("override-clear-btn").addEventListener("click", async function() {
+    var errEl = document.getElementById("override-err");
+    var sucEl = document.getElementById("override-suc");
+    errEl.style.display="none"; sucEl.style.display="none";
+
+    if (!checkAdmin()) return;
+
+    var monthKey = getCurrentMonthKey();
+    try {
+      await remove(ref(db, "settings/monthOverrides/" + monthKey));
+      sucEl.textContent = "✓ Override cleared for " + monthKey + " — full calendar month now counts again";
+      sucEl.style.display = "block";
+      populateOverridePanel();
+    } catch(e) {
+      errEl.textContent = "Failed: " + e.message;
+      errEl.style.display = "block";
+    }
+  });
 
   document.getElementById("adj-save-btn").addEventListener("click", async function() {
     var errEl = document.getElementById("adj-err");
@@ -731,10 +811,14 @@
   function getSessionsForPeriod() {
     if (leaderboardPeriod === "alltime") return sessions;
     var now = new Date();
+    var overrideDate = monthOverrides[getCurrentMonthKey()]; // e.g. "2026-07-10" or undefined
     return sessions.filter(function(s) {
       if (!s.date) return false;
       var d = new Date(s.date);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      var inCurrentMonth = d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      if (!inCurrentMonth) return false;
+      if (overrideDate && s.date < overrideDate) return false; // exclude matches before the override start date
+      return true;
     });
   }
   function getTotalMatchDaysThisMonth() {
@@ -822,17 +906,39 @@
     var standings = computeQualifiedStandingsForMonth(prevKey);
     if (standings.length === 0) return; // no qualified players last month, nothing to award
 
-    var winner = standings[0];
-    var runnerUp = standings.length > 1 ? standings[1] : null;
+    // Group consecutive players with identical rawRate into rank groups (handles ties)
+    var groups = [];
+    var i = 0;
+    while (i < standings.length) {
+      var current = standings[i];
+      var tiedGroup = [current];
+      var j = i + 1;
+      while (j < standings.length && standings[j].rawRate === current.rawRate) {
+        tiedGroup.push(standings[j]);
+        j++;
+      }
+      groups.push(tiedGroup);
+      i = j;
+    }
 
     var updates = {};
-    updates[currentKey + "/" + winner.name + "/brownie"] = 1.5;
-    if (runnerUp) updates[currentKey + "/" + runnerUp.name + "/brownie"] = 0.5;
+    // Group 1 = winner(s), splits 1.5% equally if tied
+    if (groups[0]) {
+      var winnerShare = 1.5 / groups[0].length;
+      groups[0].forEach(function(p) { updates[currentKey + "/" + p.name + "/brownie"] = winnerShare; });
+    }
+    // Group 2 = runner(s)-up, splits 0.5% equally if tied
+    if (groups[1]) {
+      var runnerUpShare = 0.5 / groups[1].length;
+      groups[1].forEach(function(p) { updates[currentKey + "/" + p.name + "/brownie"] = runnerUpShare; });
+    }
     updates[currentKey + "/_autoBrownieAppliedFor"] = prevKey;
 
     try {
       await update(adjustmentsRef, updates);
-      console.log("Auto brownie assigned for", currentKey, "based on", prevKey, "winner:", winner.name, runnerUp ? "runner-up: "+runnerUp.name : "");
+      console.log("Auto brownie assigned for", currentKey, "based on", prevKey,
+        "winners:", groups[0] ? groups[0].map(function(p){return p.name;}).join(", ") : "none",
+        "runners-up:", groups[1] ? groups[1].map(function(p){return p.name;}).join(", ") : "none");
     } catch(e) {
       console.log("Auto brownie assignment failed:", e.message);
       autoBrownieCheckDone = false; // allow retry on next load if it failed
