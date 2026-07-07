@@ -954,6 +954,12 @@
   }
   function computeIndividual() {
     var p={};
+    // Seed every squad member first (0W/0L) so brownie/negative points and squad membership
+    // still show correctly even when "This Month" has zero matches (e.g. right after a month override,
+    // or genuinely day 1 of a new month before anyone's played yet).
+    if (leaderboardPeriod === "month") {
+      squadPlayers.forEach(function(n){ if(n) p[n]={name:n,won:0,lost:0}; });
+    }
     var src = getSessionsForPeriod();
     src.forEach(function(s){var w=wt(s);[s.t1p1,s.t1p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t1wins)*w;p[n].lost+=Number(s.t2wins)*w;});[s.t2p1,s.t2p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t2wins)*w;p[n].lost+=Number(s.t1wins)*w;});});
     var arr = Object.values(p);
