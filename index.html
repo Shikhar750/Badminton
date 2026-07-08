@@ -22,7 +22,7 @@
     h1 span{color:var(--accent)}
     .sub{color:var(--muted);font-size:12px;margin-top:4px;font-family:'Space Mono',monospace}
     .refresh-btn{color:var(--accent);font-size:12px;cursor:pointer;font-family:'Space Mono',monospace;background:none;border:none;margin-top:8px;display:inline-block;padding:4px 8px}
-    .nav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:24px}
+    .nav{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:24px}
     .nav-tab{padding:8px 4px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-weight:600;font-size:10px;cursor:pointer;text-align:center;transition:all 0.2s}
     .nav-tab.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
     .tab{display:none}.tab.active{display:block}
@@ -205,6 +205,7 @@
     <div class="nav-tab" id="nav-history">📋 History</div>
     <div class="nav-tab" id="nav-add">＋ Add</div>
     <div class="nav-tab" id="nav-rules">📜 Rules</div>
+    <div class="nav-tab" id="nav-winners">🏅 Winners</div>
   </div>
 
   <!-- LEADERBOARD -->
@@ -362,6 +363,17 @@
 
       <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
 
+      <div style="margin-bottom:20px">
+        <div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;margin-bottom:10px">Rotation Rules</div>
+        <div style="font-size:14px;color:var(--text);line-height:1.8">
+          <b>4 players:</b> Across 6 matches, cycle through all 3 possible team combinations — 2 matches with each pairing.<br><br>
+          <b>5 players:</b> One player sits out each match (loser's team rotates one out, sitting player joins the survivor). If a pair wins 2 matches in a row, they split before the 3rd — one stays, one joins the other side, and the surviving loser pairs with whoever's left. Keeps rotating naturally so no pair plays 3 straight matches together.<br><br>
+          <b>6 players:</b> Teams stay fixed for the entire day's session. Use 🎲 Suggest Today's Lineup at the start of each 6-player day to pick fresh, least-paired teams based on this month's history.
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
+
       <div>
         <div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;margin-bottom:10px">Spirit of the Game</div>
         <div style="font-size:14px;color:var(--text);line-height:1.8">
@@ -407,6 +419,15 @@
       <button class="save-btn" id="override-set-btn">Set Override (PIN required)</button>
       <button class="cancel-btn" id="override-clear-btn" style="margin-top:8px">Clear Override for This Month (PIN required)</button>
       <div class="hint" id="override-current-status">No override currently set for this month</div>
+    </div>
+  </div>
+
+  <!-- MONTHLY WINNERS -->
+  <div class="tab" id="tab-winners">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px">
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px;text-align:center">🏅 Monthly Winners</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:20px;text-align:center">Who took the crown each month</div>
+      <div id="winners-list"></div>
     </div>
   </div>
 </div>
@@ -464,7 +485,7 @@
 
   // NAV
   function showTab(name) {
-    ["leaderboard","history","add","player","h2h","rules"].forEach(function(t) {
+    ["leaderboard","history","add","player","h2h","rules","winners"].forEach(function(t) {
       document.getElementById("tab-"+t).classList.remove("active");
       var n = document.getElementById("nav-"+t);
       if (n) n.classList.remove("active");
@@ -478,6 +499,7 @@
   document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
   document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); renderLineupChips(); });
   document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); populateAdjPlayerDropdown(); populateOverridePanel(); });
+  document.getElementById("nav-winners").addEventListener("click", function(){ showTab("winners"); renderMonthlyWinners(); });
   document.getElementById("refresh-btn").addEventListener("click", renderAll);
   document.getElementById("period-month").addEventListener("click", function(){
     leaderboardPeriod = "month";
@@ -881,6 +903,49 @@
     var prevMonth = new Date(now.getFullYear(), now.getMonth()-1, 1);
     var m = prevMonth.getMonth()+1;
     return prevMonth.getFullYear() + "-" + (m<10?"0"+m:m);
+  }
+  // Given a brownie-data month key (the month a reward was APPLIED to, e.g. "2026-07"),
+  // returns the human-readable label for the month it was actually EARNED in (e.g. "Jun 2026").
+  function getEarnedMonthLabel(appliedMonthKey) {
+    var parts = appliedMonthKey.split("-");
+    var year = parseInt(parts[0]), month = parseInt(parts[1]) - 1; // 0-indexed month the reward applies to
+    var earnedDate = new Date(year, month - 1, 1); // go back one more month
+    return MONTHS[earnedDate.getMonth()] + " " + earnedDate.getFullYear();
+  }
+  function renderMonthlyWinners() {
+    var results = [];
+    Object.keys(monthlyAdjustments).forEach(function(monthKey) {
+      var monthData = monthlyAdjustments[monthKey];
+      if (!monthData || typeof monthData !== "object") return;
+      var maxBrownie = 0;
+      var winners = [];
+      Object.keys(monthData).forEach(function(name) {
+        if (name === "_autoBrownieAppliedFor") return; // skip internal marker
+        var entry = monthData[name];
+        var b = Number(entry && entry.brownie) || 0;
+        if (b <= 0) return;
+        if (b > maxBrownie) { maxBrownie = b; winners = [name]; }
+        else if (b === maxBrownie) { winners.push(name); }
+      });
+      if (winners.length > 0) {
+        results.push({ appliedMonth: monthKey, earnedLabel: getEarnedMonthLabel(monthKey), winners: winners, brownieValue: maxBrownie });
+      }
+    });
+    results.sort(function(a,b){ return b.appliedMonth.localeCompare(a.appliedMonth); });
+
+    var el = document.getElementById("winners-list");
+    if (!results.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">🏅</div><p>No monthly winners recorded yet</p></div>';
+      return;
+    }
+    el.innerHTML = results.map(function(r, i) {
+      var medal = i === 0 ? "🥇" : (i === 1 ? "🥈" : "🏅");
+      return '<div class="lb-row r'+Math.min(i,2)+'" style="cursor:default">' +
+        '<div class="lb-rank">'+medal+'</div>' +
+        '<div style="flex:1"><div class="lb-name">'+r.earnedLabel+'</div>' +
+        '<div style="font-size:12px;color:var(--accent);margin-top:2px">'+r.winners.join(" & ")+'</div></div>' +
+        '</div>';
+    }).join("");
   }
   // Computes qualified standings for a SPECIFIC month (e.g. "2026-06"), independent of the live UI's current-month view.
   // Used for calculating last month's winner/runner-up to auto-assign brownie points.
