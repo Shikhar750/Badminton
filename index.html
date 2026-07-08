@@ -395,6 +395,10 @@
         <div class="fg"><label>Negative %</label><input type="number" id="adj-negative" placeholder="e.g. -1" step="0.1"/></div>
       </div>
       <div class="fg"><label>Reason (for negative points)</label><input type="text" id="adj-reason" placeholder="e.g. refused designated partner"/></div>
+      <div class="fg" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="adj-hide-winners" style="width:auto"/>
+        <label style="margin-bottom:0;text-transform:none;font-size:13px;color:var(--text)">Hide from Monthly Winners board (keeps ranking boost, just excludes from 🏅 Winners tab)</label>
+      </div>
       <div class="err" id="adj-err"></div>
       <div class="suc" id="adj-suc"></div>
       <button class="save-btn" id="adj-save-btn">Apply Adjustment (PIN required)</button>
@@ -591,7 +595,7 @@
   function inT1(s,n) { return [s.t1p1,s.t1p2].indexOf(n)>-1; }
   function inMatch(s,n) { return [s.t1p1,s.t1p2,s.t2p1,s.t2p2].indexOf(n)>-1; }
   function getResult(s,n) { var a=inT1(s,n),t1=Number(s.t1wins),t2=Number(s.t2wins); if(a) return t1>t2?"W":t1<t2?"L":"D"; return t2>t1?"W":t2<t1?"L":"D"; }
-  function playerMatches(n) { return sessions.filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; }); }
+  function playerMatches(n) { return getSessionsForPeriod().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; }); }
 
   function getDateNDaysAgoString(n) {
     var d = new Date();
@@ -711,6 +715,7 @@
     var brownieVal = document.getElementById("adj-brownie").value;
     var negativeVal = document.getElementById("adj-negative").value;
     var reason = document.getElementById("adj-reason").value.trim();
+    var hideFromWinners = document.getElementById("adj-hide-winners").checked;
 
     if (!player) { errEl.textContent="Please select a player!"; errEl.style.display="block"; return; }
     if (brownieVal==="" && negativeVal==="") { errEl.textContent="Enter a brownie or negative value!"; errEl.style.display="block"; return; }
@@ -720,19 +725,33 @@
 
     var monthKey = getCurrentMonthKey();
     var path = "monthlyAdjustments/" + monthKey + "/" + player;
+    var existing = (monthlyAdjustments[monthKey] && monthlyAdjustments[monthKey][player]) || {};
+    var existingBrownie = Number(existing.brownie) || 0;
+    var existingNegative = Number(existing.negative) || 0;
+    var existingReasons = existing.negativeReasons || (existing.negativeReason ? [existing.negativeReason] : []);
+
+    var addedBrownie = brownieVal ? parseFloat(brownieVal) : 0;
+    var addedNegative = negativeVal ? parseFloat(negativeVal) : 0;
+
+    var newReasons = existingReasons.slice();
+    if (addedNegative < 0 && reason) newReasons.push(reason);
+
     var data = {
-      brownie: brownieVal ? parseFloat(brownieVal) : 0,
-      negative: negativeVal ? parseFloat(negativeVal) : 0,
-      negativeReason: reason
+      brownie: existingBrownie + addedBrownie,
+      negative: existingNegative + addedNegative,
+      negativeReasons: newReasons,
+      negativeReason: newReasons.join("; "), // kept for display compatibility
+      hiddenFromWinnersBoard: hideFromWinners
     };
 
     try {
       await update(ref(db, path), data);
-      sucEl.textContent = "✓ Applied to " + player + " for " + monthKey;
+      sucEl.textContent = "✓ Applied to " + player + " for " + monthKey + " (running total: brownie " + data.brownie.toFixed(2) + "%, negative " + data.negative.toFixed(2) + "%)";
       sucEl.style.display = "block";
       document.getElementById("adj-brownie").value = "";
       document.getElementById("adj-negative").value = "";
       document.getElementById("adj-reason").value = "";
+      document.getElementById("adj-hide-winners").checked = false;
     } catch(e) {
       errEl.textContent = "Failed: " + e.message;
       errEl.style.display = "block";
@@ -846,16 +865,16 @@
   }
   function computeBestPartner(n) {
     var p={};
-    sessions.forEach(function(s){var a=inT1(s,n),b=[s.t2p1,s.t2p2].indexOf(n)>-1;if(!a&&!b)return;var t=a?[s.t1p1,s.t1p2]:[s.t2p1,s.t2p2],won=a?Number(s.t1wins)>Number(s.t2wins):Number(s.t2wins)>Number(s.t1wins);t.forEach(function(x){if(!x||x===n||x==="undefined")return;if(!p[x])p[x]={won:0,tot:0};p[x].tot++;if(won)p[x].won++;});});
+    getSessionsForPeriod().forEach(function(s){var a=inT1(s,n),b=[s.t2p1,s.t2p2].indexOf(n)>-1;if(!a&&!b)return;var t=a?[s.t1p1,s.t1p2]:[s.t2p1,s.t2p2],won=a?Number(s.t1wins)>Number(s.t2wins):Number(s.t2wins)>Number(s.t1wins);t.forEach(function(x){if(!x||x===n||x==="undefined")return;if(!p[x])p[x]={won:0,tot:0};p[x].tot++;if(won)p[x].won++;});});
     var best=null,br=-1;Object.keys(p).forEach(function(x){var r=p[x].tot?p[x].won/p[x].tot:0;if(r>br){br=r;best=x;}});return best;
   }
   function computeToughest(n) {
     var o={};
-    sessions.forEach(function(s){var a=inT1(s,n),b=[s.t2p1,s.t2p2].indexOf(n)>-1;if(!a&&!b)return;var t=a?[s.t2p1,s.t2p2]:[s.t1p1,s.t1p2],lost=a?Number(s.t1wins)<Number(s.t2wins):Number(s.t2wins)<Number(s.t1wins);t.forEach(function(x){if(!x||x==="undefined")return;if(!o[x])o[x]=0;if(lost)o[x]++;});});
+    getSessionsForPeriod().forEach(function(s){var a=inT1(s,n),b=[s.t2p1,s.t2p2].indexOf(n)>-1;if(!a&&!b)return;var t=a?[s.t2p1,s.t2p2]:[s.t1p1,s.t1p2],lost=a?Number(s.t1wins)<Number(s.t2wins):Number(s.t2wins)<Number(s.t1wins);t.forEach(function(x){if(!x||x==="undefined")return;if(!o[x])o[x]=0;if(lost)o[x]++;});});
     var best=null,m=-1;Object.keys(o).forEach(function(x){if(o[x]>m){m=o[x];best=x;}});return best;
   }
   function computeH2H(p1,p2) {
-    var m=sessions.filter(function(s){var t1=[s.t1p1,s.t1p2],t2=[s.t2p1,s.t2p2];return(t1.indexOf(p1)>-1&&t2.indexOf(p2)>-1)||(t1.indexOf(p2)>-1&&t2.indexOf(p1)>-1);}).sort(function(a,b){return a.id-b.id;});
+    var m=getSessionsForPeriod().filter(function(s){var t1=[s.t1p1,s.t1p2],t2=[s.t2p1,s.t2p2];return(t1.indexOf(p1)>-1&&t2.indexOf(p2)>-1)||(t1.indexOf(p2)>-1&&t2.indexOf(p1)>-1);}).sort(function(a,b){return a.id-b.id;});
     var p1w=0,p2w=0;m.forEach(function(s){if(inT1(s,p1)){p1w+=Number(s.t1wins);p2w+=Number(s.t2wins);}else{p1w+=Number(s.t2wins);p2w+=Number(s.t1wins);}});
     return{p1wins:p1w,p2wins:p2w,matches:m};
   }
@@ -922,6 +941,7 @@
       Object.keys(monthData).forEach(function(name) {
         if (name === "_autoBrownieAppliedFor") return; // skip internal marker
         var entry = monthData[name];
+        if (entry && entry.hiddenFromWinnersBoard) return; // admin chose to keep the ranking boost but hide from Winners
         var b = Number(entry && entry.brownie) || 0;
         if (b <= 0) return;
         if (b > maxBrownie) { maxBrownie = b; winners = [name]; }
@@ -1484,7 +1504,7 @@
     );
 
     var opps={};
-    sessions.forEach(function(s){var a=inT1(s,name),b=[s.t2p1,s.t2p2].indexOf(name)>-1;if(!a&&!b)return;var t=a?[s.t2p1,s.t2p2]:[s.t1p1,s.t1p2];t.forEach(function(p){if(p&&p!=="undefined"&&p!==name)opps[p]=true;});});
+    getSessionsForPeriod().forEach(function(s){var a=inT1(s,name),b=[s.t2p1,s.t2p2].indexOf(name)>-1;if(!a&&!b)return;var t=a?[s.t2p1,s.t2p2]:[s.t1p1,s.t1p2];t.forEach(function(p){if(p&&p!=="undefined"&&p!==name)opps[p]=true;});});
     var on=Object.keys(opps);
     if(!on.length){H("h2h-list",'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">No opponents yet</div>');}
     else{
