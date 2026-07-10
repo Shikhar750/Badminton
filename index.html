@@ -55,6 +55,15 @@
   .champion-name{font-size:16px;font-weight:700;margin-top:2px}
   .champion-link{font-size:10.5px;color:var(--text-dim);font-family:'Space Mono',monospace;flex-shrink:0}
 
+  /* Match day banner - manually toggled by admin, shows for everyone until midnight */
+  .matchday-banner{
+    background:linear-gradient(120deg, rgba(139,147,248,0.16), rgba(139,147,248,0.03));
+    border-radius:var(--radius);padding:var(--sp-3) var(--sp-4);margin-bottom:var(--sp-3);
+    display:flex;align-items:center;gap:10px;
+  }
+  .matchday-icon{font-size:18px;flex-shrink:0}
+  .matchday-text{font-size:13px;font-weight:600;color:var(--accent)}
+
   .section-label{font-size:10.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.3px;margin:var(--sp-5) 0 var(--sp-3);font-weight:700}
   .tap-hint{font-size:11px;color:var(--text-dim);text-align:center;margin-bottom:var(--sp-4);font-family:'Space Mono',monospace}
 
@@ -240,6 +249,10 @@
 </head>
 <body>
 <div class="wrap">
+  <div class="matchday-banner" id="matchday-banner" style="display:none">
+    <div class="matchday-icon">🏸</div>
+    <div class="matchday-text" id="matchday-text">Match day, today!</div>
+  </div>
   <header>
     <span class="icon">🏸</span>
     <h1>Squad <span>Leaderboard</span></h1>
@@ -267,6 +280,7 @@
     <div class="sub-tabs" id="period-tabs">
       <div class="sub-tab active" id="period-month">This Month</div>
       <div class="sub-tab" id="period-alltime">All Time</div>
+      <div class="sub-tab" id="period-4player">4-Player</div>
     </div>
     <div class="sub-tabs">
       <div class="sub-tab active" id="sub-individual">Individual</div>
@@ -403,7 +417,7 @@
     <div class="rule-card">
       <div class="rule-title">Match Lock</div>
       <div class="rule-text">
-        🔒 All matches lock at 10am the next morning<br>
+        🔒 All matches lock at 1am the next morning<br>
         ✏️ No additions, edits or deletions after lock<br>
         👑 Admin can edit locked matches with PIN
       </div>
@@ -469,6 +483,16 @@
         <button class="cancel-btn" id="override-clear-btn" style="margin-top:8px">Clear Override for This Month (PIN required)</button>
         <div class="hint" id="override-current-status">No override currently set for this month</div>
       </div>
+
+      <div class="rule-card">
+        <div class="rule-title">Match Day Banner</div>
+        <div class="rule-text" style="font-size:11.5px;margin-bottom:12px">Toggle a banner at the top of the app for everyone, letting the squad know today's a match day. Auto-clears at midnight, or clear it manually below.</div>
+        <div class="err" id="matchday-err"></div>
+        <div class="suc" id="matchday-suc"></div>
+        <button class="save-btn" id="matchday-set-btn">Mark Today as Match Day (PIN required)</button>
+        <button class="cancel-btn" id="matchday-clear-btn" style="margin-top:8px">Un-mark Match Day (PIN required)</button>
+        <div class="hint" id="matchday-current-status">Match day banner is currently off</div>
+      </div>
     </div>
   </div>
 
@@ -492,6 +516,7 @@
   var squadRef = ref(db, "squad");
   var adjustmentsRef = ref(db, "monthlyAdjustments");
   var monthOverridesRef = ref(db, "settings/monthOverrides");
+  var matchDayRef = ref(db, "settings/matchDayFlag"); // { date: "2026-07-08" } - if this equals today, show the banner
   var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   var ADMIN_PIN = "7789";
@@ -513,13 +538,14 @@
   var leaderboardPeriod = "month"; // "month" or "alltime"
   var monthlyAdjustments = {}; // { "2026-07": { "Shikhar": {brownie:1.5, negative:-1, negativeReason:"..."} } }
   var monthOverrides = {}; // { "2026-07": "2026-07-10" } -- if set, "This Month" only counts matches on/after this date
+  var matchDayFlag = null; // { date: "2026-07-08" } or null if not set
 
   function isLocked(s) {
     if (!s.date) return false;
     var matchDate = new Date(s.date);
     var lockTime = new Date(matchDate);
     lockTime.setDate(lockTime.getDate() + 1);
-    lockTime.setHours(10, 0, 0, 0);
+    lockTime.setHours(1, 0, 0, 0);
     return new Date() > lockTime;
   }
 
@@ -550,18 +576,15 @@
   document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); renderLineupChips(); });
   document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); });
   document.getElementById("refresh-btn").addEventListener("click", renderAll);
-  document.getElementById("period-month").addEventListener("click", function(){
-    leaderboardPeriod = "month";
-    this.classList.add("active");
-    document.getElementById("period-alltime").classList.remove("active");
+  function setLeaderboardPeriod(period, el) {
+    leaderboardPeriod = period;
+    ["period-month","period-alltime","period-4player"].forEach(function(id){ document.getElementById(id).classList.remove("active"); });
+    el.classList.add("active");
     renderLeaderboard();
-  });
-  document.getElementById("period-alltime").addEventListener("click", function(){
-    leaderboardPeriod = "alltime";
-    this.classList.add("active");
-    document.getElementById("period-month").classList.remove("active");
-    renderLeaderboard();
-  });
+  }
+  document.getElementById("period-month").addEventListener("click", function(){ setLeaderboardPeriod("month", this); });
+  document.getElementById("period-alltime").addEventListener("click", function(){ setLeaderboardPeriod("alltime", this); });
+  document.getElementById("period-4player").addEventListener("click", function(){ setLeaderboardPeriod("4player", this); });
   document.getElementById("sub-individual").addEventListener("click", function(){ this.classList.add("active"); document.getElementById("sub-pairs").classList.remove("active"); document.getElementById("lb-individual").style.display="block"; document.getElementById("lb-pairs").style.display="none"; });
   document.getElementById("sub-pairs").addEventListener("click", function(){ this.classList.add("active"); document.getElementById("sub-individual").classList.remove("active"); document.getElementById("lb-pairs").style.display="block"; document.getElementById("lb-individual").style.display="none"; });
   document.getElementById("save-btn").addEventListener("click", handleSave);
@@ -589,6 +612,7 @@
     document.getElementById("admin-chevron").classList.toggle("open");
     populateAdjPlayerDropdown();
     populateOverridePanel();
+    populateMatchDayStatus();
   });
 
   // Date filter
@@ -635,6 +659,7 @@
     historyPage = 0;
     sessionsLoaded = true;
     renderAll();
+    populateMatchDayBanner();
     runAutoBrownieAssignment();
   });
   onValue(adjustmentsRef, function(snap) {
@@ -647,6 +672,10 @@
   onValue(monthOverridesRef, function(snap) {
     monthOverrides = snap.val() || {};
     renderLeaderboard();
+  });
+  onValue(matchDayRef, function(snap) {
+    matchDayFlag = snap.val() || null;
+    populateMatchDayBanner();
   });
 
   // HELPERS
@@ -764,6 +793,52 @@
       sucEl.textContent = "✓ Override cleared for " + monthKey + " — full calendar month now counts again";
       sucEl.style.display = "block";
       populateOverridePanel();
+    } catch(e) {
+      errEl.textContent = "Failed: " + e.message;
+      errEl.style.display = "block";
+    }
+  });
+
+  function populateMatchDayStatus() {
+    var statusEl = document.getElementById("matchday-current-status");
+    var todayStr = getTodayString();
+    if (matchDayFlag && matchDayFlag.date === todayStr) {
+      statusEl.textContent = "Match day banner is currently ON for today (" + todayStr + ")";
+    } else {
+      statusEl.textContent = "Match day banner is currently off";
+    }
+  }
+
+  document.getElementById("matchday-set-btn").addEventListener("click", async function() {
+    var errEl = document.getElementById("matchday-err");
+    var sucEl = document.getElementById("matchday-suc");
+    errEl.style.display="none"; sucEl.style.display="none";
+
+    if (!checkAdmin()) return;
+
+    try {
+      await set(matchDayRef, { date: getTodayString() });
+      sucEl.textContent = "✓ Match day banner turned on for everyone";
+      sucEl.style.display = "block";
+      populateMatchDayStatus();
+    } catch(e) {
+      errEl.textContent = "Failed: " + e.message;
+      errEl.style.display = "block";
+    }
+  });
+
+  document.getElementById("matchday-clear-btn").addEventListener("click", async function() {
+    var errEl = document.getElementById("matchday-err");
+    var sucEl = document.getElementById("matchday-suc");
+    errEl.style.display="none"; sucEl.style.display="none";
+
+    if (!checkAdmin()) return;
+
+    try {
+      await remove(matchDayRef);
+      sucEl.textContent = "✓ Match day banner turned off";
+      sucEl.style.display = "block";
+      populateMatchDayStatus();
     } catch(e) {
       errEl.textContent = "Failed: " + e.message;
       errEl.style.display = "block";
@@ -895,9 +970,9 @@
       var chosenDate = new Date(date);
       var lockTime = new Date(chosenDate);
       lockTime.setDate(lockTime.getDate() + 1);
-      lockTime.setHours(10, 0, 0, 0);
+      lockTime.setHours(1, 0, 0, 0);
       if (new Date() > lockTime && !checkAdmin()) {
-        errEl.textContent = "This date is locked (past 10am next day). Admin PIN required.";
+        errEl.textContent = "This date is locked (past 1am next day). Admin PIN required.";
         errEl.style.display = "block"; return;
       }
     }
@@ -944,6 +1019,7 @@
   }
   function getSessionsForPeriod() {
     if (leaderboardPeriod === "alltime") return sessions;
+    if (leaderboardPeriod === "4player") return get4PlayerDaySessions();
     var now = new Date();
     var overrideDate = monthOverrides[getCurrentMonthKey()]; // e.g. "2026-07-10" or undefined
     return sessions.filter(function(s) {
@@ -954,6 +1030,22 @@
       if (overrideDate && s.date < overrideDate) return false; // exclude matches before the override start date
       return true;
     });
+  }
+  // Informational-only view: pulls from ALL history (not month-scoped), including only
+  // matches from dates where exactly 4 unique players appeared across that day's matches.
+  // No brownie points, qualification threshold, or champion logic apply to this view.
+  function get4PlayerDaySessions() {
+    var dateUniquePlayers = {};
+    sessions.forEach(function(s) {
+      if (!s.date) return;
+      if (!dateUniquePlayers[s.date]) dateUniquePlayers[s.date] = {};
+      [s.t1p1,s.t1p2,s.t2p1,s.t2p2].forEach(function(n){ if(n && n!=="undefined" && n!=="") dateUniquePlayers[s.date][n]=true; });
+    });
+    var validDates = {};
+    Object.keys(dateUniquePlayers).forEach(function(d){
+      if (Object.keys(dateUniquePlayers[d]).length === 4) validDates[d] = true;
+    });
+    return sessions.filter(function(s){ return s.date && validDates[s.date]; });
   }
   function getTotalMatchDaysThisMonth() {
     var src = getSessionsForPeriod();
@@ -1050,6 +1142,29 @@
     document.getElementById("champion-label").textContent = mostRecent.earnedLabel + "'s Champion";
     document.getElementById("champion-name").textContent = mostRecent.winners.join(" & ");
     document.getElementById("champion-link").textContent = "See all →";
+  }
+  function getTodayString() {
+    var d = new Date();
+    var y = d.getFullYear();
+    var m = String(d.getMonth()+1).padStart(2,"0");
+    var day = String(d.getDate()).padStart(2,"0");
+    return y + "-" + m + "-" + day; // local-timezone-safe, matches how match dates are stored
+  }
+  function populateMatchDayBanner() {
+    var banner = document.getElementById("matchday-banner");
+    var todayStr = getTodayString();
+    if (!matchDayFlag || matchDayFlag.date !== todayStr) {
+      banner.style.display = "none";
+      return;
+    }
+    var todaysMatchCount = sessions.filter(function(s){ return s.date === todayStr; }).length;
+    var textEl = document.getElementById("matchday-text");
+    if (todaysMatchCount > 0) {
+      textEl.textContent = todaysMatchCount + " match" + (todaysMatchCount!==1?"es":"") + " smashed today already";
+    } else {
+      textEl.textContent = "Match day, today!";
+    }
+    banner.style.display = "flex";
   }
   // Computes qualified standings for a SPECIFIC month (e.g. "2026-06"), independent of the live UI's current-month view.
   // Used for calculating last month's winner/runner-up to auto-assign brownie points.
