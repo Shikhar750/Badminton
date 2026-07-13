@@ -498,23 +498,13 @@
 
       <div class="rule-card">
         <div class="rule-title">Weekly Match Days</div>
-        <div class="rule-text" style="font-size:11.5px;margin-bottom:12px">Pick the days you regularly play — the banner shows automatically on these days for everyone. Use the override below to handle exceptions (a one-off extra day, or skipping a normally-scheduled day).</div>
+        <div class="rule-text" style="font-size:11.5px;margin-bottom:12px">Pick the days you regularly play — the banner shows automatically for everyone on these days.</div>
         <div class="fg">
           <div class="chips-wrap" id="weekly-pattern-chips"></div>
         </div>
         <div class="err" id="weekly-err"></div>
         <div class="suc" id="weekly-suc"></div>
         <button class="save-btn" id="weekly-save-btn">Save Weekly Pattern (PIN required)</button>
-      </div>
-
-      <div class="rule-card">
-        <div class="rule-title">Today's Override</div>
-        <div class="rule-text" style="font-size:11.5px;margin-bottom:12px">Overrides the weekly pattern for TODAY only — use this for an ad-hoc extra match day, or to skip a normally-scheduled day this week. Doesn't change your saved weekly pattern.</div>
-        <div class="err" id="matchday-err"></div>
-        <div class="suc" id="matchday-suc"></div>
-        <button class="save-btn" id="matchday-set-btn">Mark Today as Match Day (PIN required)</button>
-        <button class="cancel-btn" id="matchday-clear-btn" style="margin-top:8px">Mark Today as NOT a Match Day (PIN required)</button>
-        <div class="hint" id="matchday-current-status">No override set for today — following the weekly pattern</div>
       </div>
     </div>
   </div>
@@ -539,8 +529,7 @@
   var squadRef = ref(db, "squad");
   var adjustmentsRef = ref(db, "monthlyAdjustments");
   var monthOverridesRef = ref(db, "settings/monthOverrides");
-  var matchDayRef = ref(db, "settings/matchDayFlag"); // { date: "2026-07-08", state: "on"/"off" } - explicit override for a specific day, wins over the weekly pattern
-  var weeklyPatternRef = ref(db, "settings/weeklyMatchDays"); // ["Monday","Thursday"] - fixed recurring match days, used as fallback when no override exists for today
+  var weeklyPatternRef = ref(db, "settings/weeklyMatchDays"); // ["Monday","Thursday"] - fixed recurring match days
   var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   var ADMIN_PIN = "7789";
@@ -562,7 +551,6 @@
   var leaderboardPeriod = "month"; // "month" or "alltime"
   var monthlyAdjustments = {}; // { "2026-07": { "Shikhar": {brownie:1.5, negative:-1, negativeReason:"..."} } }
   var monthOverrides = {}; // { "2026-07": "2026-07-10" } -- if set, "This Month" only counts matches on/after this date
-  var matchDayFlag = null; // { date: "2026-07-08", state: "on"/"off" } - explicit per-day override, or null if none set
   var weeklyPattern = []; // e.g. ["Monday","Thursday"]
 
   function isLocked(s) {
@@ -638,7 +626,6 @@
     document.getElementById("admin-chevron").classList.toggle("open");
     populateAdjPlayerDropdown();
     populateOverridePanel();
-    populateMatchDayStatus();
     populateWeeklyPatternPanel();
   });
 
@@ -699,10 +686,6 @@
   onValue(monthOverridesRef, function(snap) {
     monthOverrides = snap.val() || {};
     renderLeaderboard();
-  });
-  onValue(matchDayRef, function(snap) {
-    matchDayFlag = snap.val() || null;
-    populateMatchDayBanner();
   });
   onValue(weeklyPatternRef, function(snap) {
     weeklyPattern = snap.val() || [];
@@ -861,61 +844,6 @@
       await set(weeklyPatternRef, weeklyPatternSelected);
       sucEl.textContent = "✓ Weekly pattern saved: " + (weeklyPatternSelected.length ? weeklyPatternSelected.join(", ") : "no days selected");
       sucEl.style.display = "block";
-      populateMatchDayStatus();
-    } catch(e) {
-      errEl.textContent = "Failed: " + e.message;
-      errEl.style.display = "block";
-    }
-  });
-  function populateMatchDayStatus() {
-    var statusEl = document.getElementById("matchday-current-status");
-    var todayStr = getTodayString();
-    var dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-    var todayName = dayNames[new Date().getDay()];
-    var patternSaysYes = weeklyPattern.indexOf(todayName) > -1;
-
-    if (matchDayFlag && matchDayFlag.date === todayStr) {
-      if (matchDayFlag.state === "on") {
-        statusEl.textContent = "Today is manually marked ON" + (patternSaysYes ? " (also matches the weekly pattern)" : " (overriding the weekly pattern, which doesn't include today)");
-      } else {
-        statusEl.textContent = "Today is manually marked OFF" + (patternSaysYes ? " (overriding the weekly pattern, which normally includes today)" : "");
-      }
-    } else {
-      statusEl.textContent = patternSaysYes ? "No override set — today (" + todayName + ") matches your weekly pattern, banner will show" : "No override set — today (" + todayName + ") is not in your weekly pattern";
-    }
-  }
-
-  document.getElementById("matchday-set-btn").addEventListener("click", async function() {
-    var errEl = document.getElementById("matchday-err");
-    var sucEl = document.getElementById("matchday-suc");
-    errEl.style.display="none"; sucEl.style.display="none";
-
-    if (!checkAdmin()) return;
-
-    try {
-      await set(matchDayRef, { date: getTodayString(), state: "on" });
-      sucEl.textContent = "✓ Today marked as a match day for everyone";
-      sucEl.style.display = "block";
-      populateMatchDayStatus();
-      populateMatchDayBanner();
-    } catch(e) {
-      errEl.textContent = "Failed: " + e.message;
-      errEl.style.display = "block";
-    }
-  });
-
-  document.getElementById("matchday-clear-btn").addEventListener("click", async function() {
-    var errEl = document.getElementById("matchday-err");
-    var sucEl = document.getElementById("matchday-suc");
-    errEl.style.display="none"; sucEl.style.display="none";
-
-    if (!checkAdmin()) return;
-
-    try {
-      await set(matchDayRef, { date: getTodayString(), state: "off" });
-      sucEl.textContent = "✓ Today marked as NOT a match day (overrides the weekly pattern for today only)";
-      sucEl.style.display = "block";
-      populateMatchDayStatus();
       populateMatchDayBanner();
     } catch(e) {
       errEl.textContent = "Failed: " + e.message;
@@ -1229,12 +1157,6 @@
     return y + "-" + m + "-" + day; // local-timezone-safe, matches how match dates are stored
   }
   function isTodayMatchDay() {
-    var todayStr = getTodayString();
-    // Priority 1: an explicit override for TODAY specifically always wins, regardless of the weekly pattern
-    if (matchDayFlag && matchDayFlag.date === todayStr) {
-      return matchDayFlag.state === "on";
-    }
-    // Priority 2: fall back to the saved weekly pattern (e.g. ["Monday","Thursday"])
     var dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
     var todayName = dayNames[new Date().getDay()];
     return weeklyPattern.indexOf(todayName) > -1;
@@ -1861,7 +1783,7 @@
   }
 
   function getPairMatches(pairName) {
-    return sessions.filter(function(s) {
+    return getSessionsForPeriod().filter(function(s) {
       var t1 = [s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
       var t2 = [s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
       return t1 === pairName || t2 === pairName;
