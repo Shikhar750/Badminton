@@ -405,6 +405,18 @@
     <div id="h2h-matches"></div>
   </div>
 
+  <!-- PAIR DETAIL -->
+  <div class="tab" id="tab-pair">
+    <button class="back-btn" id="back-from-pair">← Back to Rankings</button>
+    <div class="player-header">
+      <div class="player-name-big" id="pair-name">Pair</div>
+      <div class="player-winrate" id="pair-winrate">0%</div>
+      <div class="player-record" id="pair-record">0W — 0L</div>
+    </div>
+    <div class="sec-hdr">Match History</div>
+    <div id="pair-matches"></div>
+  </div>
+
   <!-- RULES -->
   <div class="tab" id="tab-rules">
     <div class="rule-card">
@@ -485,13 +497,24 @@
       </div>
 
       <div class="rule-card">
-        <div class="rule-title">Match Day Banner</div>
-        <div class="rule-text" style="font-size:11.5px;margin-bottom:12px">Toggle a banner at the top of the app for everyone, letting the squad know today's a match day. Auto-clears at midnight, or clear it manually below.</div>
+        <div class="rule-title">Weekly Match Days</div>
+        <div class="rule-text" style="font-size:11.5px;margin-bottom:12px">Pick the days you regularly play — the banner shows automatically on these days for everyone. Use the override below to handle exceptions (a one-off extra day, or skipping a normally-scheduled day).</div>
+        <div class="fg">
+          <div class="chips-wrap" id="weekly-pattern-chips"></div>
+        </div>
+        <div class="err" id="weekly-err"></div>
+        <div class="suc" id="weekly-suc"></div>
+        <button class="save-btn" id="weekly-save-btn">Save Weekly Pattern (PIN required)</button>
+      </div>
+
+      <div class="rule-card">
+        <div class="rule-title">Today's Override</div>
+        <div class="rule-text" style="font-size:11.5px;margin-bottom:12px">Overrides the weekly pattern for TODAY only — use this for an ad-hoc extra match day, or to skip a normally-scheduled day this week. Doesn't change your saved weekly pattern.</div>
         <div class="err" id="matchday-err"></div>
         <div class="suc" id="matchday-suc"></div>
         <button class="save-btn" id="matchday-set-btn">Mark Today as Match Day (PIN required)</button>
-        <button class="cancel-btn" id="matchday-clear-btn" style="margin-top:8px">Un-mark Match Day (PIN required)</button>
-        <div class="hint" id="matchday-current-status">Match day banner is currently off</div>
+        <button class="cancel-btn" id="matchday-clear-btn" style="margin-top:8px">Mark Today as NOT a Match Day (PIN required)</button>
+        <div class="hint" id="matchday-current-status">No override set for today — following the weekly pattern</div>
       </div>
     </div>
   </div>
@@ -516,7 +539,8 @@
   var squadRef = ref(db, "squad");
   var adjustmentsRef = ref(db, "monthlyAdjustments");
   var monthOverridesRef = ref(db, "settings/monthOverrides");
-  var matchDayRef = ref(db, "settings/matchDayFlag"); // { date: "2026-07-08" } - if this equals today, show the banner
+  var matchDayRef = ref(db, "settings/matchDayFlag"); // { date: "2026-07-08", state: "on"/"off" } - explicit override for a specific day, wins over the weekly pattern
+  var weeklyPatternRef = ref(db, "settings/weeklyMatchDays"); // ["Monday","Thursday"] - fixed recurring match days, used as fallback when no override exists for today
   var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   var ADMIN_PIN = "7789";
@@ -538,7 +562,8 @@
   var leaderboardPeriod = "month"; // "month" or "alltime"
   var monthlyAdjustments = {}; // { "2026-07": { "Shikhar": {brownie:1.5, negative:-1, negativeReason:"..."} } }
   var monthOverrides = {}; // { "2026-07": "2026-07-10" } -- if set, "This Month" only counts matches on/after this date
-  var matchDayFlag = null; // { date: "2026-07-08" } or null if not set
+  var matchDayFlag = null; // { date: "2026-07-08", state: "on"/"off" } - explicit per-day override, or null if none set
+  var weeklyPattern = []; // e.g. ["Monday","Thursday"]
 
   function isLocked(s) {
     if (!s.date) return false;
@@ -561,7 +586,7 @@
 
   // NAV
   function showTab(name) {
-    ["leaderboard","history","add","player","h2h","rules","winners"].forEach(function(t) {
+    ["leaderboard","history","add","player","h2h","rules","winners","pair"].forEach(function(t) {
       document.getElementById("tab-"+t).classList.remove("active");
       var n = document.getElementById("nav-"+t);
       if (n) n.classList.remove("active");
@@ -595,6 +620,7 @@
   document.getElementById("btn-11").addEventListener("click", function(){ gameType="11"; this.classList.add("active"); document.getElementById("btn-21").classList.remove("active"); });
   document.getElementById("back-from-player").addEventListener("click", function(){ showTab("leaderboard"); });
   document.getElementById("back-from-h2h").addEventListener("click", function(){ showPlayerStats(currentPlayer); });
+  document.getElementById("back-from-pair").addEventListener("click", function(){ showTab("leaderboard"); });
   document.getElementById("champion-banner").addEventListener("click", function(){ renderMonthlyWinners(); showTab("winners"); });
   document.getElementById("back-from-winners").addEventListener("click", function(){ showTab("leaderboard"); });
 
@@ -613,6 +639,7 @@
     populateAdjPlayerDropdown();
     populateOverridePanel();
     populateMatchDayStatus();
+    populateWeeklyPatternPanel();
   });
 
   // Date filter
@@ -675,6 +702,10 @@
   });
   onValue(matchDayRef, function(snap) {
     matchDayFlag = snap.val() || null;
+    populateMatchDayBanner();
+  });
+  onValue(weeklyPatternRef, function(snap) {
+    weeklyPattern = snap.val() || [];
     populateMatchDayBanner();
   });
 
@@ -799,13 +830,58 @@
     }
   });
 
+  var weeklyPatternSelected = [];
+  var ALL_DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+  function renderWeeklyPatternChips() {
+    var el = document.getElementById("weekly-pattern-chips");
+    el.innerHTML = ALL_DAYS.map(function(d) {
+      var sel = weeklyPatternSelected.indexOf(d) > -1;
+      return '<button class="chip'+(sel?" sel-t1":"")+'" data-day="'+d+'">'+d.substring(0,3)+'</button>';
+    }).join("");
+    el.querySelectorAll(".chip").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var day = this.getAttribute("data-day");
+        var idx = weeklyPatternSelected.indexOf(day);
+        if (idx > -1) weeklyPatternSelected.splice(idx, 1);
+        else weeklyPatternSelected.push(day);
+        renderWeeklyPatternChips();
+      });
+    });
+  }
+  function populateWeeklyPatternPanel() {
+    weeklyPatternSelected = weeklyPattern.slice();
+    renderWeeklyPatternChips();
+  }
+  document.getElementById("weekly-save-btn").addEventListener("click", async function() {
+    var errEl = document.getElementById("weekly-err");
+    var sucEl = document.getElementById("weekly-suc");
+    errEl.style.display="none"; sucEl.style.display="none";
+    if (!checkAdmin()) return;
+    try {
+      await set(weeklyPatternRef, weeklyPatternSelected);
+      sucEl.textContent = "✓ Weekly pattern saved: " + (weeklyPatternSelected.length ? weeklyPatternSelected.join(", ") : "no days selected");
+      sucEl.style.display = "block";
+      populateMatchDayStatus();
+    } catch(e) {
+      errEl.textContent = "Failed: " + e.message;
+      errEl.style.display = "block";
+    }
+  });
   function populateMatchDayStatus() {
     var statusEl = document.getElementById("matchday-current-status");
     var todayStr = getTodayString();
+    var dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    var todayName = dayNames[new Date().getDay()];
+    var patternSaysYes = weeklyPattern.indexOf(todayName) > -1;
+
     if (matchDayFlag && matchDayFlag.date === todayStr) {
-      statusEl.textContent = "Match day banner is currently ON for today (" + todayStr + ")";
+      if (matchDayFlag.state === "on") {
+        statusEl.textContent = "Today is manually marked ON" + (patternSaysYes ? " (also matches the weekly pattern)" : " (overriding the weekly pattern, which doesn't include today)");
+      } else {
+        statusEl.textContent = "Today is manually marked OFF" + (patternSaysYes ? " (overriding the weekly pattern, which normally includes today)" : "");
+      }
     } else {
-      statusEl.textContent = "Match day banner is currently off";
+      statusEl.textContent = patternSaysYes ? "No override set — today (" + todayName + ") matches your weekly pattern, banner will show" : "No override set — today (" + todayName + ") is not in your weekly pattern";
     }
   }
 
@@ -817,10 +893,11 @@
     if (!checkAdmin()) return;
 
     try {
-      await set(matchDayRef, { date: getTodayString() });
-      sucEl.textContent = "✓ Match day banner turned on for everyone";
+      await set(matchDayRef, { date: getTodayString(), state: "on" });
+      sucEl.textContent = "✓ Today marked as a match day for everyone";
       sucEl.style.display = "block";
       populateMatchDayStatus();
+      populateMatchDayBanner();
     } catch(e) {
       errEl.textContent = "Failed: " + e.message;
       errEl.style.display = "block";
@@ -835,10 +912,11 @@
     if (!checkAdmin()) return;
 
     try {
-      await remove(matchDayRef);
-      sucEl.textContent = "✓ Match day banner turned off";
+      await set(matchDayRef, { date: getTodayString(), state: "off" });
+      sucEl.textContent = "✓ Today marked as NOT a match day (overrides the weekly pattern for today only)";
       sucEl.style.display = "block";
       populateMatchDayStatus();
+      populateMatchDayBanner();
     } catch(e) {
       errEl.textContent = "Failed: " + e.message;
       errEl.style.display = "block";
@@ -1150,14 +1228,28 @@
     var day = String(d.getDate()).padStart(2,"0");
     return y + "-" + m + "-" + day; // local-timezone-safe, matches how match dates are stored
   }
+  function isTodayMatchDay() {
+    var todayStr = getTodayString();
+    // Priority 1: an explicit override for TODAY specifically always wins, regardless of the weekly pattern
+    if (matchDayFlag && matchDayFlag.date === todayStr) {
+      return matchDayFlag.state === "on";
+    }
+    // Priority 2: fall back to the saved weekly pattern (e.g. ["Monday","Thursday"])
+    var dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    var todayName = dayNames[new Date().getDay()];
+    return weeklyPattern.indexOf(todayName) > -1;
+  }
   function populateMatchDayBanner() {
     var banner = document.getElementById("matchday-banner");
     var todayStr = getTodayString();
-    if (!matchDayFlag || matchDayFlag.date !== todayStr) {
+    if (!isTodayMatchDay()) {
       banner.style.display = "none";
       return;
     }
-    var todaysMatchCount = sessions.filter(function(s){ return s.date === todayStr; }).length;
+    var todaysMatchCount = 0;
+    sessions.forEach(function(s){
+      if (s.date === todayStr) todaysMatchCount += (Number(s.t1wins)||0) + (Number(s.t2wins)||0);
+    });
     var textEl = document.getElementById("matchday-text");
     if (todaysMatchCount > 0) {
       textEl.textContent = todaysMatchCount + " match" + (todaysMatchCount!==1?"es":"") + " smashed today already";
@@ -1450,17 +1542,21 @@
   // LEADERBOARD
   function renderLeaderboard() {
     var periodSessions = getSessionsForPeriod();
-    function rows(data,clickable){
+    var periodTotalGames = 0;
+    periodSessions.forEach(function(s){ periodTotalGames += (Number(s.t1wins)||0) + (Number(s.t2wins)||0); });
+    function rows(data,clickable,kind){
+      kind = kind || "player";
+      var attrName = kind === "pair" ? "data-pair" : "data-player";
       if(!data.length)return emptyHTML();
       var qualifiedRank = 0;
-      return(clickable?'<div class="tap-hint">Tap a player to see stats</div>':"")+
+      return(clickable?'<div class="tap-hint">Tap '+(kind==="pair"?"a pair":"a player")+' to see stats</div>':"")+
         data.map(function(p){
           var tot=p.won+p.lost,rate=tot?Math.round(p.won/tot*100):0,low=rate<50;
           var sHTML="";
-          if(clickable){var st=computeStreaks(p.name);if(st&&st.count>=2){if(st.type==="W")sHTML='<span class="tag hot">🔥 won last '+st.count+'</span>';else if(st.type==="L")sHTML='<span class="tag cold">❄️ lost last '+st.count+'</span>';}}
+          if(clickable&&kind==="player"){var st=computeStreaks(p.name);if(st&&st.count>=2){if(st.type==="W")sHTML='<span class="tag hot">🔥 won last '+st.count+'</span>';else if(st.type==="L")sHTML='<span class="tag cold">❄️ lost last '+st.count+'</span>';}}
 
           if (p.qualified === false) {
-            return '<div class="lb-row" data-player="'+p.name+'" style="opacity:0.65">'+
+            return '<div class="lb-row" '+attrName+'="'+p.name+'" style="opacity:0.65">'+
               '<div class="rank-badge">—</div>'+
               '<div class="lb-main"><div class="lb-name">'+p.name+'</div>'+
                 '<div class="lb-secondary">'+sHTML+'<span>Played '+p.matchDaysPlayed+' of '+p.matchDaysNeeded+' required days</span></div></div>'+
@@ -1473,15 +1569,16 @@
           var adjHTML = "";
           if (p.brownie > 0) adjHTML += '<span class="tag brownie">🍪 +'+p.brownie+'%</span>';
           if (p.negative < 0) adjHTML += '<span class="tag penalty" title="'+(p.negativeReason||"")+'">⚠️ '+p.negative+'%</span>';
-          return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+'" data-player="'+p.name+'">'+
+          return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+'" '+attrName+'="'+p.name+'">'+
             '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+'</div>'+
             '<div class="lb-main"><div class="lb-name">'+p.name+'</div>'+(sHTML||adjHTML?'<div class="lb-secondary">'+sHTML+adjHTML+'</div>':'')+'</div>'+
             '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div></div></div>';
-        }).join("")+'<div class="count">'+periodSessions.length+' match'+(periodSessions.length!==1?"es":"")+" recorded</div>";
+        }).join("")+'<div class="count">'+periodTotalGames+' match'+(periodTotalGames!==1?"es":"")+" recorded</div>";
     }
-    H("lb-individual",rows(computeIndividual(),true));
-    H("lb-pairs",rows(computePairs(),false));
+    H("lb-individual",rows(computeIndividual(),true,"player"));
+    H("lb-pairs",rows(computePairs(),true,"pair"));
     document.querySelectorAll("[data-player]").forEach(function(row){row.addEventListener("click",function(){showPlayerStats(this.getAttribute("data-player"));});});
+    document.querySelectorAll("[data-pair]").forEach(function(row){row.addEventListener("click",function(){showPairStats(this.getAttribute("data-pair"));});});
   }
 
   // SESSION CARD HTML (collapsed)
@@ -1761,6 +1858,77 @@
     });
 
     showTab("h2h");
+  }
+
+  function getPairMatches(pairName) {
+    return sessions.filter(function(s) {
+      var t1 = [s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
+      var t2 = [s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
+      return t1 === pairName || t2 === pairName;
+    }).sort(function(a,b){ return a.id-b.id; });
+  }
+  function showPairStats(pairName) {
+    var matches = getPairMatches(pairName);
+    var won=0, lost=0;
+    matches.forEach(function(s) {
+      var t1 = [s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
+      var isT1 = t1 === pairName;
+      won += isT1 ? Number(s.t1wins) : Number(s.t2wins);
+      lost += isT1 ? Number(s.t2wins) : Number(s.t1wins);
+    });
+    var tot = won+lost, rate = tot ? Math.round(won/tot*100) : 0;
+
+    document.getElementById("pair-name").textContent = pairName;
+    var rateEl = document.getElementById("pair-winrate");
+    rateEl.textContent = rate+"%";
+    rateEl.className = "player-winrate"+(rate<50?" low":"");
+    document.getElementById("pair-record").textContent = won+"W — "+lost+"L • "+matches.length+" matches";
+
+    H("pair-matches", matches.slice().reverse().map(function(s) {
+      var t1 = [s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
+      var isT1 = t1 === pairName;
+      var myWins = isT1 ? Number(s.t1wins) : Number(s.t2wins);
+      var oppWins = isT1 ? Number(s.t2wins) : Number(s.t1wins);
+      var oppName = isT1
+        ? [s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined";}).join(" & ")
+        : [s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
+      var won = myWins > oppWins, draw = myWins === oppWins;
+      var rc = draw?"d":won?"w":"l", rl = draw?"Draw":won?"Won":"Lost";
+      var hasScores = s.scores && s.scores.length > 0;
+
+      var scoresBodyHTML = "";
+      if (hasScores) {
+        scoresBodyHTML = '<div style="padding:8px 0">'+s.scores.map(function(sc,i){
+          var gw = isT1 ? sc.t1>sc.t2 : sc.t2>sc.t1;
+          var myScore = isT1 ? sc.t1 : sc.t2, oppScore = isT1 ? sc.t2 : sc.t1;
+          return '<div class="game-score-row"><span class="game-label">Game '+(i+1)+'</span><span class="game-result '+(gw?"w":"l")+'">'+myScore+' — '+oppScore+'</span><span class="game-icon">'+(gw?"✅":"❌")+'</span></div>';
+        }).join("")+'</div>';
+      }
+
+      return '<div class="h2h-match-card">'+
+        '<div class="h2h-match-summary">'+
+          '<div class="h2h-match-date">'+fmtDate(s.date)+'</div>'+
+          '<div class="h2h-match-teams">vs '+oppName+'</div>'+
+          gtBadge(s)+
+          (hasScores?'<span style="font-size:11px">📊</span>':'')+
+          '<div class="h2h-match-result '+rc+'">'+rl+'</div>'+
+          '<span style="color:var(--text-dim);font-size:11px;margin-left:2px">›</span>'+
+        '</div>'+
+        '<div class="h2h-match-body">'+
+          '<div style="font-family:monospace;font-size:13px;color:var(--text-dim);margin-top:8px">'+myWins+' — '+oppWins+' matches</div>'+
+          scoresBodyHTML+
+        '</div>'+
+      '</div>';
+    }).join("")||'<div style="color:var(--text-dim);text-align:center;padding:20px">No matches yet</div>');
+
+    document.querySelectorAll("#pair-matches .h2h-match-summary").forEach(function(el){
+      el.addEventListener("click",function(){
+        var body=this.nextElementSibling;
+        body.classList.toggle("open");
+      });
+    });
+
+    showTab("pair");
   }
 </script>
 </body>
