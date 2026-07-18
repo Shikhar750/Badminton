@@ -302,6 +302,7 @@
       <div class="filter-pill" data-result="win">Won</div>
       <div class="filter-pill" data-result="loss">Lost</div>
     </div>
+    <div class="hint" id="history-total-games" style="margin-bottom:12px"></div>
     <div id="history-content"></div>
     <div class="load-more-sentinel" id="history-sentinel"></div>
   </div>
@@ -1068,6 +1069,30 @@
     });
     return Object.keys(days).length;
   }
+  // All-time attendance uses a PER-PLAYER denominator anchored to their own first match,
+  // not the app's global start date - so someone who joined the squad later is never
+  // penalized for match-days that happened before they existed in the app.
+  function getPlayerFirstMatchDate(name) {
+    var earliest = null;
+    sessions.forEach(function(s) {
+      if (!s.date) return;
+      if ([s.t1p1,s.t1p2,s.t2p1,s.t2p2].indexOf(name) === -1) return;
+      if (earliest === null || s.date < earliest) earliest = s.date;
+    });
+    return earliest;
+  }
+  function getAllTimeAttendanceForPlayer(name) {
+    var firstDate = getPlayerFirstMatchDate(name);
+    if (!firstDate) return { attended: 0, total: 0 };
+    var allDaysSinceJoined = {};
+    var attendedDays = {};
+    sessions.forEach(function(s) {
+      if (!s.date || s.date < firstDate) return; // only count days from their first match onward
+      allDaysSinceJoined[s.date] = true;
+      if ([s.t1p1,s.t1p2,s.t2p1,s.t2p2].indexOf(name) > -1) attendedDays[s.date] = true;
+    });
+    return { attended: Object.keys(attendedDays).length, total: Object.keys(allDaysSinceJoined).length };
+  }
   function isQualifiedThisMonth(name) {
     var total = getTotalMatchDaysThisMonth();
     if (total === 0) return true; // no data yet, don't penalize
@@ -1170,11 +1195,11 @@
     }
     var todaysMatchCount = 0;
     sessions.forEach(function(s){
-      if (s.date === todayStr) todaysMatchCount += (Number(s.t1wins)||0) + (Number(s.t2wins)||0);
+      if (s.date === todayStr) todaysMatchCount += ((Number(s.t1wins)||0) + (Number(s.t2wins)||0)) * wt(s);
     });
     var textEl = document.getElementById("matchday-text");
     if (todaysMatchCount > 0) {
-      textEl.textContent = todaysMatchCount + " match" + (todaysMatchCount!==1?"es":"") + " smashed today already";
+      textEl.textContent = todaysMatchCount.toFixed(1) + " match" + (todaysMatchCount!==1?"es":"") + " smashed today already";
     } else {
       textEl.textContent = "Match day, today!";
     }
@@ -1448,7 +1473,26 @@
         pl.rankedScore = (rawRate * attendanceRatio) + adj.negative;
         pl.effectiveScore = pl.rankedScore; // sort key
       });
+    } else if (leaderboardPeriod === "alltime") {
+      arr.forEach(function(pl) {
+        pl.qualified = true;
+        pl.brownie = 0; pl.negative = 0; pl.negativeReason = "";
+        var rawRate = pl.won+pl.lost ? (pl.won/(pl.won+pl.lost))*100 : 0;
+        pl.rawRate = rawRate;
+        // All-time attendance uses a PER-PLAYER window: only match-days from THIS player's
+        // own first match onward count toward their denominator, so someone who joined the
+        // squad later is never penalized for history that predates them.
+        var att = getAllTimeAttendanceForPlayer(pl.name);
+        pl.matchDaysPlayed = att.attended;
+        pl.matchDaysTotal = att.total;
+        pl.firstMatchDate = getPlayerFirstMatchDate(pl.name);
+        var attendanceRatio = att.total > 0 ? (att.attended / att.total) : 1;
+        pl.attendanceRatio = attendanceRatio;
+        pl.rankedScore = rawRate * attendanceRatio;
+        pl.effectiveScore = pl.rankedScore;
+      });
     } else {
+      // 4-Player Days: stays pure informational, no ranking machinery attached
       arr.forEach(function(pl) {
         pl.qualified = true;
         pl.brownie = 0; pl.negative = 0; pl.negativeReason = "";
@@ -1473,7 +1517,7 @@
   function renderLeaderboard() {
     var periodSessions = getSessionsForPeriod();
     var periodTotalGames = 0;
-    periodSessions.forEach(function(s){ periodTotalGames += (Number(s.t1wins)||0) + (Number(s.t2wins)||0); });
+    periodSessions.forEach(function(s){ periodTotalGames += ((Number(s.t1wins)||0) + (Number(s.t2wins)||0)) * wt(s); });
     function rows(data,clickable,kind){
       kind = kind || "player";
       var attrName = kind === "pair" ? "data-pair" : "data-player";
@@ -1499,15 +1543,32 @@
           var adjHTML = "";
           if (p.brownie > 0) adjHTML += '<span class="tag brownie">🍪 +'+p.brownie+'%</span>';
           if (p.negative < 0) adjHTML += '<span class="tag penalty" title="'+(p.negativeReason||"")+'">⚠️ '+p.negative+'%</span>';
-          var rankedScoreHTML = "";
-          if (kind==="player" && leaderboardPeriod==="month" && typeof p.rankedScore==="number" && Math.abs(p.rankedScore-rate) >= 0.5) {
-            rankedScoreHTML = '<div class="lb-detail" style="opacity:0.7">📊 Ranked score: '+p.rankedScore.toFixed(1)+' (played '+p.matchDaysPlayed+' of '+getTotalMatchDaysThisMonth()+' days)</div>';
+
+          var hasRankedScore = kind==="player" && (leaderboardPeriod==="month" || leaderboardPeriod==="alltime") && typeof p.rankedScore==="number";
+          var heroNumber, subLine1, subLine2, subLine3 = "";
+          if (hasRankedScore) {
+            // Hero = ranked score (what actually determines position); raw % shown colored just below it
+            heroNumber = p.rankedScore.toFixed(1);
+            subLine1 = '<span class="lb-rate'+(low?" low":"")+'" style="font-size:11px">'+rate+'%</span><span class="lb-detail"> raw · '+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</span>';
+            var daysTotal = leaderboardPeriod==="month" ? getTotalMatchDaysThisMonth() : p.matchDaysTotal;
+            subLine2 = '<div class="lb-detail" style="opacity:0.7">Played '+p.matchDaysPlayed+' of '+daysTotal+' match-days</div>';
+            if (leaderboardPeriod==="alltime" && p.firstMatchDate) {
+              var fmParts = p.firstMatchDate.split("-");
+              var fmMonthLabel = MONTHS[parseInt(fmParts[1])-1];
+              subLine3 = '<div class="lb-detail" style="opacity:0.55">(since '+fmMonthLabel+')</div>';
+            }
+          } else {
+            // No ranked score in this view (4-Player Days / Pairs) - raw % IS the hero, styled with the same weight
+            heroNumber = rate;
+            subLine1 = '<span class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</span>';
+            subLine2 = '<div class="lb-detail" style="opacity:0.7">'+tot.toFixed(1)+' matches</div>';
           }
+
           return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+'" '+attrName+'="'+p.name+'">'+
             '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+'</div>'+
             '<div class="lb-main"><div class="lb-name">'+p.name+'</div>'+(sHTML||adjHTML?'<div class="lb-secondary">'+sHTML+adjHTML+'</div>':'')+'</div>'+
-            '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div class="lb-detail" style="opacity:0.7">'+tot.toFixed(1)+' matches</div>'+rankedScoreHTML+'<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div></div></div>';
-        }).join("")+'<div class="count">'+periodTotalGames+' match'+(periodTotalGames!==1?"es":"")+" recorded</div>";
+            '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+heroNumber+(hasRankedScore?"":"%")+'</div><div class="lb-detail">'+subLine1+'</div>'+subLine2+subLine3+'<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div></div></div>';
+        }).join("")+'<div class="count">'+periodTotalGames.toFixed(1)+' match'+(periodTotalGames!==1?"es":"")+" recorded</div>";
     }
     H("lb-individual",rows(computeIndividual(),true,"player"));
     H("lb-pairs",rows(computePairs(),true,"pair"));
@@ -1674,6 +1735,10 @@
   function renderHistory() {
     H("history-content","");
     allHistoryLoaded=false;
+    var filtered = getFiltered();
+    var totalGames = 0;
+    filtered.forEach(function(s){ totalGames += ((Number(s.t1wins)||0) + (Number(s.t2wins)||0)) * wt(s); });
+    document.getElementById("history-total-games").textContent = totalGames.toFixed(1) + " match" + (totalGames!==1?"es":"") + " played · " + filtered.length + " session" + (filtered.length!==1?"s":"") + " logged";
     appendHistory();
   }
 
