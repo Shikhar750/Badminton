@@ -571,7 +571,7 @@
     return false;
   }
 
-  document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
+  document.getElementById("inp-date").value = getTodayString();
 
   // NAV
   function showTab(name) {
@@ -946,7 +946,7 @@
   // FORM
   function resetForm() {
     editingKey=null;t1Selected=[];t2Selected=[];gameType="21";
-    document.getElementById("inp-date").value=new Date().toISOString().split("T")[0];
+    document.getElementById("inp-date").value=getTodayString();
     document.getElementById("t1wins").value="";document.getElementById("t2wins").value="";
     document.getElementById("form-err").style.display="none";document.getElementById("form-suc").style.display="none";
     document.getElementById("save-btn").textContent="Save Match";document.getElementById("cancel-btn").style.display="none";
@@ -1199,7 +1199,7 @@
     });
     var textEl = document.getElementById("matchday-text");
     if (todaysMatchCount > 0) {
-      textEl.textContent = todaysMatchCount.toFixed(1) + " match" + (todaysMatchCount!==1?"es":"") + " smashed today already";
+      textEl.textContent = Math.round(todaysMatchCount) + " match" + (todaysMatchCount!==1?"es":"") + " smashed today already";
     } else {
       textEl.textContent = "Match day, today!";
     }
