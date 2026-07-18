@@ -1548,7 +1548,7 @@
           var heroNumber, subLine1, subLine2, subLine3 = "";
           if (hasRankedScore) {
             // Hero = ranked score (what actually determines position); raw % shown colored just below it
-            heroNumber = p.rankedScore.toFixed(1);
+            heroNumber = Math.round(p.rankedScore);
             subLine1 = '<span class="lb-rate'+(low?" low":"")+'" style="font-size:11px">'+rate+'%</span><span class="lb-detail"> raw · '+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</span>';
             var daysTotal = leaderboardPeriod==="month" ? getTotalMatchDaysThisMonth() : p.matchDaysTotal;
             subLine2 = '<div class="lb-detail" style="opacity:0.7">Played '+p.matchDaysPlayed+' of '+daysTotal+' match-days</div>';
@@ -1567,7 +1567,7 @@
           return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+'" '+attrName+'="'+p.name+'">'+
             '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+'</div>'+
             '<div class="lb-main"><div class="lb-name">'+p.name+'</div>'+(sHTML||adjHTML?'<div class="lb-secondary">'+sHTML+adjHTML+'</div>':'')+'</div>'+
-            '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+heroNumber+(hasRankedScore?"":"%")+'</div><div class="lb-detail">'+subLine1+'</div>'+subLine2+subLine3+'<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div></div></div>';
+            '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+heroNumber+'%</div><div class="lb-detail">'+subLine1+'</div>'+subLine2+subLine3+'<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div></div></div>';
         }).join("")+'<div class="count">'+periodTotalGames.toFixed(1)+' match'+(periodTotalGames!==1?"es":"")+" recorded</div>";
     }
     H("lb-individual",rows(computeIndividual(),true,"player"));
