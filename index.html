@@ -447,7 +447,7 @@
       <div class="rule-text">
         <b>4 players:</b> Across 6 matches, cycle through all 3 possible team combinations — 2 matches with each pairing.<br><br>
         <b>5 players:</b> One player sits out each match (loser's team rotates one out, sitting player joins the survivor). If a pair wins 2 matches in a row, they split before the 3rd — one stays, one joins the other side, and the surviving loser pairs with whoever's left.<br><br>
-        <b>6 players:</b> Teams stay fixed for the entire day's session. Use 🎲 Suggest Today's Lineup at the start of each 6-player day.
+        <b>6 players:</b> Split into 3 fixed teams of 2. First ~30 min: round robin — each team plays the other two once, then sits (3 matches total, everyone faces everyone). Second ~30 min: reshuffle into 3 fresh teams with zero repeat pairings from the first half. Use 🎲 Suggest Today's Lineup at the start — it gives you both halves at once, based on this month's pairing history.
       </div>
     </div>
     <div class="rule-card">
@@ -1370,16 +1370,48 @@
       return { teams: best, waiting: null, sitOut: bestSitOut, score: bestScore };
     }
     if (playerCount === 6) {
-      var starting4Options = combinationsOf(players, 4);
-      var best6=null, bestScore6=Infinity, bestWaiting=null;
-      starting4Options.forEach(function(four) {
-        var waiting = players.filter(function(p){ return four.indexOf(p)===-1; });
-        var r = bestSplitFor4(four, counts);
-        var waitingScore = getPairCount(counts, waiting[0], waiting[1]);
-        var total = r.score + waitingScore;
-        if (total < bestScore6) { bestScore6=total; best6=r.teams; bestWaiting=waiting; }
+      // Generate all 15 possible ways to split 6 players into 3 pairs
+      function allThreeWaySplits(ps) {
+        var results = [];
+        function helper(remaining, current) {
+          if (remaining.length === 0) { results.push(current.slice()); return; }
+          var first = remaining[0];
+          for (var i = 1; i < remaining.length; i++) {
+            var partner = remaining[i];
+            var rest = remaining.filter(function(p){ return p!==first && p!==partner; });
+            current.push([first, partner]);
+            helper(rest, current);
+            current.pop();
+          }
+        }
+        helper(ps, []);
+        return results;
+      }
+      function scoreSplit(split, c) {
+        return split.reduce(function(sum, pair) { return sum + getPairCount(c, pair[0], pair[1]); }, 0);
+      }
+      var allSplits = allThreeWaySplits(players);
+
+      // First half: best (freshest) 3-team split overall
+      var firstHalf = allSplits.reduce(function(best, split) {
+        var score = scoreSplit(split, counts);
+        return (!best || score < best.score) ? { split: split, score: score } : best;
+      }, null);
+
+      // Second half: best split with ZERO pairing overlap against the first half
+      var firstHalfKeys = firstHalf.split.map(function(p){ return getPairKey(p[0],p[1]); });
+      var nonOverlapping = allSplits.filter(function(split) {
+        return split.every(function(p){ return firstHalfKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
       });
-      return { teams: best6, waiting: bestWaiting, sitOut: null, score: bestScore6 };
+      var secondHalf = null;
+      if (nonOverlapping.length > 0) {
+        secondHalf = nonOverlapping.reduce(function(best, split) {
+          var score = scoreSplit(split, counts);
+          return (!best || score < best.score) ? { split: split, score: score } : best;
+        }, null);
+      }
+
+      return { sixPlayerPlan: { firstHalf: firstHalf.split, secondHalf: secondHalf ? secondHalf.split : null } };
     }
   }
 
@@ -1425,6 +1457,33 @@
   function renderLineupSuggestion(players) {
     var result = suggestLineup(players);
     var el = document.getElementById("lineup-result");
+
+    if (result.sixPlayerPlan) {
+      var fh = result.sixPlayerPlan.firstHalf;
+      var sh = result.sixPlayerPlan.secondHalf;
+      var html = '<div style="margin-top:12px">';
+      html += '<div style="font-size:10.5px;color:var(--accent);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">First ~30 min — round robin</div>';
+      html += '<div style="font-size:13px;line-height:1.9;color:var(--text)">';
+      html += fh[0].join(" & ") + ' <span style="color:var(--text-dim)">vs</span> ' + fh[1].join(" & ") + '<br>';
+      html += fh[0].join(" & ") + ' <span style="color:var(--text-dim)">vs</span> ' + fh[2].join(" & ") + '<br>';
+      html += fh[1].join(" & ") + ' <span style="color:var(--text-dim)">vs</span> ' + fh[2].join(" & ") + '<br>';
+      html += '</div>';
+      html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">Each team plays the other two once, then sits — everyone faces everyone</div>';
+
+      if (sh) {
+        html += '<div style="font-size:10.5px;color:var(--accent);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin:16px 0 8px">Second ~30 min — fresh teams</div>';
+        html += '<div style="font-size:13px;line-height:1.9;color:var(--text)">';
+        html += sh[0].join(" & ") + ' <span style="color:var(--text-dim)">vs</span> ' + sh[1].join(" & ") + '<br>';
+        html += sh[0].join(" & ") + ' <span style="color:var(--text-dim)">vs</span> ' + sh[2].join(" & ") + '<br>';
+        html += sh[1].join(" & ") + ' <span style="color:var(--text-dim)">vs</span> ' + sh[2].join(" & ") + '<br>';
+        html += '</div>';
+        html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">✨ No repeats from the first half</div>';
+      }
+      html += '</div>';
+      el.innerHTML = html;
+      return;
+    }
+
     var noDataNote = result.score === 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:6px">✨ Fresh pairing — haven\'t played together this month yet</div>' : '<div style="font-size:11px;color:var(--text-dim);margin-top:6px">Best available combo (some overlap unavoidable this month)</div>';
     var html = '<div style="margin-top:12px" class="teams-flat">' +
       '<div class="team-side"><div class="team-side-name">🟢 Your Team</div><div style="font-size:14px;font-weight:600">'+result.teams[0].join(" & ")+'</div></div>' +
