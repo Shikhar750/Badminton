@@ -1462,20 +1462,20 @@
       var fh = result.sixPlayerPlan.firstHalf;
       var sh = result.sixPlayerPlan.secondHalf;
       var html = '<div style="margin-top:12px">';
-      html += '<div style="font-size:10.5px;color:var(--accent);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">First ~30 min — round robin</div>';
-      html += '<div style="font-size:13px;line-height:1.9;color:var(--text)">';
-      html += fh[0].join(" & ") + ' <span style="color:var(--text-dim)">vs</span> ' + fh[1].join(" & ") + '<br>';
-      html += fh[0].join(" & ") + ' <span style="color:var(--text-dim)">vs</span> ' + fh[2].join(" & ") + '<br>';
-      html += fh[1].join(" & ") + ' <span style="color:var(--text-dim)">vs</span> ' + fh[2].join(" & ") + '<br>';
+      html += '<div style="font-size:10.5px;color:var(--accent);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">First ~30 min</div>';
+      html += '<div style="font-size:14px;line-height:2;color:var(--text)">';
+      html += 'Team 1: ' + fh[0].join(" & ") + '<br>';
+      html += 'Team 2: ' + fh[1].join(" & ") + '<br>';
+      html += 'Team 3: ' + fh[2].join(" & ");
       html += '</div>';
-      html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">Each team plays the other two once, then sits — everyone faces everyone</div>';
+      html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">Each plays the other two once, then sits</div>';
 
       if (sh) {
-        html += '<div style="font-size:10.5px;color:var(--accent);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin:16px 0 8px">Second ~30 min — fresh teams</div>';
-        html += '<div style="font-size:13px;line-height:1.9;color:var(--text)">';
-        html += sh[0].join(" & ") + ' <span style="color:var(--text-dim)">vs</span> ' + sh[1].join(" & ") + '<br>';
-        html += sh[0].join(" & ") + ' <span style="color:var(--text-dim)">vs</span> ' + sh[2].join(" & ") + '<br>';
-        html += sh[1].join(" & ") + ' <span style="color:var(--text-dim)">vs</span> ' + sh[2].join(" & ") + '<br>';
+        html += '<div style="font-size:10.5px;color:var(--accent);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin:16px 0 8px">Second ~30 min</div>';
+        html += '<div style="font-size:14px;line-height:2;color:var(--text)">';
+        html += 'Team 1: ' + sh[0].join(" & ") + '<br>';
+        html += 'Team 2: ' + sh[1].join(" & ") + '<br>';
+        html += 'Team 3: ' + sh[2].join(" & ");
         html += '</div>';
         html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">✨ No repeats from the first half</div>';
       }
