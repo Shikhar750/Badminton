@@ -1474,9 +1474,8 @@
         pl.effectiveScore = pl.rankedScore; // sort key
       });
     } else if (leaderboardPeriod === "alltime") {
+      var ALLTIME_MIN_MATCH_DAYS = 5; // must have played at least this many match-days to be ranked in All Time
       arr.forEach(function(pl) {
-        pl.qualified = true;
-        pl.brownie = 0; pl.negative = 0; pl.negativeReason = "";
         var rawRate = pl.won+pl.lost ? (pl.won/(pl.won+pl.lost))*100 : 0;
         pl.rawRate = rawRate;
         // All-time attendance uses a PER-PLAYER window: only match-days from THIS player's
@@ -1486,6 +1485,11 @@
         pl.matchDaysPlayed = att.attended;
         pl.matchDaysTotal = att.total;
         pl.firstMatchDate = getPlayerFirstMatchDate(pl.name);
+        pl.matchDaysNeeded = ALLTIME_MIN_MATCH_DAYS;
+        // Gate: a small sample (even 100%) shouldn't outrank a large, proven one - require
+        // a minimum absolute number of match-days before showing a real rank at all.
+        pl.qualified = att.attended >= ALLTIME_MIN_MATCH_DAYS;
+        pl.brownie = 0; pl.negative = 0; pl.negativeReason = "";
         var attendanceRatio = att.total > 0 ? (att.attended / att.total) : 1;
         pl.attendanceRatio = attendanceRatio;
         pl.rankedScore = rawRate * attendanceRatio;
