@@ -1429,23 +1429,31 @@
     src.forEach(function(s){var w=wt(s);[s.t1p1,s.t1p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t1wins)*w;p[n].lost+=Number(s.t2wins)*w;});[s.t2p1,s.t2p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t2wins)*w;p[n].lost+=Number(s.t1wins)*w;});});
     var arr = Object.values(p);
     if (leaderboardPeriod === "month") {
+      var totalMatchDays = getTotalMatchDaysThisMonth();
       arr.forEach(function(pl) {
         pl.qualified = isQualifiedThisMonth(pl.name);
         pl.matchDaysPlayed = getPlayerMatchDaysThisMonth(pl.name);
-        pl.matchDaysNeeded = Math.ceil(getTotalMatchDaysThisMonth() * 0.5);
+        pl.matchDaysNeeded = Math.ceil(totalMatchDays * 0.5);
         var adj = getAdjustmentFor(pl.name);
-        pl.brownie = adj.brownie;
-        pl.negative = adj.negative;
+        pl.brownie = adj.brownie; // shown as a badge only, no longer affects ranking
+        pl.negative = adj.negative; // still affects ranking - same-month conduct
         pl.negativeReason = adj.negativeReason;
         var rawRate = pl.won+pl.lost ? (pl.won/(pl.won+pl.lost))*100 : 0;
         pl.rawRate = rawRate;
-        pl.effectiveScore = rawRate + adj.brownie + adj.negative;
+        // Attendance-adjusted ranked score: raw win rate scaled by how much of the month's
+        // match-days you actually attended, so a small lucky sample can't outrank someone
+        // who showed up consistently. Negative points still subtract; brownie does not.
+        var attendanceRatio = totalMatchDays > 0 ? (pl.matchDaysPlayed / totalMatchDays) : 1;
+        pl.attendanceRatio = attendanceRatio;
+        pl.rankedScore = (rawRate * attendanceRatio) + adj.negative;
+        pl.effectiveScore = pl.rankedScore; // sort key
       });
     } else {
       arr.forEach(function(pl) {
         pl.qualified = true;
         pl.brownie = 0; pl.negative = 0; pl.negativeReason = "";
         pl.rawRate = pl.won+pl.lost ? (pl.won/(pl.won+pl.lost))*100 : 0;
+        pl.rankedScore = pl.rawRate;
         pl.effectiveScore = pl.rawRate;
       });
     }
@@ -1491,10 +1499,14 @@
           var adjHTML = "";
           if (p.brownie > 0) adjHTML += '<span class="tag brownie">🍪 +'+p.brownie+'%</span>';
           if (p.negative < 0) adjHTML += '<span class="tag penalty" title="'+(p.negativeReason||"")+'">⚠️ '+p.negative+'%</span>';
+          var rankedScoreHTML = "";
+          if (kind==="player" && leaderboardPeriod==="month" && typeof p.rankedScore==="number" && Math.abs(p.rankedScore-rate) >= 0.5) {
+            rankedScoreHTML = '<div class="lb-detail" style="opacity:0.7">📊 Ranked score: '+p.rankedScore.toFixed(1)+' (played '+p.matchDaysPlayed+' of '+getTotalMatchDaysThisMonth()+' days)</div>';
+          }
           return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+'" '+attrName+'="'+p.name+'">'+
             '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+'</div>'+
             '<div class="lb-main"><div class="lb-name">'+p.name+'</div>'+(sHTML||adjHTML?'<div class="lb-secondary">'+sHTML+adjHTML+'</div>':'')+'</div>'+
-            '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div></div></div>';
+            '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div class="lb-detail" style="opacity:0.7">'+tot.toFixed(1)+' matches</div>'+rankedScoreHTML+'<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'\" style="width:'+rate+'%"></div></div></div></div>';
         }).join("")+'<div class="count">'+periodTotalGames+' match'+(periodTotalGames!==1?"es":"")+" recorded</div>";
     }
     H("lb-individual",rows(computeIndividual(),true,"player"));
@@ -1689,7 +1701,7 @@
     attachCardListeners(container);
     if(allHistoryLoaded&&filtered.length>0){
       var existing=document.getElementById("all-loaded-msg");
-      if(!existing){container.insertAdjacentHTML("beforeend",'<div class="loading-indicator" id="all-loaded-msg">All '+filtered.length+' matches loaded</div>');}
+      if(!existing){container.insertAdjacentHTML("beforeend",'<div class="loading-indicator" id="all-loaded-msg">All history loaded</div>');}
     }
   }
 
@@ -1708,11 +1720,11 @@
     document.getElementById("p-avatar").textContent=name.charAt(0).toUpperCase();
     document.getElementById("p-name").textContent=name;
     var re=document.getElementById("p-winrate");re.textContent=rate+"%";re.className="player-winrate"+(rate<50?" low":"");
-    document.getElementById("p-record").textContent=pl.won.toFixed(1)+"W — "+pl.lost.toFixed(1)+"L • "+pm.length+" matches";
+    document.getElementById("p-record").textContent=pl.won.toFixed(1)+"W — "+pl.lost.toFixed(1)+"L • "+(pl.won+pl.lost).toFixed(1)+" matches";
 
     H("stats-grid",
       '<div class="stat-box"><div class="stat-val accent">'+bs+'</div><div class="stat-lbl">Best Streak</div></div>'+
-      '<div class="stat-box"><div class="stat-val">'+pm.length+'</div><div class="stat-lbl">Total Matches</div></div>'+
+      '<div class="stat-box"><div class="stat-val">'+(pl.won+pl.lost).toFixed(1)+'</div><div class="stat-lbl">Total Matches</div></div>'+
       '<div class="stat-box"><div class="stat-val accent" style="font-size:14px">'+(bp||"—")+'</div><div class="stat-lbl">Best Partner</div></div>'+
       '<div class="stat-box"><div class="stat-val loss" style="font-size:14px">'+(tg||"—")+'</div><div class="stat-lbl">Toughest Opp</div></div>'+
       '<div class="stat-box wide"><div class="gt-split">'+
@@ -1804,7 +1816,7 @@
     var rateEl = document.getElementById("pair-winrate");
     rateEl.textContent = rate+"%";
     rateEl.className = "player-winrate"+(rate<50?" low":"");
-    document.getElementById("pair-record").textContent = won+"W — "+lost+"L • "+matches.length+" matches";
+    document.getElementById("pair-record").textContent = won+"W — "+lost+"L • "+(won+lost)+" matches";
 
     H("pair-matches", matches.slice().reverse().map(function(s) {
       var t1 = [s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
