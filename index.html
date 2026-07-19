@@ -204,6 +204,10 @@
   .gt-split{display:flex;justify-content:space-around;align-items:center}
   .gt-divider{width:1px;height:36px;background:var(--border-soft)}
   .sec-hdr{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:10px;font-family:'Space Mono',monospace}
+  .insights-box{background:var(--surface);border-radius:var(--radius);padding:14px 16px;margin-bottom:var(--sp-5)}
+  .insight-row{font-size:13px;color:var(--text);padding:8px 0;border-bottom:1px solid var(--border-soft)}
+  .insight-row:last-child{border-bottom:none}
+  .insight-sub{font-size:11px;color:var(--text-dim);font-family:'Space Mono',monospace;margin-top:3px}
   .h2h-row{background:var(--surface);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer}
   .h2h-opp{font-weight:600;font-size:13.5px;flex:1}
   .h2h-score{font-family:'Space Mono',monospace;font-size:13.5px;font-weight:700}
@@ -387,6 +391,7 @@
       <div class="player-record" id="p-record">0W — 0L</div>
     </div>
     <div class="stats-grid" id="stats-grid"></div>
+    <div id="insights-section"></div>
     <div class="sec-hdr">Head to Head</div>
     <div id="h2h-list"></div>
   </div>
@@ -1023,6 +1028,126 @@
     var m=getSessionsForPeriod().filter(function(s){var t1=[s.t1p1,s.t1p2],t2=[s.t2p1,s.t2p2];return(t1.indexOf(p1)>-1&&t2.indexOf(p2)>-1)||(t1.indexOf(p2)>-1&&t2.indexOf(p1)>-1);}).sort(function(a,b){return a.id-b.id;});
     var p1w=0,p2w=0;m.forEach(function(s){if(inT1(s,p1)){p1w+=Number(s.t1wins);p2w+=Number(s.t2wins);}else{p1w+=Number(s.t2wins);p2w+=Number(s.t1wins);}});
     return{p1wins:p1w,p2wins:p2w,matches:m};
+  }
+
+  // ── PLAYER INSIGHTS (always This Month, regardless of whichever toggle is active on Rankings) ──
+  function getSessionsThisMonthAlways() {
+    var now = new Date();
+    var overrideDate = monthOverrides[getCurrentMonthKey()];
+    return sessions.filter(function(s) {
+      if (!s.date) return false;
+      var d = new Date(s.date);
+      var inCurrentMonth = d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      if (!inCurrentMonth) return false;
+      if (overrideDate && s.date < overrideDate) return false;
+      return true;
+    });
+  }
+  function getPartnerFor(s, n) {
+    // returns the teammate's name if n played in this match, else null
+    if (inT1(s,n)) { var mate = s.t1p1===n ? s.t1p2 : s.t1p1; return mate && mate!=="undefined" ? mate : null; }
+    if ([s.t2p1,s.t2p2].indexOf(n)>-1) { var mate2 = s.t2p1===n ? s.t2p2 : s.t2p1; return mate2 && mate2!=="undefined" ? mate2 : null; }
+    return null;
+  }
+  function getOpponentsFor(s, n) {
+    if (inT1(s,n)) return [s.t2p1,s.t2p2].filter(function(x){return x&&x!=="undefined";});
+    if ([s.t2p1,s.t2p2].indexOf(n)>-1) return [s.t1p1,s.t1p2].filter(function(x){return x&&x!=="undefined";});
+    return [];
+  }
+  // 1. Partner-specific streak this month (3+ consecutive results with the SAME partner)
+  function computePartnerStreakInsight(n) {
+    var monthMatches = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; });
+    // Group consecutive matches by partner, check the tail run
+    var withPartner = monthMatches.filter(function(s){ return getPartnerFor(s,n); });
+    if (!withPartner.length) return null;
+    var lastPartner = getPartnerFor(withPartner[withPartner.length-1], n);
+    // walk backward through ALL month matches (not just with this partner) - streak only counts
+    // consecutive matches that were BOTH with this partner AND the same result
+    var streak = 0, lastResult = null;
+    for (var i = monthMatches.length-1; i >= 0; i--) {
+      var s = monthMatches[i];
+      var partner = getPartnerFor(s, n);
+      if (partner !== lastPartner) break; // partner changed, streak with THIS partner ends
+      var result = getResult(s, n);
+      if (result === "D") break;
+      if (lastResult === null) { lastResult = result; streak = 1; }
+      else if (result === lastResult) { streak++; }
+      else break;
+    }
+    if (streak >= 3) return { partner: lastPartner, type: lastResult, count: streak };
+    return null;
+  }
+  // 2. Opponent-specific streak this month (3+ consecutive results AGAINST the same opponent,
+  // regardless of who the partner was)
+  function computeOpponentStreakInsight(n) {
+    var monthMatches = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; });
+    // For each opponent that appears, check the CONSECUTIVE run against them specifically
+    var best = null;
+    var opponentsSeen = {};
+    monthMatches.forEach(function(s){ getOpponentsFor(s,n).forEach(function(o){ opponentsSeen[o]=true; }); });
+    Object.keys(opponentsSeen).forEach(function(opp) {
+      var matchesVsOpp = monthMatches.filter(function(s){ return getOpponentsFor(s,n).indexOf(opp) > -1; });
+      if (matchesVsOpp.length < 3) return;
+      var streak = 0, lastResult = null;
+      for (var i = matchesVsOpp.length-1; i >= 0; i--) {
+        var result = getResult(matchesVsOpp[i], n);
+        if (result === "D") break;
+        if (lastResult === null) { lastResult = result; streak = 1; }
+        else if (result === lastResult) { streak++; }
+        else break;
+      }
+      if (streak >= 3 && (!best || streak > best.count)) best = { opponent: opp, type: lastResult, count: streak };
+    });
+    return best;
+  }
+  // 3. Win rate with a partner this month, compared to overall this-month win rate (both directions)
+  function computePartnerWinRateInsight(n) {
+    var monthMatches = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,n); });
+    if (!monthMatches.length) return null;
+    var overallWon=0, overallLost=0;
+    var byPartner = {};
+    monthMatches.forEach(function(s) {
+      var result = getResult(s,n);
+      if (result === "D") return;
+      if (result === "W") overallWon++; else overallLost++;
+      var partner = getPartnerFor(s,n);
+      if (!partner) return;
+      if (!byPartner[partner]) byPartner[partner] = {won:0,lost:0};
+      if (result === "W") byPartner[partner].won++; else byPartner[partner].lost++;
+    });
+    var overallTotal = overallWon+overallLost;
+    if (overallTotal === 0) return null;
+    var overallRate = (overallWon/overallTotal)*100;
+
+    var biggest = null;
+    Object.keys(byPartner).forEach(function(partner) {
+      var pd = byPartner[partner];
+      var tot = pd.won+pd.lost;
+      if (tot < 3) return; // minimum sample: at least 3 matches together this month
+      var rate = (pd.won/tot)*100;
+      var diff = rate - overallRate;
+      if (Math.abs(diff) < 10) return; // not a meaningful gap
+      if (!biggest || Math.abs(diff) > Math.abs(biggest.diff)) {
+        biggest = { partner: partner, partnerRate: rate, overallRate: overallRate, diff: diff, matches: tot };
+      }
+    });
+    return biggest;
+  }
+  // 4. Game-type performance gap this month (21pt vs 11pt)
+  function computeGameTypeInsight(n) {
+    var monthMatches = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,n); });
+    var w21=0,l21=0,w11=0,l11=0;
+    monthMatches.forEach(function(s) {
+      var result = getResult(s,n);
+      if (result === "D") return;
+      if ((s.gameType||"21")==="11") { if(result==="W") w11++; else l11++; }
+      else { if(result==="W") w21++; else l21++; }
+    });
+    var tot21 = w21+l21, tot11 = w11+l11;
+    if (tot21 < 3 || tot11 < 3) return null; // need real samples in BOTH formats to compare fairly
+    var r21 = (w21/tot21)*100, r11 = (w11/tot11)*100;
+    if (Math.abs(r21-r11) < 10) return null; // not a meaningful gap
+    return { better: r21>r11 ? "21pt" : "11pt", worse: r21>r11 ? "11pt" : "21pt", betterRate: Math.max(r21,r11), worseRate: Math.min(r21,r11) };
   }
   function getSessionsForPeriod() {
     if (leaderboardPeriod === "alltime") return sessions;
@@ -1861,6 +1986,38 @@
         '<div style="text-align:center"><div class="stat-val accent">'+r11+'%</div><div class="stat-lbl">11pt Win Rate</div><div style="font-size:11px;color:var(--text-dim);font-family:monospace;margin-top:4px">'+w11+'W — '+l11+'L</div></div>'+
       '</div></div>'
     );
+
+    // INSIGHTS - factual, backward-looking patterns, This Month only, only shown when genuinely true
+    var insightsHTML = "";
+    var partnerStreak = computePartnerStreakInsight(name);
+    var opponentStreak = computeOpponentStreakInsight(name);
+    var partnerWinRate = computePartnerWinRateInsight(name);
+    var gameTypeGap = computeGameTypeInsight(name);
+
+    if (partnerStreak) {
+      var icon1 = partnerStreak.type === "W" ? "🔥" : "❄️";
+      var verb1 = partnerStreak.type === "W" ? "Won" : "Lost";
+      insightsHTML += '<div class="insight-row">'+icon1+' '+verb1+' your last '+partnerStreak.count+' with '+partnerStreak.partner+'</div>';
+    }
+    if (opponentStreak) {
+      var icon2 = opponentStreak.type === "W" ? "🔥" : "❄️";
+      var verb2 = opponentStreak.type === "W" ? "Won" : "Lost";
+      insightsHTML += '<div class="insight-row">'+icon2+' '+verb2+' your last '+opponentStreak.count+' against '+opponentStreak.opponent+'</div>';
+    }
+    if (partnerWinRate) {
+      var icon3 = partnerWinRate.diff > 0 ? "📈" : "📉";
+      var verb3 = partnerWinRate.diff > 0 ? "jumps" : "drops";
+      insightsHTML += '<div class="insight-row">'+icon3+' Win rate '+verb3+' with '+partnerWinRate.partner+'<div class="insight-sub">'+Math.round(partnerWinRate.overallRate)+'% overall → '+Math.round(partnerWinRate.partnerRate)+'% together ('+partnerWinRate.matches+' matches)</div></div>';
+    }
+    if (gameTypeGap) {
+      insightsHTML += '<div class="insight-row">🎯 Performs better at '+gameTypeGap.better+' than '+gameTypeGap.worse+'<div class="insight-sub">'+Math.round(gameTypeGap.betterRate)+'% vs '+Math.round(gameTypeGap.worseRate)+'%</div></div>';
+    }
+
+    if (insightsHTML) {
+      H("insights-section", '<div class="sec-hdr">This Month\'s Insights</div><div class="insights-box">'+insightsHTML+'</div>');
+    } else {
+      H("insights-section", "");
+    }
 
     var opps={};
     getSessionsForPeriod().forEach(function(s){var a=inT1(s,name),b=[s.t2p1,s.t2p2].indexOf(name)>-1;if(!a&&!b)return;var t=a?[s.t2p1,s.t2p2]:[s.t1p1,s.t1p2];t.forEach(function(p){if(p&&p!=="undefined"&&p!==name)opps[p]=true;});});
