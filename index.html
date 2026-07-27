@@ -1512,14 +1512,41 @@
         helper(ps, []);
         return results;
       }
+      // This Month raw win rate per player, used only as a secondary skill-balance signal
+      function getThisMonthRawRate(name) {
+        var m = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,name); });
+        var won=0, lost=0;
+        m.forEach(function(s){
+          var result = getResult(s,name);
+          if (result==="W") won++; else if (result==="L") lost++;
+        });
+        return won+lost ? (won/(won+lost))*100 : 50; // default to 50 (neutral) if no data yet
+      }
+      var skillRates = {};
+      players.forEach(function(p){ skillRates[p] = getThisMonthRawRate(p); });
+
       function scoreSplit(split, c) {
         return split.reduce(function(sum, pair) { return sum + getPairCount(c, pair[0], pair[1]); }, 0);
       }
+      // Skill-balance: for each pair, reward a BIG skill GAP within the pair (strong+weak
+      // together), since that keeps each team's average strength similar across all 3 teams.
+      // This is ONLY a tiebreaker - pairing-freshness (scoreSplit) dominates via the weight below.
+      function skillImbalancePenalty(split) {
+        return split.reduce(function(sum, pair) {
+          var gap = Math.abs(skillRates[pair[0]] - skillRates[pair[1]]);
+          return sum + (100 - gap); // smaller gap = higher penalty (less balanced)
+        }, 0);
+      }
+      var PAIRING_WEIGHT = 1000; // ensures pairing-freshness always dominates the skill tiebreaker
+      function combinedScore(split, c) {
+        return scoreSplit(split, c) * PAIRING_WEIGHT + skillImbalancePenalty(split);
+      }
+
       var allSplits = allThreeWaySplits(players);
 
-      // First half: best (freshest) 3-team split overall
+      // First half: best split overall (pairing-freshness first, skill-balance as tiebreaker)
       var firstHalf = allSplits.reduce(function(best, split) {
-        var score = scoreSplit(split, counts);
+        var score = combinedScore(split, counts);
         return (!best || score < best.score) ? { split: split, score: score } : best;
       }, null);
 
@@ -1531,7 +1558,7 @@
       var secondHalf = null;
       if (nonOverlapping.length > 0) {
         secondHalf = nonOverlapping.reduce(function(best, split) {
-          var score = scoreSplit(split, counts);
+          var score = combinedScore(split, counts);
           return (!best || score < best.score) ? { split: split, score: score } : best;
         }, null);
       }
@@ -1649,13 +1676,12 @@
         pl.negativeReason = adj.negativeReason;
         var rawRate = pl.won+pl.lost ? (pl.won/(pl.won+pl.lost))*100 : 0;
         pl.rawRate = rawRate;
-        // Attendance-adjusted ranked score: raw win rate scaled by how much of the month's
-        // match-days you actually attended, so a small lucky sample can't outrank someone
-        // who showed up consistently. Negative points still subtract; brownie does not.
+        // Attendance-adjusted score: shown alongside raw % for context, but no longer the
+        // sort key for This Month - ranking is purely by raw win rate (+ negative points).
         var attendanceRatio = totalMatchDays > 0 ? (pl.matchDaysPlayed / totalMatchDays) : 1;
         pl.attendanceRatio = attendanceRatio;
         pl.rankedScore = (rawRate * attendanceRatio) + adj.negative;
-        pl.effectiveScore = pl.rankedScore; // sort key
+        pl.effectiveScore = rawRate + adj.negative; // sort key: raw win rate, negative points still apply
       });
     } else if (leaderboardPeriod === "alltime") {
       var ALLTIME_MIN_MATCH_DAYS = 5; // must have played at least this many match-days to be ranked in All Time
@@ -1674,10 +1700,10 @@
         // a minimum absolute number of match-days before showing a real rank at all.
         pl.qualified = att.attended >= ALLTIME_MIN_MATCH_DAYS;
         pl.brownie = 0; pl.negative = 0; pl.negativeReason = "";
-        var attendanceRatio = att.total > 0 ? (att.attended / att.total) : 1;
-        pl.attendanceRatio = attendanceRatio;
-        pl.rankedScore = rawRate * attendanceRatio;
-        pl.effectiveScore = pl.rankedScore;
+        var attendanceRatio2 = att.total > 0 ? (att.attended / att.total) : 1;
+        pl.attendanceRatio = attendanceRatio2;
+        pl.rankedScore = rawRate * attendanceRatio2;
+        pl.effectiveScore = pl.rankedScore; // All Time still sorts by the attendance-scaled score, unchanged
       });
     } else {
       // 4-Player Days: stays pure informational, no ranking machinery attached
@@ -1732,19 +1758,26 @@
           if (p.brownie > 0) adjHTML += '<span class="tag brownie">🍪 +'+p.brownie+'%</span>';
           if (p.negative < 0) adjHTML += '<span class="tag penalty" title="'+(p.negativeReason||"")+'">⚠️ '+p.negative+'%</span>';
 
-          var hasRankedScore = kind==="player" && (leaderboardPeriod==="month" || leaderboardPeriod==="alltime") && typeof p.rankedScore==="number";
+          var hasRankedScore = kind==="player" && leaderboardPeriod==="alltime" && typeof p.rankedScore==="number";
+          var isThisMonth = kind==="player" && leaderboardPeriod==="month" && typeof p.rankedScore==="number";
           var heroNumber, subLine1, subLine2, subLine3 = "";
           if (hasRankedScore) {
-            // Hero = ranked score (what actually determines position); raw % shown colored just below it
+            // ALL TIME: Hero = ranked score (what actually determines position); raw % shown colored just below it
             heroNumber = Math.round(p.rankedScore);
             subLine1 = '<span class="lb-rate'+(low?" low":"")+'" style="font-size:11px">'+rate+'%</span><span class="lb-detail"> raw · '+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</span>';
-            var daysTotal = leaderboardPeriod==="month" ? getTotalMatchDaysThisMonth() : p.matchDaysTotal;
+            var daysTotal = p.matchDaysTotal;
             subLine2 = '<div class="lb-detail" style="opacity:0.7">Played '+p.matchDaysPlayed+' of '+daysTotal+' match-days</div>';
-            if (leaderboardPeriod==="alltime" && p.firstMatchDate) {
+            if (p.firstMatchDate) {
               var fmParts = p.firstMatchDate.split("-");
               var fmMonthLabel = MONTHS[parseInt(fmParts[1])-1];
               subLine3 = '<div class="lb-detail" style="opacity:0.55">(since '+fmMonthLabel+')</div>';
             }
+          } else if (isThisMonth) {
+            // THIS MONTH: Hero = raw win rate (the actual sort key); attendance-relative score shown as smaller context below
+            heroNumber = rate;
+            subLine1 = '<span class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</span>';
+            subLine2 = '<div class="lb-detail" style="opacity:0.7">Played '+p.matchDaysPlayed+' of '+getTotalMatchDaysThisMonth()+' match-days</div>';
+            subLine3 = '<div class="lb-detail" style="opacity:0.55">📊 '+Math.round(p.rankedScore)+'% relative</div>';
           } else {
             // No ranked score in this view (4-Player Days / Pairs) - raw % IS the hero, styled with the same weight
             heroNumber = rate;
