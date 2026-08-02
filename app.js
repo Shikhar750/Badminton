@@ -54,12 +54,16 @@ function checkAdmin() {
 document.getElementById("inp-date").value = getTodayString();
 
 function showTab(name) {
-  ["leaderboard","history","add","player","h2h","rules","winners","pair"].forEach(function(t) {
-    document.getElementById("tab-"+t).classList.remove("active");
+  ["leaderboard","history","add","player","h2h","rules","winners","pair","pair-duel"].forEach(function(t) {
+    var tab = document.getElementById("tab-"+t);
+    tab.classList.remove("active");
+    tab.style.display = "none";
     var n = document.getElementById("nav-"+t);
     if (n) n.classList.remove("active");
   });
-  document.getElementById("tab-"+name).classList.add("active");
+  var targetTab = document.getElementById("tab-"+name);
+  targetTab.classList.add("active");
+  targetTab.style.display = "block";
   var n = document.getElementById("nav-"+name);
   if (n) n.classList.add("active");
 }
@@ -224,6 +228,7 @@ document.getElementById("btn-11").addEventListener("click", function(){ gameType
 document.getElementById("back-from-player").addEventListener("click", function(){ showTab("leaderboard"); });
 document.getElementById("back-from-h2h").addEventListener("click", function(){ showPlayerStats(currentPlayer); });
 document.getElementById("back-from-pair").addEventListener("click", function(){ showTab("leaderboard"); });
+document.getElementById("back-from-pair-duel").addEventListener("click", function(){ showTab("pair"); });
 document.getElementById("champion-banner").addEventListener("click", function(){ renderMonthlyWinners(); showTab("winners"); });
 document.getElementById("back-from-winners").addEventListener("click", function(){ showTab("leaderboard"); });
 
@@ -1664,6 +1669,109 @@ function showPairStats(pairName) {
   rateEl.textContent = rate+"%";
   rateEl.className = "player-winrate"+(rate<50?" low":"");
   document.getElementById("pair-record").textContent = won+"W — "+lost+"L • "+(won+lost)+" matches";
+
+  var opponentStats = {};
+  matches.forEach(function(s) {
+    var t1 = [s.t1p1,s.t1p2].filter(function(n){return n&&n!="undefined"&&n!=="";}).sort().join(" & ");
+    var isT1 = t1 === pairName;
+    var oppName = isT1
+      ? [s.t2p1,s.t2p2].filter(function(n){return n&&n!="undefined";}).join(" & ")
+      : [s.t1p1,s.t1p2].filter(function(n){return n&&n!="undefined";}).join(" & ");
+    if (!oppName) return;
+    if (!opponentStats[oppName]) opponentStats[oppName] = { wins: 0, losses: 0, matches: 0 };
+    var myWins = isT1 ? Number(s.t1wins) : Number(s.t2wins);
+    var oppWins = isT1 ? Number(s.t2wins) : Number(s.t1wins);
+    opponentStats[oppName].matches++;
+    if (myWins > oppWins) opponentStats[oppName].wins++;
+    else if (myWins < oppWins) opponentStats[oppName].losses++;
+  });
+  var oppList = Object.keys(opponentStats).sort();
+  if (!oppList.length) {
+    document.getElementById("pair-duel-summary").innerHTML = '<div style="color:var(--text-dim);font-size:13px">No duel records yet</div>';
+  } else {
+    document.getElementById("pair-duel-summary").innerHTML = oppList.map(function(opp){
+      var stat = opponentStats[opp];
+      var cls = stat.wins > stat.losses ? "win" : stat.wins < stat.losses ? "loss" : "draw";
+      return '<div class="h2h-row" data-pair-duel="'+opp+'" style="margin-bottom:8px"><div class="h2h-opp">vs '+opp+'</div><div class="h2h-score '+cls+'">'+stat.wins+' — '+stat.losses+'</div><div class="h2h-arr">›</div></div>';
+    }).join("");
+    document.querySelectorAll("[data-pair-duel]").forEach(function(row){
+      row.addEventListener("click",function(){
+        var selectedOpp = this.getAttribute("data-pair-duel");
+        var filtered = matches.filter(function(s){
+          var t1 = [s.t1p1,s.t1p2].filter(function(n){return n&&n!="undefined"&&n!=="";}).sort().join(" & ");
+          var isT1 = t1 === pairName;
+          var oppName = isT1
+            ? [s.t2p1,s.t2p2].filter(function(n){return n&&n!="undefined";}).join(" & ")
+            : [s.t1p1,s.t1p2].filter(function(n){return n&&n!="undefined";}).join(" & ");
+          return oppName === selectedOpp;
+        }).slice().reverse();
+
+        var duelWins = 0, duelLosses = 0;
+        filtered.forEach(function(s){
+          var t1 = [s.t1p1,s.t1p2].filter(function(n){return n&&n!="undefined"&&n!=="";}).sort().join(" & ");
+          var isT1 = t1 === pairName;
+          var myWins = isT1 ? Number(s.t1wins) : Number(s.t2wins);
+          var oppWins = isT1 ? Number(s.t2wins) : Number(s.t1wins);
+          if (myWins > oppWins) duelWins++; else if (myWins < oppWins) duelLosses++;
+        });
+
+        document.getElementById("pair-duel-p1-name").textContent = pairName;
+        document.getElementById("pair-duel-p2-name").textContent = selectedOpp;
+        var s1 = document.getElementById("pair-duel-p1-score");
+        var s2 = document.getElementById("pair-duel-p2-score");
+        s1.textContent = duelWins;
+        s2.textContent = duelLosses;
+        s1.className = "h2h-pscore" + (duelWins < duelLosses ? " loss" : "");
+        s2.className = "h2h-pscore" + (duelLosses < duelWins ? " loss" : "");
+        document.getElementById("pair-duel-last").textContent = filtered.length ? "Last played: "+fmtDate(filtered[0].date) : "";
+
+        H("pair-duel-matches", filtered.map(function(s) {
+          var t1 = [s.t1p1,s.t1p2].filter(function(n){return n&&n!="undefined"&&n!=="";}).sort().join(" & ");
+          var isT1 = t1 === pairName;
+          var myWins = isT1 ? Number(s.t1wins) : Number(s.t2wins);
+          var oppWins = isT1 ? Number(s.t2wins) : Number(s.t1wins);
+          var oppName = isT1
+            ? [s.t2p1,s.t2p2].filter(function(n){return n&&n!="undefined";}).join(" & ")
+            : [s.t1p1,s.t1p2].filter(function(n){return n&&n!="undefined";}).join(" & ");
+          var won = myWins > oppWins, draw = myWins === oppWins;
+          var rc = draw?"d":won?"w":"l", rl = draw?"Draw":won?"Won":"Lost";
+          var hasScores = s.scores && s.scores.length > 0;
+
+          var scoresBodyHTML = "";
+          if (hasScores) {
+            scoresBodyHTML = '<div style="padding:8px 0">'+s.scores.map(function(sc,i){
+              var gw = isT1 ? sc.t1>sc.t2 : sc.t2>sc.t1;
+              var myScore = isT1 ? sc.t1 : sc.t2, oppScore = isT1 ? sc.t2 : sc.t1;
+              return '<div class="game-score-row"><span class="game-label">Game '+(i+1)+'</span><span class="game-result '+(gw?"w":"l")+'">'+myScore+' — '+oppScore+'</span><span class="game-icon">'+(gw?"✅":"❌")+'</span></div>';
+            }).join("")+"</div>";
+          }
+
+          return '<div class="h2h-match-card">'+
+            '<div class="h2h-match-summary">'+
+              '<div class="h2h-match-date">'+fmtDate(s.date)+'</div>'+
+              '<div class="h2h-match-teams">vs '+oppName+'</div>'+
+              gtBadge(s)+
+              (hasScores?'<span style="font-size:11px">📊</span>':'')+
+              '<div class="h2h-match-result '+rc+'">'+rl+'</div>'+
+              '<span style="color:var(--text-dim);font-size:11px;margin-left:2px">›</span>'+
+            '</div>'+
+            '<div class="h2h-match-body">'+
+              '<div style="font-family:monospace;font-size:13px;color:var(--text-dim);margin-top:8px">'+myWins+' — '+oppWins+' matches</div>'+
+              scoresBodyHTML+
+            '</div>'+
+          '</div>';
+        }).join("")||'<div style="color:var(--text-dim);text-align:center;padding:20px">No matches yet</div>');
+
+        document.querySelectorAll("#pair-duel-matches .h2h-match-summary").forEach(function(el){
+          el.addEventListener("click",function(){
+            var body=this.nextElementSibling;
+            body.classList.toggle("open");
+          });
+        });
+        showTab("pair-duel");
+      });
+    });
+  }
 
   H("pair-matches", matches.slice().reverse().map(function(s) {
     var t1 = [s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
