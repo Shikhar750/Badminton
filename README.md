@@ -1,1 +1,1 @@
-# Badminton
+# 🏸 Squad Leaderboard
