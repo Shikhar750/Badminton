@@ -27,6 +27,9 @@ var adminUnlocked = false;
 var sessionsLoaded = false;
 var adjustmentsLoaded = false;
 var leaderboardPeriod = "month";
+var leaderboardFilterLabel = "This Month";
+var customMonthValue = "";
+var customDateValue = "";
 var monthlyAdjustments = {};
 var monthOverrides = {};
 var weeklyPattern = [];
@@ -66,15 +69,150 @@ document.getElementById("nav-history").addEventListener("click", function(){ sho
 document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); renderLineupChips(); });
 document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); });
 document.getElementById("refresh-btn").addEventListener("click", renderAll);
-function setLeaderboardPeriod(period, el) {
+function formatFilterLabel(label) {
+  if (!label) return "Filter";
+  if (label.indexOf("Custom Date • ") === 0) {
+    var dateValue = label.replace("Custom Date • ", "");
+    var d = new Date(dateValue);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    }
+  }
+  if (label.indexOf("Custom Month • ") === 0) {
+    var monthValue = label.replace("Custom Month • ", "");
+    var monthParts = monthValue.split("-");
+    if (monthParts.length === 2) {
+      var monthDate = new Date(parseInt(monthParts[0], 10), parseInt(monthParts[1], 10) - 1, 1);
+      return monthDate.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+    }
+  }
+  return label;
+}
+function setLeaderboardPeriod(period, label) {
   leaderboardPeriod = period;
-  ["period-month","period-alltime","period-4player"].forEach(function(id){ document.getElementById(id).classList.remove("active"); });
-  el.classList.add("active");
+  leaderboardFilterLabel = label || (period === "month" ? "This Month" : period === "alltime" ? "All Time" : period === "4player" ? "4-Player" : period === "customMonth" ? "Custom Month" : "Custom Date");
+  var trigger = document.getElementById("filter-trigger");
+  trigger.innerHTML = '<span class="filter-prefix">Filter •</span> <span class="filter-value">' + formatFilterLabel(leaderboardFilterLabel) + '</span>';
+  document.querySelectorAll(".filter-option").forEach(function(btn){ btn.classList.toggle("active", btn.getAttribute("data-filter") === period); });
   renderLeaderboard();
 }
-document.getElementById("period-month").addEventListener("click", function(){ setLeaderboardPeriod("month", this); });
-document.getElementById("period-alltime").addEventListener("click", function(){ setLeaderboardPeriod("alltime", this); });
-document.getElementById("period-4player").addEventListener("click", function(){ setLeaderboardPeriod("4player", this); });
+function toggleFilterDropdown() {
+  var dropdown = document.getElementById("filter-dropdown");
+  dropdown.classList.toggle("open");
+}
+function populateFilterPickers() {
+  var monthYear = document.getElementById("custom-month-year");
+  var monthMonth = document.getElementById("custom-month-month");
+  var dateDay = document.getElementById("custom-date-day");
+  var dateMonth = document.getElementById("custom-date-month");
+  var dateYear = document.getElementById("custom-date-year");
+  var now = new Date();
+  var currentYear = now.getFullYear();
+  var currentMonth = now.getMonth() + 1;
+  var currentDay = now.getDate();
+
+  var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var yearStart = currentYear - 3;
+  var yearEnd = currentYear + 3;
+
+  function fillSelect(el, values, selectedValue) {
+    el.innerHTML = values.map(function(v){ var label = v.label || v; var value = v.value || v; return '<option value="'+value+'">'+label+'</option>'; }).join("");
+    if (selectedValue) el.value = selectedValue;
+  }
+
+  var monthYears = [];
+  for (var y = yearStart; y <= yearEnd; y++) monthYears.push({ label: y, value: String(y) });
+  fillSelect(monthYear, monthYears, customMonthValue ? customMonthValue.split("-")[0] : String(currentYear));
+
+  var monthValues = months.map(function(m, idx){ return { label: m, value: String(idx + 1).padStart(2, "0") }; });
+  fillSelect(monthMonth, monthValues, customMonthValue ? customMonthValue.split("-")[1] : String(currentMonth).padStart(2, "0"));
+
+  var days = [];
+  for (var d = 1; d <= 31; d++) days.push({ label: d, value: String(d).padStart(2, "0") });
+  fillSelect(dateDay, days, customDateValue ? customDateValue.split("-")[2] : String(currentDay).padStart(2, "0"));
+  fillSelect(dateMonth, monthValues, customDateValue ? customDateValue.split("-")[1] : String(currentMonth).padStart(2, "0"));
+  fillSelect(dateYear, monthYears, customDateValue ? customDateValue.split("-")[0] : String(currentYear));
+}
+function updateFilterPickerVisibility() {
+  var activeMode = document.querySelector(".filter-option.active");
+  var mode = activeMode ? activeMode.getAttribute("data-filter") : "month";
+  var dropdown = document.getElementById("filter-dropdown");
+  var inputs = dropdown.querySelector(".filter-inputs");
+  dropdown.classList.toggle("has-custom", mode === "customMonth" || mode === "customDate");
+  document.getElementById("filter-picker-month").classList.toggle("active", mode === "customMonth");
+  document.getElementById("filter-picker-date").classList.toggle("active", mode === "customDate");
+  inputs.classList.toggle("open", mode === "customMonth" || mode === "customDate");
+}
+function resetFilterUI() {
+  var dropdown = document.getElementById("filter-dropdown");
+  var inputs = dropdown.querySelector(".filter-inputs");
+  dropdown.classList.remove("open");
+  dropdown.classList.remove("has-custom");
+  inputs.classList.remove("open");
+  document.getElementById("filter-picker-month").classList.remove("active");
+  document.getElementById("filter-picker-date").classList.remove("active");
+}
+function getSelectedCustomMonthValue() {
+  var year = document.getElementById("custom-month-year").value;
+  var month = document.getElementById("custom-month-month").value;
+  return year + "-" + month;
+}
+function getSelectedCustomDateValue() {
+  var year = document.getElementById("custom-date-year").value;
+  var month = document.getElementById("custom-date-month").value;
+  var day = document.getElementById("custom-date-day").value;
+  return year + "-" + month + "-" + day;
+}
+function applyLeaderboardFilter() {
+  var selected = document.querySelector(".filter-option.active");
+  if (!selected) return;
+  var mode = selected.getAttribute("data-filter");
+  if (mode === "customMonth") {
+    customMonthValue = getSelectedCustomMonthValue();
+    if (!customMonthValue) {
+      alert("Please choose a month first.");
+      return;
+    }
+    setLeaderboardPeriod("customMonth", "Custom Month • " + customMonthValue);
+  } else if (mode === "customDate") {
+    customDateValue = getSelectedCustomDateValue();
+    if (!customDateValue) {
+      alert("Please choose a date first.");
+      return;
+    }
+    setLeaderboardPeriod("customDate", "Custom Date • " + customDateValue);
+  } else {
+    setLeaderboardPeriod(mode, selected.textContent.trim());
+  }
+  document.getElementById("filter-dropdown").classList.remove("open");
+}
+populateFilterPickers();
+updateFilterPickerVisibility();
+document.getElementById("filter-trigger").addEventListener("click", function(e){
+  e.stopPropagation();
+  var dropdown = document.getElementById("filter-dropdown");
+  var isOpen = dropdown.classList.contains("open");
+  if (isOpen) {
+    dropdown.classList.remove("open");
+  } else {
+    populateFilterPickers();
+    dropdown.classList.add("open");
+    updateFilterPickerVisibility();
+  }
+});
+document.querySelectorAll(".filter-option").forEach(function(btn){
+  btn.addEventListener("click", function(e){
+    e.stopPropagation();
+    document.querySelectorAll(".filter-option").forEach(function(opt){ opt.classList.remove("active"); });
+    this.classList.add("active");
+    updateFilterPickerVisibility();
+    if (this.getAttribute("data-filter") !== "customMonth" && this.getAttribute("data-filter") !== "customDate") {
+      applyLeaderboardFilter();
+    }
+  });
+});
+document.getElementById("filter-apply").addEventListener("click", function(e){ e.stopPropagation(); applyLeaderboardFilter(); });
+document.addEventListener("click", function(e){ if (!e.target.closest(".leaderboard-filter-wrap")) resetFilterUI(); });
 document.getElementById("sub-individual").addEventListener("click", function(){ this.classList.add("active"); document.getElementById("sub-pairs").classList.remove("active"); document.getElementById("lb-individual").style.display="block"; document.getElementById("lb-pairs").style.display="none"; });
 document.getElementById("sub-pairs").addEventListener("click", function(){ this.classList.add("active"); document.getElementById("sub-individual").classList.remove("active"); document.getElementById("lb-pairs").style.display="block"; document.getElementById("lb-individual").style.display="none"; });
 document.getElementById("save-btn").addEventListener("click", handleSave);
@@ -597,19 +735,26 @@ function computeGameTypeInsight(n) {
   if (Math.abs(r21-r11) < 10) return null;
   return { better: r21>r11 ? "21pt" : "11pt", worse: r21>r11 ? "11pt" : "21pt", betterRate: Math.max(r21,r11), worseRate: Math.min(r21,r11) };
 }
-function getSessionsForPeriod() {
-  if (leaderboardPeriod === "alltime") return sessions;
-  if (leaderboardPeriod === "4player") return get4PlayerDaySessions();
-  var now = new Date();
-  var overrideDate = monthOverrides[getCurrentMonthKey()];
+function getSessionsForMonth(monthKey) {
+  var parts = monthKey.split("-");
+  var year = parseInt(parts[0], 10);
+  var month = parseInt(parts[1], 10) - 1;
+  var overrideDate = monthOverrides[monthKey];
   return sessions.filter(function(s) {
     if (!s.date) return false;
     var d = new Date(s.date);
-    var inCurrentMonth = d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    if (!inCurrentMonth) return false;
+    var inMonth = d.getFullYear() === year && d.getMonth() === month;
+    if (!inMonth) return false;
     if (overrideDate && s.date < overrideDate) return false;
     return true;
   });
+}
+function getSessionsForPeriod() {
+  if (leaderboardPeriod === "alltime") return sessions;
+  if (leaderboardPeriod === "4player") return get4PlayerDaySessions();
+  if (leaderboardPeriod === "customMonth") return getSessionsForMonth(customMonthValue || getCurrentMonthKey());
+  if (leaderboardPeriod === "customDate") return sessions.filter(function(s){ return s.date === customDateValue; });
+  return getSessionsForMonth(getCurrentMonthKey());
 }
 function get4PlayerDaySessions() {
   var dateUniquePlayers = {};

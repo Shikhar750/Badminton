@@ -37,14 +37,40 @@
       <div class="champion-link" id="champion-link"></div>
     </div>
 
-    <div class="sub-tabs" id="period-tabs">
-      <div class="sub-tab active" id="period-month">This Month</div>
-      <div class="sub-tab" id="period-alltime">All Time</div>
-      <div class="sub-tab" id="period-4player">4-Player</div>
-    </div>
-    <div class="sub-tabs">
-      <div class="sub-tab active" id="sub-individual">Individual</div>
-      <div class="sub-tab" id="sub-pairs">Pairs</div>
+    <div class="leaderboard-controls">
+      <div class="sub-tabs">
+        <div class="sub-tab active" id="sub-individual">Individual</div>
+        <div class="sub-tab" id="sub-pairs">Pairs</div>
+      </div>
+
+      <div class="leaderboard-filter-wrap">
+        <button class="filter-trigger" id="filter-trigger" type="button"><span class="filter-prefix">Filter •</span> <span class="filter-value">This Month</span></button>
+        <div class="filter-dropdown" id="filter-dropdown">
+          <button class="filter-option active" data-filter="month" type="button">This Month</button>
+          <button class="filter-option" data-filter="alltime" type="button">All Time</button>
+          <button class="filter-option" data-filter="4player" type="button">4-Player</button>
+          <button class="filter-option" data-filter="customMonth" type="button">Custom Month</button>
+          <button class="filter-option" data-filter="customDate" type="button">Custom Date</button>
+          <div class="filter-inputs">
+            <div class="filter-picker-group" id="filter-picker-month">
+              <label class="filter-input-label" for="custom-month-year">Pick month</label>
+              <div class="filter-picker-stack">
+                <select id="custom-month-year" class="filter-picker filter-select"></select>
+                <select id="custom-month-month" class="filter-picker filter-select"></select>
+              </div>
+            </div>
+            <div class="filter-picker-group" id="filter-picker-date">
+              <label class="filter-input-label" for="custom-date-year">Pick date</label>
+              <div class="filter-picker-stack">
+                <select id="custom-date-day" class="filter-picker filter-select"></select>
+                <select id="custom-date-month" class="filter-picker filter-select"></select>
+                <select id="custom-date-year" class="filter-picker filter-select"></select>
+              </div>
+            </div>
+          </div>
+          <button class="filter-apply" id="filter-apply" type="button">Apply</button>
+        </div>
+      </div>
     </div>
     <div id="lb-individual"></div>
     <div id="lb-pairs" style="display:none"></div>

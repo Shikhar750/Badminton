@@ -30,9 +30,32 @@ h1 span{color:var(--accent)}
 .nav-tab.active{background:var(--accent-dim);color:var(--accent)}
 .tab{display:none}.tab.active{display:block}
 
-.sub-tabs{display:flex;gap:6px;margin-bottom:var(--sp-4)}
+.sub-tabs{display:flex;gap:6px;margin-bottom:var(--sp-3)}
 .sub-tab{flex:1;padding:8px 0;border-radius:var(--radius-sm);background:var(--surface);color:var(--text-dim);font-weight:600;font-size:12px;cursor:pointer;text-align:center}
 .sub-tab.active{background:var(--accent-dim);color:var(--accent)}
+.leaderboard-controls{display:flex;flex-direction:column;gap:8px;margin-bottom:var(--sp-4)}
+.leaderboard-filter-wrap{position:relative}
+.filter-trigger{width:100%;padding:10px 12px;border:1px solid var(--border-soft);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-weight:600;font-size:12px;cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.02)}
+.filter-trigger::after{content:"▾";color:var(--accent);font-size:11px}
+.filter-trigger .filter-prefix{color:var(--text-dim)}
+.filter-trigger .filter-value{color:var(--accent)}
+.filter-dropdown{display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);background:var(--surface-raised);border:1px solid var(--border-soft);border-radius:var(--radius-sm);padding:10px;z-index:10;box-shadow:0 10px 24px rgba(0,0,0,0.25)}
+.filter-dropdown.open{display:block}
+.filter-option{display:block;width:100%;padding:8px 10px;border:none;border-radius:8px;background:transparent;color:var(--text-dim);font-size:12px;font-weight:600;text-align:left;cursor:pointer;margin-bottom:4px}
+.filter-option.active{background:var(--accent-dim);color:var(--accent)}
+.filter-inputs{display:none;margin:8px 0 10px}
+.filter-inputs.open{display:block}
+.filter-picker-group{display:none;margin-bottom:8px}
+.filter-picker-group.active{display:block}
+.filter-input-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;font-weight:700;display:block}
+.filter-picker-stack{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px;align-items:stretch}
+.filter-picker{width:100%;padding:9px 10px;border:1px solid var(--border-soft);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;font-family:'Space Grotesk',sans-serif;appearance:none;-webkit-appearance:none;-moz-appearance:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.02);color-scheme:dark}
+.filter-picker:focus{outline:none;box-shadow:0 0 0 2px var(--accent-dim), inset 0 0 0 1px rgba(255,255,255,0.04)}
+.filter-picker option{background:var(--surface-raised);color:var(--text)}
+.filter-picker.filter-select{cursor:pointer}
+.filter-picker-stack #custom-date-day,.filter-picker-stack #custom-date-month,.filter-picker-stack #custom-date-year{min-width:0}
+.filter-picker-stack #custom-month-year,.filter-picker-stack #custom-month-month{min-width:0}
+.filter-apply{width:100%;padding:9px 10px;border:none;border-radius:8px;background:var(--accent);color:#0a0c11;font-weight:700;font-size:12px;cursor:pointer}
 
 /* Champion banner - always visible at top of Rankings */
 .champion-banner{
