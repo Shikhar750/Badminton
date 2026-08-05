@@ -33,6 +33,80 @@ var customDateValue = "";
 var monthlyAdjustments = {};
 var monthOverrides = {};
 var weeklyPattern = [];
+var PINNED_PLAYER_KEY = "badmintonPinnedPlayer";
+var pinnedPlayer = loadPinnedPlayer();
+
+function loadPinnedPlayer() {
+  try { return localStorage.getItem(PINNED_PLAYER_KEY) || null; }
+  catch (e) { return null; }
+}
+function persistPinnedPlayer(name) {
+  try {
+    if (name) localStorage.setItem(PINNED_PLAYER_KEY, name);
+    else localStorage.removeItem(PINNED_PLAYER_KEY);
+  } catch (e) {}
+}
+function populateIdentityPicker() {
+  var select = document.getElementById("identity-select");
+  if (!select) return;
+  if (!squadPlayers.length) {
+    select.innerHTML = '<option value="">No squad members yet</option>';
+    return;
+  }
+  select.innerHTML = '<option value="">Choose your name</option>' + squadPlayers.map(function(name) {
+    return '<option value="'+name+'">'+name+'</option>';
+  }).join("");
+  if (pinnedPlayer && squadPlayers.indexOf(pinnedPlayer) > -1) select.value = pinnedPlayer;
+}
+function renderIdentityUI() {
+  var main = document.getElementById("identity-main");
+  var change = document.getElementById("identity-change");
+  if (!main || !change) return;
+  main.textContent = pinnedPlayer ? "👤 " + pinnedPlayer + " · My Stats" : "👤 Pin yourself";
+  main.classList.toggle("pinned", !!pinnedPlayer);
+  change.style.display = pinnedPlayer ? "block" : "none";
+  document.getElementById("identity-clear").style.display = pinnedPlayer ? "block" : "none";
+  document.getElementById("history-win-filter").textContent = pinnedPlayer ? "My Wins" : "Team 1 Won";
+  document.getElementById("history-loss-filter").textContent = pinnedPlayer ? "My Losses" : "Team 1 Lost";
+  document.getElementById("history-pov").textContent = pinnedPlayer
+    ? "Showing Won/Lost from " + pinnedPlayer + "'s perspective."
+    : "Pin yourself to see wins and losses from your perspective.";
+  populateIdentityPicker();
+}
+function setPinnedPlayer(name) {
+  var previous = pinnedPlayer;
+  pinnedPlayer = name || null;
+  persistPinnedPlayer(pinnedPlayer);
+  document.getElementById("identity-picker").classList.remove("open");
+  if (pinnedPlayer && !editingKey && t1Selected.length === 0 && t2Selected.length === 0) {
+    t1Selected = [pinnedPlayer];
+  }
+  if (previous && previous !== pinnedPlayer) {
+    var staleIdx = lineupSelected.indexOf(previous);
+    if (staleIdx > -1 && lineupSeededFor === previous) lineupSelected.splice(staleIdx, 1);
+  }
+  lineupSeededFor = null;
+  seedLineupFromPin();
+  renderIdentityUI();
+  renderChips();
+  renderLineupChips();
+  renderLeaderboard();
+  historyPage = 0;
+  renderHistory();
+}
+function openPinnedPlayerStats() {
+  if (!pinnedPlayer) {
+    document.getElementById("identity-picker").classList.add("open");
+    populateIdentityPicker();
+    return;
+  }
+  var hasStats = computeIndividual().some(function(player){ return player.name === pinnedPlayer; });
+  if (!hasStats) {
+    alert(pinnedPlayer + " has no matches in the selected Rankings filter.");
+    return;
+  }
+  showPlayerStats(pinnedPlayer);
+}
 
 function isLocked(s) {
   if (!s.date) return false;
@@ -51,8 +125,6 @@ function checkAdmin() {
   return false;
 }
 
-document.getElementById("inp-date").value = getTodayString();
-
 function showTab(name) {
   ["leaderboard","history","add","player","h2h","rules","winners","pair","pair-duel"].forEach(function(t) {
     var tab = document.getElementById("tab-"+t);
@@ -70,9 +142,28 @@ function showTab(name) {
 
 document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
 document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
-document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); renderLineupChips(); });
+document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); seedLineupFromPin(); renderLineupChips(); });
 document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); });
 document.getElementById("refresh-btn").addEventListener("click", renderAll);
+document.getElementById("identity-main").addEventListener("click", openPinnedPlayerStats);
+document.getElementById("identity-change").addEventListener("click", function(e) {
+  e.stopPropagation();
+  populateIdentityPicker();
+  document.getElementById("identity-picker").classList.toggle("open");
+});
+document.getElementById("identity-save").addEventListener("click", function(e) {
+  e.stopPropagation();
+  var name = document.getElementById("identity-select").value;
+  if (name) setPinnedPlayer(name);
+});
+document.getElementById("identity-clear").addEventListener("click", function(e) {
+  e.stopPropagation();
+  setPinnedPlayer(null);
+});
+document.getElementById("identity-picker").addEventListener("click", function(e){ e.stopPropagation(); });
+document.addEventListener("click", function(e) {
+  if (!e.target.closest(".identity-bar")) document.getElementById("identity-picker").classList.remove("open");
+});
 function formatFilterLabel(label) {
   if (!label) return "Filter";
   if (label.indexOf("Custom Date • ") === 0) {
@@ -278,7 +369,18 @@ observer.observe(sentinel);
 onValue(squadRef, function(snap) {
   var d = snap.val();
   squadPlayers = d ? (Array.isArray(d) ? d : Object.values(d)) : [];
-  renderChips(); renderSquadTags();
+  if (pinnedPlayer && squadPlayers.indexOf(pinnedPlayer) === -1) {
+    pinnedPlayer = null;
+    persistPinnedPlayer(null);
+  }
+  if (pinnedPlayer && !editingKey && t1Selected.length === 0 && t2Selected.length === 0) {
+    t1Selected = [pinnedPlayer];
+  }
+  seedLineupFromPin();
+  renderIdentityUI();
+  renderChips(); renderSquadTags(); renderLineupChips();
+  renderLeaderboard();
+  historyPage = 0; renderHistory();
 });
 onValue(matchesRef, function(snap) {
   var d = snap.val();
@@ -343,6 +445,12 @@ function isInDateRange(s) {
 }
 function isResultMatch(s) {
   if (resultFilter==="all") return true;
+  if (pinnedPlayer) {
+    if (!inMatch(s,pinnedPlayer)) return false;
+    var result = getResult(s,pinnedPlayer);
+    if (resultFilter==="win") return result==="W";
+    if (resultFilter==="loss") return result==="L";
+  }
   if (resultFilter==="win") return Number(s.t1wins)>Number(s.t2wins);
   if (resultFilter==="loss") return Number(s.t1wins)<Number(s.t2wins);
   return true;
@@ -554,8 +662,7 @@ function renderChips() {
 }
 
 function resetForm() {
-  editingKey=null;t1Selected=[];t2Selected=[];gameType="21";
-  document.getElementById("inp-date").value=getTodayString();
+  editingKey=null;t1Selected=(pinnedPlayer&&squadPlayers.indexOf(pinnedPlayer)>-1)?[pinnedPlayer]:[];t2Selected=[];gameType="21";
   document.getElementById("t1wins").value="";document.getElementById("t2wins").value="";
   document.getElementById("form-err").style.display="none";document.getElementById("form-suc").style.display="none";
   document.getElementById("save-btn").textContent="Save Match";document.getElementById("cancel-btn").style.display="none";
@@ -567,19 +674,20 @@ function startEdit(s) {
   editingKey=s.firebaseKey;gameType=s.gameType||"21";
   t1Selected=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined";});
   t2Selected=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined";});
-  document.getElementById("inp-date").value=s.date;
   document.getElementById("t1wins").value=s.t1wins;document.getElementById("t2wins").value=s.t2wins;
   document.getElementById("save-btn").textContent="Update Match";document.getElementById("cancel-btn").style.display="block";
-  document.getElementById("form-title").textContent="Edit Match";
+  document.getElementById("form-title").textContent="Edit Match · "+fmtDate(s.date);
   document.getElementById("btn-21").classList.toggle("active",gameType==="21");
   document.getElementById("btn-11").classList.toggle("active",gameType==="11");
   renderChips();showTab("add");
 }
 async function handleSave() {
-  var date=document.getElementById("inp-date").value,t1w=document.getElementById("t1wins").value,t2w=document.getElementById("t2wins").value;
+  var existing = editingKey ? sessions.find(function(s){ return s.firebaseKey === editingKey; }) : null;
+  var date = existing && existing.date ? existing.date : getTodayString();
+  var t1w=document.getElementById("t1wins").value,t2w=document.getElementById("t2wins").value;
   var errEl=document.getElementById("form-err"),sucEl=document.getElementById("form-suc"),btn=document.getElementById("save-btn");
   errEl.style.display="none";sucEl.style.display="none";
-  if(!date||t1w===""||t2w===""){errEl.textContent="Please fill in all fields!";errEl.style.display="block";return;}
+  if(t1w===""||t2w===""){errEl.textContent="Please fill in all fields!";errEl.style.display="block";return;}
   if(t1Selected.length!==2||t2Selected.length!==2){errEl.textContent="Please select 2 players for each team!";errEl.style.display="block";return;}
   if (!editingKey) {
     var chosenDate = new Date(date);
@@ -655,7 +763,7 @@ function getOpponentsFor(s, n) {
   return [];
 }
 function computePartnerStreakInsight(n) {
-  var monthMatches = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; });
+  var monthMatches = getSessionsForPeriod().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; });
   var withPartner = monthMatches.filter(function(s){ return getPartnerFor(s,n); });
   if (!withPartner.length) return null;
   var lastPartner = getPartnerFor(withPartner[withPartner.length-1], n);
@@ -674,7 +782,7 @@ function computePartnerStreakInsight(n) {
   return null;
 }
 function computeOpponentStreakInsight(n) {
-  var monthMatches = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; });
+  var monthMatches = getSessionsForPeriod().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; });
   var best = null;
   var opponentsSeen = {};
   monthMatches.forEach(function(s){ getOpponentsFor(s,n).forEach(function(o){ opponentsSeen[o]=true; }); });
@@ -694,7 +802,7 @@ function computeOpponentStreakInsight(n) {
   return best;
 }
 function computePartnerWinRateInsight(n) {
-  var monthMatches = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,n); });
+  var monthMatches = getSessionsForPeriod().filter(function(s){ return inMatch(s,n); });
   if (!monthMatches.length) return null;
   var overallWon=0, overallLost=0;
   var byPartner = {};
@@ -726,7 +834,7 @@ function computePartnerWinRateInsight(n) {
   return biggest;
 }
 function computeGameTypeInsight(n) {
-  var monthMatches = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,n); });
+  var monthMatches = getSessionsForPeriod().filter(function(s){ return inMatch(s,n); });
   var w21=0,l21=0,w11=0,l11=0;
   monthMatches.forEach(function(s) {
     var result = getResult(s,n);
@@ -739,6 +847,248 @@ function computeGameTypeInsight(n) {
   var r21 = (w21/tot21)*100, r11 = (w11/tot11)*100;
   if (Math.abs(r21-r11) < 10) return null;
   return { better: r21>r11 ? "21pt" : "11pt", worse: r21>r11 ? "11pt" : "21pt", betterRate: Math.max(r21,r11), worseRate: Math.min(r21,r11) };
+}
+
+/* ── Flair (trash titles / nemesis / prestige) — display only, never affects ranking ──
+   Everything below is scoped to the active leaderboard filter. Titles are awarded by
+   comparing players against each other *within that filter*, and every threshold scales
+   with how many matches the filter contains, so All Time and This Month give different
+   winners instead of repeating the same end-of-list streak. */
+var flairCache = null;
+function resetFlairCache() { flairCache = null; }
+function getFlairPeriodLabel() {
+  return formatFilterLabel(leaderboardFilterLabel || "Selected Period");
+}
+function getFlairMatchesFor(n) {
+  return getSessionsForPeriod().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; });
+}
+function buildFlairContext() {
+  var ordered = getSessionsForPeriod().slice().sort(function(a,b){ return a.id-b.id; });
+  var players = {};
+  var allDays = {};
+
+  ordered.forEach(function(s) {
+    if (s.date) allDays[s.date] = true;
+    [s.t1p1,s.t1p2,s.t2p1,s.t2p2].forEach(function(n) {
+      if (!n || n === "undefined" || n === "") return;
+      if (!players[n]) players[n] = { name:n, results:[], wins:0, losses:0, decided:0, w21:0, l21:0, w11:0, l11:0, days:{}, vs:{} };
+      var pl = players[n];
+      var result = getResult(s,n);
+      pl.results.push(result);
+      if (s.date) pl.days[s.date] = true;
+      if (result !== "D") {
+        if (result === "W") pl.wins++; else pl.losses++;
+        pl.decided++;
+        if ((s.gameType||"21") === "11") { if (result === "W") pl.w11++; else pl.l11++; }
+        else { if (result === "W") pl.w21++; else pl.l21++; }
+      }
+      var onT1 = inT1(s,n);
+      var mine = onT1 ? Number(s.t1wins) : Number(s.t2wins);
+      var theirs = onT1 ? Number(s.t2wins) : Number(s.t1wins);
+      getOpponentsFor(s,n).forEach(function(o) {
+        if (!pl.vs[o]) pl.vs[o] = { name:o, mine:0, theirs:0, sessions:0, lastResult:null };
+        pl.vs[o].mine += mine;
+        pl.vs[o].theirs += theirs;
+        pl.vs[o].sessions++;
+        if (result !== "D") pl.vs[o].lastResult = result;
+      });
+    });
+  });
+
+  var names = Object.keys(players);
+  var totalDays = Object.keys(allDays).length;
+  var maxMatches = 0;
+
+  names.forEach(function(n) {
+    var pl = players[n];
+    pl.matches = pl.results.length;
+    pl.daysPlayed = Object.keys(pl.days).length;
+    pl.rate = pl.decided ? (pl.wins/pl.decided)*100 : 0;
+    maxMatches = Math.max(maxMatches, pl.matches);
+
+    var type = null, count = 0;
+    for (var i = pl.results.length-1; i >= 0; i--) {
+      var r = pl.results[i];
+      if (r === "D") break;
+      if (type === null) { type = r; count = 1; }
+      else if (r === type) count++;
+      else break;
+    }
+    pl.streakType = type;
+    pl.streakCount = count;
+    pl.streakNotable = count >= Math.max(3, Math.ceil(pl.matches * 0.2));
+
+    pl.n21 = pl.w21 + pl.l21;
+    pl.n11 = pl.w11 + pl.l11;
+    pl.r21 = pl.n21 ? (pl.w21/pl.n21)*100 : 0;
+    pl.r11 = pl.n11 ? (pl.w11/pl.n11)*100 : 0;
+    pl.gap11 = (pl.n21 >= 2 && pl.n11 >= 2) ? pl.r11 - pl.r21 : 0;
+  });
+
+  var minSample = Math.max(3, Math.ceil(maxMatches * 0.25));
+
+  function pick(eligible, better) {
+    var winner = null;
+    names.forEach(function(n) {
+      var pl = players[n];
+      if (!eligible(pl)) return;
+      if (!winner || better(pl, players[winner])) winner = n;
+    });
+    return winner;
+  }
+
+  var sup = {};
+  sup.hotStreak = pick(
+    function(pl){ return pl.streakType === "W" && pl.streakNotable; },
+    function(a,b){ return a.streakCount > b.streakCount || (a.streakCount === b.streakCount && a.matches > b.matches); }
+  );
+  sup.coldStreak = pick(
+    function(pl){ return pl.streakType === "L" && pl.streakNotable; },
+    function(a,b){ return a.streakCount > b.streakCount || (a.streakCount === b.streakCount && a.matches > b.matches); }
+  );
+  sup.bestRate = pick(
+    function(pl){ return pl.decided >= minSample; },
+    function(a,b){ return a.rate > b.rate || (a.rate === b.rate && a.decided > b.decided); }
+  );
+  sup.worstRate = pick(
+    function(pl){ return pl.decided >= minSample; },
+    function(a,b){ return a.rate < b.rate || (a.rate === b.rate && a.decided > b.decided); }
+  );
+  if (sup.bestRate && sup.bestRate === sup.worstRate) sup.worstRate = null;
+  sup.sniper11 = pick(
+    function(pl){ return pl.gap11 >= 15; },
+    function(a,b){ return a.gap11 > b.gap11; }
+  );
+  sup.grinder21 = pick(
+    function(pl){ return pl.gap11 <= -15; },
+    function(a,b){ return a.gap11 < b.gap11; }
+  );
+  sup.mostPresent = totalDays >= 2 ? pick(
+    function(pl){ return pl.daysPlayed >= totalDays; },
+    function(a,b){ return a.matches > b.matches; }
+  ) : null;
+  sup.leastPresent = (totalDays >= 3 && names.length >= 3) ? pick(
+    function(pl){ return pl.daysPlayed <= Math.max(1, Math.floor(totalDays * 0.4)); },
+    function(a,b){ return a.daysPlayed < b.daysPlayed || (a.daysPlayed === b.daysPlayed && a.matches < b.matches); }
+  ) : null;
+
+  var standings = computeIndividual();
+  var top = standings.find(function(pl){ return pl.qualified && (pl.won+pl.lost) > 0; });
+
+  return { players: players, names: names, totalDays: totalDays, minSample: minSample, sup: sup, leaderName: top ? top.name : null };
+}
+function getFlairContext() {
+  if (!flairCache) flairCache = buildFlairContext();
+  return flairCache;
+}
+function computeFlairStreak(n) {
+  var pl = getFlairContext().players[n];
+  if (!pl || !pl.streakCount || !pl.streakType) return null;
+  return { type: pl.streakType, count: pl.streakCount };
+}
+function getFlairLeaderName() {
+  return getFlairContext().leaderName;
+}
+function computeTrashTalkTitle(n) {
+  var ctx = getFlairContext();
+  var pl = ctx.players[n];
+  if (!pl || !pl.matches) return null;
+  var sup = ctx.sup;
+
+  if (sup.hotStreak === n) return "Court Bully";
+  if (sup.coldStreak === n) return "Free Points";
+  if (sup.bestRate === n) return "Problem Child";
+  if (sup.worstRate === n) return "Charity Case";
+  if (sup.sniper11 === n) return "11-pt Sniper";
+  if (sup.grinder21 === n) return "Grinder";
+  if (sup.mostPresent === n) return "No Days Off";
+  if (sup.leastPresent === n) return "Cameo Appearance";
+  if (pl.streakType === "W" && pl.streakCount >= 2) return "Heating Up";
+  if (pl.streakType === "L" && pl.streakCount >= 2) return "On Thin Ice";
+  if (pl.decided >= 3 && pl.rate >= 60) return "Quietly Cooking";
+  if (pl.decided >= 3 && pl.rate <= 40) return "Bench Warmer";
+  return "In the Mix";
+}
+function computeNemesis(n) {
+  var pl = getFlairContext().players[n];
+  if (!pl || !pl.matches) return null;
+  var minMeetings = Math.max(2, Math.min(6, Math.ceil(pl.matches * 0.15)));
+  var best = null;
+  Object.keys(pl.vs).forEach(function(o) {
+    var row = pl.vs[o];
+    if (row.sessions < minMeetings) return;
+    var deficit = row.theirs - row.mine;
+    if (deficit <= 0) return;
+    if (!best || deficit > best.deficit || (deficit === best.deficit && row.sessions > best.sessions) || (deficit === best.deficit && row.sessions === best.sessions && o < best.name)) {
+      best = { name: row.name, mine: row.mine, theirs: row.theirs, sessions: row.sessions, deficit: deficit, lastResult: row.lastResult };
+    }
+  });
+  if (!best) return null;
+  return {
+    name: best.name,
+    mine: best.mine,
+    theirs: best.theirs,
+    sessions: best.sessions,
+    lastResult: best.lastResult,
+    struck: best.lastResult === "W"
+  };
+}
+function computeKingmakerName(leaderName) {
+  if (!leaderName) return null;
+  var partners = {};
+  getSessionsForPeriod().forEach(function(s) {
+    if (!inMatch(s, leaderName)) return;
+    if (getResult(s, leaderName) !== "W") return;
+    var mate = getPartnerFor(s, leaderName);
+    if (!mate) return;
+    partners[mate] = (partners[mate] || 0) + 1;
+  });
+  var best = null, bestWins = 0;
+  Object.keys(partners).forEach(function(p) {
+    if (partners[p] > bestWins || (partners[p] === bestWins && (!best || p < best))) {
+      bestWins = partners[p];
+      best = p;
+    }
+  });
+  return bestWins >= 2 ? best : null;
+}
+function computePrestigeTitles(n) {
+  var ctx = getFlairContext();
+  var pl = ctx.players[n];
+  if (!pl) return [];
+  var titles = [];
+
+  var untouchableAt = Math.max(5, Math.ceil(pl.matches * 0.25));
+  if (pl.streakType === "W" && pl.streakCount >= untouchableAt) {
+    titles.push({ id: "untouchable", icon: "👑", label: "Untouchable", hint: pl.streakCount + "-win streak · " + getFlairPeriodLabel() });
+  }
+
+  var leaderName = ctx.leaderName;
+  if (leaderName && leaderName !== n) {
+    var winsOverLeader = 0;
+    var vsLeader = pl.vs[leaderName];
+    if (vsLeader) {
+      getFlairMatchesFor(n).forEach(function(s) {
+        if (getOpponentsFor(s,n).indexOf(leaderName) > -1 && getResult(s,n) === "W") winsOverLeader++;
+      });
+    }
+    if (winsOverLeader > 0) {
+      titles.push({ id: "assassin", icon: "🗡️", label: "Assassin", hint: winsOverLeader + " win" + (winsOverLeader!==1?"s":"") + " over #1 " + leaderName });
+    }
+  }
+
+  var kingmaker = computeKingmakerName(leaderName);
+  if (kingmaker && kingmaker === n) {
+    titles.push({ id: "kingmaker", icon: "♟️", label: "Kingmaker", hint: "Best partner of #1 · " + leaderName });
+  }
+  return titles;
+}
+function buildPlayerFlair(n) {
+  return {
+    trash: computeTrashTalkTitle(n),
+    nemesis: computeNemesis(n),
+    prestige: computePrestigeTitles(n)
+  };
 }
 function getSessionsForMonth(monthKey) {
   var parts = monthKey.split("-");
@@ -1139,6 +1489,14 @@ function suggestLineup(players) {
 }
 
 var lineupSelected = [];
+var lineupSeededFor = null;
+
+function seedLineupFromPin() {
+  if (!pinnedPlayer || squadPlayers.indexOf(pinnedPlayer) === -1) return;
+  if (lineupSeededFor === pinnedPlayer) return;
+  lineupSeededFor = pinnedPlayer;
+  if (lineupSelected.indexOf(pinnedPlayer) === -1 && lineupSelected.length < 6) lineupSelected.push(pinnedPlayer);
+}
 
 function renderLineupChips() {
   var pool = squadPlayers;
@@ -1149,7 +1507,8 @@ function renderLineupChips() {
   }
   el.innerHTML = pool.map(function(p) {
     var sel = lineupSelected.indexOf(p) > -1;
-    return '<button class="chip'+(sel?" sel-t1":"")+'" data-lp="'+p+'">'+p+'</button>';
+    var youTag = p === pinnedPlayer ? '<span class="chip-you">you</span>' : "";
+    return '<button class="chip'+(sel?" sel-t1":"")+'" data-lp="'+p+'">'+p+youTag+'</button>';
   }).join("");
   el.querySelectorAll(".chip").forEach(function(btn) {
     btn.addEventListener("click", function() {
@@ -1287,6 +1646,7 @@ function computePairs() {
 }
 
 function renderLeaderboard() {
+  resetFlairCache();
   var periodSessions = getSessionsForPeriod();
   var periodTotalGames = 0;
   periodSessions.forEach(function(s){ periodTotalGames += ((Number(s.t1wins)||0) + (Number(s.t2wins)||0)) * wt(s); });
@@ -1298,14 +1658,25 @@ function renderLeaderboard() {
     return(clickable?'<div class="tap-hint">Tap '+(kind==="pair"?"a pair":"a player")+' to see stats</div>':"")+
       data.map(function(p){
         var tot=p.won+p.lost,rate=tot?Math.round(p.won/tot*100):0,low=rate<50;
+        var isMe = kind === "player" && pinnedPlayer === p.name;
+        var meHTML = isMe ? '<span class="you-label">YOU</span>' : "";
         var sHTML="";
         if(clickable&&kind==="player"){var st=computeStreaks(p.name);if(st&&st.count>=2){if(st.type==="W")sHTML='<span class="tag hot">🔥 won last '+st.count+'</span>';else if(st.type==="L")sHTML='<span class="tag cold">❄️ lost last '+st.count+'</span>';}}
+        var flair = (clickable && kind === "player") ? buildPlayerFlair(p.name) : null;
+        var trashHTML = (flair && flair.trash) ? '<span class="trash-title">"'+flair.trash+'"</span>' : "";
+        var prestigeHTML = "";
+        if (flair && flair.prestige.length) {
+          prestigeHTML = flair.prestige.map(function(t){
+            return '<span class="tag prestige prestige-'+t.id+'" title="'+(t.hint||"")+'">'+t.icon+' '+t.label+'</span>';
+          }).join("");
+        }
+        var nemesisHTML = (flair && flair.nemesis) ? '<span class="tag nemesis" title="'+getFlairPeriodLabel()+' nemesis">💀 '+flair.nemesis.name+'</span>' : "";
 
         if (p.qualified === false) {
-          return '<div class="lb-row" '+attrName+'="'+p.name+'" style="opacity:0.65">'+
+          return '<div class="lb-row'+(isMe?" is-me":"")+'" '+attrName+'="'+p.name+'" style="opacity:0.65">'+
             '<div class="rank-badge">—</div>'+
-            '<div class="lb-main"><div class="lb-name">'+p.name+'</div>'+
-              '<div class="lb-secondary">'+sHTML+'<span>Played '+p.matchDaysPlayed+' of '+p.matchDaysNeeded+' required days</span></div></div>'+
+            '<div class="lb-main"><div class="lb-name">'+p.name+meHTML+trashHTML+'</div>'+
+              '<div class="lb-secondary">'+prestigeHTML+sHTML+nemesisHTML+'<span>Played '+p.matchDaysPlayed+' of '+p.matchDaysNeeded+' required days</span></div></div>'+
             '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'" style="font-size:15px">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-top:2px">Building Data</div></div></div>';
         }
 
@@ -1340,9 +1711,10 @@ function renderLeaderboard() {
           subLine2 = '<div class="lb-detail" style="opacity:0.7">'+tot.toFixed(1)+' matches</div>';
         }
 
-        return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+'" '+attrName+'="'+p.name+'">'+
+        var secondary = prestigeHTML + sHTML + adjHTML + nemesisHTML;
+        return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+(isMe?" is-me":"")+'" '+attrName+'="'+p.name+'">'+
           '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+'</div>'+
-          '<div class="lb-main"><div class="lb-name">'+p.name+'</div>'+(sHTML||adjHTML?'<div class="lb-secondary">'+sHTML+adjHTML+'</div>':'')+'</div>'+
+          '<div class="lb-main"><div class="lb-name">'+p.name+meHTML+trashHTML+'</div>'+(secondary?'<div class="lb-secondary">'+secondary+'</div>':'')+'</div>'+
           '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+heroNumber+'%</div><div class="lb-detail">'+subLine1+'</div>'+subLine2+subLine3+'<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'" style="width:'+rate+'%"></div></div></div></div>';
       }).join("")+'<div class="count">'+periodTotalGames.toFixed(1)+' match'+(periodTotalGames!==1?"es":"")+" recorded</div>";
   }
@@ -1354,8 +1726,11 @@ function renderLeaderboard() {
 
 function sessionCardHTML(s) {
   var locked = isLocked(s);
-  var t1w=Number(s.t1wins),t2w=Number(s.t2wins),isWin=t1w>t2w,isDraw=t1w===t2w;
-  var rc=isDraw?"draw":isWin?"":"loss",rl=isDraw?"Draw":isWin?"Won":"Lost";
+  var t1w=Number(s.t1wins),t2w=Number(s.t2wins),t1IsWin=t1w>t2w,isDraw=t1w===t2w;
+  var hasPinnedPov = !!pinnedPlayer && inMatch(s,pinnedPlayer);
+  var povResult = hasPinnedPov ? getResult(s,pinnedPlayer) : (isDraw?"D":t1IsWin?"W":"L");
+  var rc=povResult==="D"?"draw":povResult==="W"?"":"loss";
+  var rl=povResult==="D"?"Draw":povResult==="W"?(hasPinnedPov?"Your Win":"Won"):(hasPinnedPov?"Your Loss":"Lost");
   var t1n=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
   var t2n=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
   var hasScores=s.scores&&s.scores.length>0;
@@ -1382,7 +1757,7 @@ function sessionCardHTML(s) {
       '<span class="badge '+rc+'">'+rl+'</span>'+
       gtBadge(s)+
       '<span class="summary-teams">'+t1n+' vs '+t2n+'</span>'+
-      '<span class="summary-score'+(isWin?"":" loss")+'">'+t1w+'—'+t2w+'</span>'+
+      '<span class="summary-score'+(povResult==="W"?"":" loss")+'">'+t1w+'—'+t2w+'</span>'+
       (hasScores?'<span class="has-scores">📊</span>':'')+
       (locked?'<span style="font-size:11px">🔒</span>':'')+
       '<span class="expand-arrow">›</span>'+
@@ -1394,9 +1769,9 @@ function sessionCardHTML(s) {
         '<button class="del-btn" data-key="'+s.firebaseKey+'" data-locked="'+locked+'">✕ Delete</button>'+
       '</div>'+
       '<div class="teams-flat">'+
-        '<div class="team-side"><div class="team-side-name">'+t1n+'</div><div class="team-side-score'+(isWin?"":isDraw?"":" loss")+'">'+t1w+'</div></div>'+
+        '<div class="team-side"><div class="team-side-name">'+t1n+'</div><div class="team-side-score'+(t1IsWin?"":isDraw?"":" loss")+'">'+t1w+'</div></div>'+
         '<div class="vs-divider">vs</div>'+
-        '<div class="team-side"><div class="team-side-name">'+t2n+'</div><div class="team-side-score'+(isWin?" loss":isDraw?"":"")+'">'+t2w+'</div></div>'+
+        '<div class="team-side"><div class="team-side-name">'+t2n+'</div><div class="team-side-score'+(t1IsWin?" loss":isDraw?"":"")+'">'+t2w+'</div></div>'+
       '</div>'+
       '<div class="match-meta">'+(t1w+t2w)+' matches • '+fmtDate(s.date)+'</div>'+
       '<div class="dots">'+dots+'</div>'+
@@ -1531,6 +1906,7 @@ function appendHistory() {
 
 function showPlayerStats(name) {
   currentPlayer=name;
+  resetFlairCache();
   var ind=computeIndividual(),pl=ind.find(function(p){return p.name===name;});
   if(!pl)return;
   var tot=pl.won+pl.lost,rate=tot?Math.round(pl.won/tot*100):0;
@@ -1545,6 +1921,23 @@ function showPlayerStats(name) {
   var re=document.getElementById("p-winrate");re.textContent=rate+"%";re.className="player-winrate"+(rate<50?" low":"");
   document.getElementById("p-record").textContent=pl.won.toFixed(1)+"W — "+pl.lost.toFixed(1)+"L • "+(pl.won+pl.lost).toFixed(1)+" matches";
 
+  var flair = buildPlayerFlair(name);
+  var trashEl = document.getElementById("p-trash-title");
+  if (flair.trash) {
+    trashEl.textContent = '"' + flair.trash + '"';
+    trashEl.style.display = "block";
+  } else {
+    trashEl.textContent = "";
+    trashEl.style.display = "none";
+  }
+  if (flair.prestige.length) {
+    H("p-prestige", flair.prestige.map(function(t){
+      return '<span class="tag prestige prestige-'+t.id+'" title="'+(t.hint||"")+'">'+t.icon+' '+t.label+'</span>';
+    }).join(""));
+  } else {
+    H("p-prestige", "");
+  }
+
   H("stats-grid",
     '<div class="stat-box"><div class="stat-val accent">'+bs+'</div><div class="stat-lbl">Best Streak</div></div>'+
     '<div class="stat-box"><div class="stat-val">'+(pl.won+pl.lost).toFixed(1)+'</div><div class="stat-lbl">Total Matches</div></div>'+
@@ -1557,33 +1950,62 @@ function showPlayerStats(name) {
     '</div></div>'
   );
 
+  if (flair.nemesis) {
+    var nem = flair.nemesis;
+    var flairPeriodLabel = getFlairPeriodLabel();
+    var statusLine = nem.struck
+      ? '<div class="nemesis-status struck">🗡️ Just struck — still hunting</div>'
+      : '<div class="nemesis-status">Still hunting…</div>';
+    H("nemesis-section",
+      '<div class="sec-hdr">Nemesis</div>'+
+      '<div class="nemesis-card'+(nem.struck?" struck":"")+'" id="nemesis-card" data-opp="'+nem.name+'" role="button" tabindex="0">'+
+        '<div class="nemesis-top"><span class="nemesis-skull">💀</span><div class="nemesis-copy"><div class="nemesis-label">'+flairPeriodLabel+' rival</div><div class="nemesis-name">'+nem.name+'</div></div>'+
+        '<div class="nemesis-score">'+nem.mine+' — '+nem.theirs+'</div></div>'+
+        statusLine+
+        '<div class="nemesis-sub">Across '+nem.sessions+' match'+(nem.sessions!==1?"es":"")+' in this filter · tap for H2H · flair only</div>'+
+      '</div>'
+    );
+    var nemCard = document.getElementById("nemesis-card");
+    if (nemCard) {
+      nemCard.addEventListener("click", function(){ showH2H(name, this.getAttribute("data-opp")); });
+    }
+  } else {
+    H("nemesis-section", "");
+  }
+
   var insightsHTML = "";
   var partnerStreak = computePartnerStreakInsight(name);
   var opponentStreak = computeOpponentStreakInsight(name);
   var partnerWinRate = computePartnerWinRateInsight(name);
   var gameTypeGap = computeGameTypeInsight(name);
 
+  var isSelf = pinnedPlayer === name;
+  var streakLead = isSelf ? "You've" : name + " has";
+  var possessive = isSelf ? "Your" : name + "'s";
+
   if (partnerStreak) {
     var icon1 = partnerStreak.type === "W" ? "🔥" : "❄️";
-    var verb1 = partnerStreak.type === "W" ? "Won" : "Lost";
-    insightsHTML += '<div class="insight-row">'+icon1+' '+verb1+' your last '+partnerStreak.count+' with '+partnerStreak.partner+'</div>';
+    var verb1 = partnerStreak.type === "W" ? "won" : "lost";
+    insightsHTML += '<div class="insight-row">'+icon1+' '+streakLead+' '+verb1+' the last '+partnerStreak.count+' alongside '+partnerStreak.partner+'</div>';
   }
   if (opponentStreak) {
     var icon2 = opponentStreak.type === "W" ? "🔥" : "❄️";
-    var verb2 = opponentStreak.type === "W" ? "Won" : "Lost";
-    insightsHTML += '<div class="insight-row">'+icon2+' '+verb2+' your last '+opponentStreak.count+' against '+opponentStreak.opponent+'</div>';
+    var verb2 = opponentStreak.type === "W" ? "won" : "lost";
+    insightsHTML += '<div class="insight-row">'+icon2+' '+streakLead+' '+verb2+' the last '+opponentStreak.count+' against '+opponentStreak.opponent+'</div>';
   }
   if (partnerWinRate) {
     var icon3 = partnerWinRate.diff > 0 ? "📈" : "📉";
     var verb3 = partnerWinRate.diff > 0 ? "jumps" : "drops";
-    insightsHTML += '<div class="insight-row">'+icon3+' Win rate '+verb3+' with '+partnerWinRate.partner+'<div class="insight-sub">'+Math.round(partnerWinRate.overallRate)+'% overall → '+Math.round(partnerWinRate.partnerRate)+'% together ('+partnerWinRate.matches+' matches)</div></div>';
+    insightsHTML += '<div class="insight-row">'+icon3+' '+possessive+' win rate '+verb3+' with '+partnerWinRate.partner+'<div class="insight-sub">'+Math.round(partnerWinRate.overallRate)+'% overall → '+Math.round(partnerWinRate.partnerRate)+'% together ('+partnerWinRate.matches+' matches)</div></div>';
   }
   if (gameTypeGap) {
-    insightsHTML += '<div class="insight-row">🎯 Performs better at '+gameTypeGap.better+' than '+gameTypeGap.worse+'<div class="insight-sub">'+Math.round(gameTypeGap.betterRate)+'% vs '+Math.round(gameTypeGap.worseRate)+'%</div></div>';
+    var gapLead = isSelf ? "You play better at " : name + " plays better at ";
+    insightsHTML += '<div class="insight-row">🎯 '+gapLead+gameTypeGap.better+' than '+gameTypeGap.worse+'<div class="insight-sub">'+Math.round(gameTypeGap.betterRate)+'% vs '+Math.round(gameTypeGap.worseRate)+'%</div></div>';
   }
 
   if (insightsHTML) {
-    H("insights-section", '<div class="sec-hdr">This Month\'s Insights</div><div class="insights-box">'+insightsHTML+'</div>');
+    var insightsHeading = (isSelf ? "Your " : name + "'s ") + getFlairPeriodLabel() + " Insights";
+    H("insights-section", '<div class="sec-hdr">'+insightsHeading+'</div><div class="insights-box">'+insightsHTML+'</div>');
   } else {
     H("insights-section", "");
   }
