@@ -655,7 +655,7 @@ function getOpponentsFor(s, n) {
   return [];
 }
 function computePartnerStreakInsight(n) {
-  var monthMatches = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; });
+  var monthMatches = getSessionsForPeriod().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; });
   var withPartner = monthMatches.filter(function(s){ return getPartnerFor(s,n); });
   if (!withPartner.length) return null;
   var lastPartner = getPartnerFor(withPartner[withPartner.length-1], n);
@@ -674,7 +674,7 @@ function computePartnerStreakInsight(n) {
   return null;
 }
 function computeOpponentStreakInsight(n) {
-  var monthMatches = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; });
+  var monthMatches = getSessionsForPeriod().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; });
   var best = null;
   var opponentsSeen = {};
   monthMatches.forEach(function(s){ getOpponentsFor(s,n).forEach(function(o){ opponentsSeen[o]=true; }); });
@@ -694,7 +694,7 @@ function computeOpponentStreakInsight(n) {
   return best;
 }
 function computePartnerWinRateInsight(n) {
-  var monthMatches = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,n); });
+  var monthMatches = getSessionsForPeriod().filter(function(s){ return inMatch(s,n); });
   if (!monthMatches.length) return null;
   var overallWon=0, overallLost=0;
   var byPartner = {};
@@ -726,7 +726,7 @@ function computePartnerWinRateInsight(n) {
   return biggest;
 }
 function computeGameTypeInsight(n) {
-  var monthMatches = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,n); });
+  var monthMatches = getSessionsForPeriod().filter(function(s){ return inMatch(s,n); });
   var w21=0,l21=0,w11=0,l11=0;
   monthMatches.forEach(function(s) {
     var result = getResult(s,n);
@@ -739,6 +739,248 @@ function computeGameTypeInsight(n) {
   var r21 = (w21/tot21)*100, r11 = (w11/tot11)*100;
   if (Math.abs(r21-r11) < 10) return null;
   return { better: r21>r11 ? "21pt" : "11pt", worse: r21>r11 ? "11pt" : "21pt", betterRate: Math.max(r21,r11), worseRate: Math.min(r21,r11) };
+}
+
+/* ── Flair (trash titles / nemesis / prestige) — display only, never affects ranking ──
+   Everything below is scoped to the active leaderboard filter. Titles are awarded by
+   comparing players against each other *within that filter*, and every threshold scales
+   with how many matches the filter contains, so All Time and This Month give different
+   winners instead of repeating the same end-of-list streak. */
+var flairCache = null;
+function resetFlairCache() { flairCache = null; }
+function getFlairPeriodLabel() {
+  return formatFilterLabel(leaderboardFilterLabel || "Selected Period");
+}
+function getFlairMatchesFor(n) {
+  return getSessionsForPeriod().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; });
+}
+function buildFlairContext() {
+  var ordered = getSessionsForPeriod().slice().sort(function(a,b){ return a.id-b.id; });
+  var players = {};
+  var allDays = {};
+
+  ordered.forEach(function(s) {
+    if (s.date) allDays[s.date] = true;
+    [s.t1p1,s.t1p2,s.t2p1,s.t2p2].forEach(function(n) {
+      if (!n || n === "undefined" || n === "") return;
+      if (!players[n]) players[n] = { name:n, results:[], wins:0, losses:0, decided:0, w21:0, l21:0, w11:0, l11:0, days:{}, vs:{} };
+      var pl = players[n];
+      var result = getResult(s,n);
+      pl.results.push(result);
+      if (s.date) pl.days[s.date] = true;
+      if (result !== "D") {
+        if (result === "W") pl.wins++; else pl.losses++;
+        pl.decided++;
+        if ((s.gameType||"21") === "11") { if (result === "W") pl.w11++; else pl.l11++; }
+        else { if (result === "W") pl.w21++; else pl.l21++; }
+      }
+      var onT1 = inT1(s,n);
+      var mine = onT1 ? Number(s.t1wins) : Number(s.t2wins);
+      var theirs = onT1 ? Number(s.t2wins) : Number(s.t1wins);
+      getOpponentsFor(s,n).forEach(function(o) {
+        if (!pl.vs[o]) pl.vs[o] = { name:o, mine:0, theirs:0, sessions:0, lastResult:null };
+        pl.vs[o].mine += mine;
+        pl.vs[o].theirs += theirs;
+        pl.vs[o].sessions++;
+        if (result !== "D") pl.vs[o].lastResult = result;
+      });
+    });
+  });
+
+  var names = Object.keys(players);
+  var totalDays = Object.keys(allDays).length;
+  var maxMatches = 0;
+
+  names.forEach(function(n) {
+    var pl = players[n];
+    pl.matches = pl.results.length;
+    pl.daysPlayed = Object.keys(pl.days).length;
+    pl.rate = pl.decided ? (pl.wins/pl.decided)*100 : 0;
+    maxMatches = Math.max(maxMatches, pl.matches);
+
+    var type = null, count = 0;
+    for (var i = pl.results.length-1; i >= 0; i--) {
+      var r = pl.results[i];
+      if (r === "D") break;
+      if (type === null) { type = r; count = 1; }
+      else if (r === type) count++;
+      else break;
+    }
+    pl.streakType = type;
+    pl.streakCount = count;
+    pl.streakNotable = count >= Math.max(3, Math.ceil(pl.matches * 0.2));
+
+    pl.n21 = pl.w21 + pl.l21;
+    pl.n11 = pl.w11 + pl.l11;
+    pl.r21 = pl.n21 ? (pl.w21/pl.n21)*100 : 0;
+    pl.r11 = pl.n11 ? (pl.w11/pl.n11)*100 : 0;
+    pl.gap11 = (pl.n21 >= 2 && pl.n11 >= 2) ? pl.r11 - pl.r21 : 0;
+  });
+
+  var minSample = Math.max(3, Math.ceil(maxMatches * 0.25));
+
+  function pick(eligible, better) {
+    var winner = null;
+    names.forEach(function(n) {
+      var pl = players[n];
+      if (!eligible(pl)) return;
+      if (!winner || better(pl, players[winner])) winner = n;
+    });
+    return winner;
+  }
+
+  var sup = {};
+  sup.hotStreak = pick(
+    function(pl){ return pl.streakType === "W" && pl.streakNotable; },
+    function(a,b){ return a.streakCount > b.streakCount || (a.streakCount === b.streakCount && a.matches > b.matches); }
+  );
+  sup.coldStreak = pick(
+    function(pl){ return pl.streakType === "L" && pl.streakNotable; },
+    function(a,b){ return a.streakCount > b.streakCount || (a.streakCount === b.streakCount && a.matches > b.matches); }
+  );
+  sup.bestRate = pick(
+    function(pl){ return pl.decided >= minSample; },
+    function(a,b){ return a.rate > b.rate || (a.rate === b.rate && a.decided > b.decided); }
+  );
+  sup.worstRate = pick(
+    function(pl){ return pl.decided >= minSample; },
+    function(a,b){ return a.rate < b.rate || (a.rate === b.rate && a.decided > b.decided); }
+  );
+  if (sup.bestRate && sup.bestRate === sup.worstRate) sup.worstRate = null;
+  sup.sniper11 = pick(
+    function(pl){ return pl.gap11 >= 15; },
+    function(a,b){ return a.gap11 > b.gap11; }
+  );
+  sup.grinder21 = pick(
+    function(pl){ return pl.gap11 <= -15; },
+    function(a,b){ return a.gap11 < b.gap11; }
+  );
+  sup.mostPresent = totalDays >= 2 ? pick(
+    function(pl){ return pl.daysPlayed >= totalDays; },
+    function(a,b){ return a.matches > b.matches; }
+  ) : null;
+  sup.leastPresent = (totalDays >= 3 && names.length >= 3) ? pick(
+    function(pl){ return pl.daysPlayed <= Math.max(1, Math.floor(totalDays * 0.4)); },
+    function(a,b){ return a.daysPlayed < b.daysPlayed || (a.daysPlayed === b.daysPlayed && a.matches < b.matches); }
+  ) : null;
+
+  var standings = computeIndividual();
+  var top = standings.find(function(pl){ return pl.qualified && (pl.won+pl.lost) > 0; });
+
+  return { players: players, names: names, totalDays: totalDays, minSample: minSample, sup: sup, leaderName: top ? top.name : null };
+}
+function getFlairContext() {
+  if (!flairCache) flairCache = buildFlairContext();
+  return flairCache;
+}
+function computeFlairStreak(n) {
+  var pl = getFlairContext().players[n];
+  if (!pl || !pl.streakCount || !pl.streakType) return null;
+  return { type: pl.streakType, count: pl.streakCount };
+}
+function getFlairLeaderName() {
+  return getFlairContext().leaderName;
+}
+function computeTrashTalkTitle(n) {
+  var ctx = getFlairContext();
+  var pl = ctx.players[n];
+  if (!pl || !pl.matches) return null;
+  var sup = ctx.sup;
+
+  if (sup.hotStreak === n) return "Court Bully";
+  if (sup.coldStreak === n) return "Free Points";
+  if (sup.bestRate === n) return "Problem Child";
+  if (sup.worstRate === n) return "Charity Case";
+  if (sup.sniper11 === n) return "11-pt Sniper";
+  if (sup.grinder21 === n) return "Grinder";
+  if (sup.mostPresent === n) return "No Days Off";
+  if (sup.leastPresent === n) return "Cameo Appearance";
+  if (pl.streakType === "W" && pl.streakCount >= 2) return "Heating Up";
+  if (pl.streakType === "L" && pl.streakCount >= 2) return "On Thin Ice";
+  if (pl.decided >= 3 && pl.rate >= 60) return "Quietly Cooking";
+  if (pl.decided >= 3 && pl.rate <= 40) return "Bench Warmer";
+  return "In the Mix";
+}
+function computeNemesis(n) {
+  var pl = getFlairContext().players[n];
+  if (!pl || !pl.matches) return null;
+  var minMeetings = Math.max(2, Math.min(6, Math.ceil(pl.matches * 0.15)));
+  var best = null;
+  Object.keys(pl.vs).forEach(function(o) {
+    var row = pl.vs[o];
+    if (row.sessions < minMeetings) return;
+    var deficit = row.theirs - row.mine;
+    if (deficit <= 0) return;
+    if (!best || deficit > best.deficit || (deficit === best.deficit && row.sessions > best.sessions) || (deficit === best.deficit && row.sessions === best.sessions && o < best.name)) {
+      best = { name: row.name, mine: row.mine, theirs: row.theirs, sessions: row.sessions, deficit: deficit, lastResult: row.lastResult };
+    }
+  });
+  if (!best) return null;
+  return {
+    name: best.name,
+    mine: best.mine,
+    theirs: best.theirs,
+    sessions: best.sessions,
+    lastResult: best.lastResult,
+    struck: best.lastResult === "W"
+  };
+}
+function computeKingmakerName(leaderName) {
+  if (!leaderName) return null;
+  var partners = {};
+  getSessionsForPeriod().forEach(function(s) {
+    if (!inMatch(s, leaderName)) return;
+    if (getResult(s, leaderName) !== "W") return;
+    var mate = getPartnerFor(s, leaderName);
+    if (!mate) return;
+    partners[mate] = (partners[mate] || 0) + 1;
+  });
+  var best = null, bestWins = 0;
+  Object.keys(partners).forEach(function(p) {
+    if (partners[p] > bestWins || (partners[p] === bestWins && (!best || p < best))) {
+      bestWins = partners[p];
+      best = p;
+    }
+  });
+  return bestWins >= 2 ? best : null;
+}
+function computePrestigeTitles(n) {
+  var ctx = getFlairContext();
+  var pl = ctx.players[n];
+  if (!pl) return [];
+  var titles = [];
+
+  var untouchableAt = Math.max(5, Math.ceil(pl.matches * 0.25));
+  if (pl.streakType === "W" && pl.streakCount >= untouchableAt) {
+    titles.push({ id: "untouchable", icon: "👑", label: "Untouchable", hint: pl.streakCount + "-win streak · " + getFlairPeriodLabel() });
+  }
+
+  var leaderName = ctx.leaderName;
+  if (leaderName && leaderName !== n) {
+    var winsOverLeader = 0;
+    var vsLeader = pl.vs[leaderName];
+    if (vsLeader) {
+      getFlairMatchesFor(n).forEach(function(s) {
+        if (getOpponentsFor(s,n).indexOf(leaderName) > -1 && getResult(s,n) === "W") winsOverLeader++;
+      });
+    }
+    if (winsOverLeader > 0) {
+      titles.push({ id: "assassin", icon: "🗡️", label: "Assassin", hint: winsOverLeader + " win" + (winsOverLeader!==1?"s":"") + " over #1 " + leaderName });
+    }
+  }
+
+  var kingmaker = computeKingmakerName(leaderName);
+  if (kingmaker && kingmaker === n) {
+    titles.push({ id: "kingmaker", icon: "♟️", label: "Kingmaker", hint: "Best partner of #1 · " + leaderName });
+  }
+  return titles;
+}
+function buildPlayerFlair(n) {
+  return {
+    trash: computeTrashTalkTitle(n),
+    nemesis: computeNemesis(n),
+    prestige: computePrestigeTitles(n)
+  };
 }
 function getSessionsForMonth(monthKey) {
   var parts = monthKey.split("-");
@@ -1287,6 +1529,7 @@ function computePairs() {
 }
 
 function renderLeaderboard() {
+  resetFlairCache();
   var periodSessions = getSessionsForPeriod();
   var periodTotalGames = 0;
   periodSessions.forEach(function(s){ periodTotalGames += ((Number(s.t1wins)||0) + (Number(s.t2wins)||0)) * wt(s); });
@@ -1300,12 +1543,21 @@ function renderLeaderboard() {
         var tot=p.won+p.lost,rate=tot?Math.round(p.won/tot*100):0,low=rate<50;
         var sHTML="";
         if(clickable&&kind==="player"){var st=computeStreaks(p.name);if(st&&st.count>=2){if(st.type==="W")sHTML='<span class="tag hot">🔥 won last '+st.count+'</span>';else if(st.type==="L")sHTML='<span class="tag cold">❄️ lost last '+st.count+'</span>';}}
+        var flair = (clickable && kind === "player") ? buildPlayerFlair(p.name) : null;
+        var trashHTML = (flair && flair.trash) ? '<span class="trash-title">"'+flair.trash+'"</span>' : "";
+        var prestigeHTML = "";
+        if (flair && flair.prestige.length) {
+          prestigeHTML = flair.prestige.map(function(t){
+            return '<span class="tag prestige prestige-'+t.id+'" title="'+(t.hint||"")+'">'+t.icon+' '+t.label+'</span>';
+          }).join("");
+        }
+        var nemesisHTML = (flair && flair.nemesis) ? '<span class="tag nemesis" title="'+getFlairPeriodLabel()+' nemesis">💀 '+flair.nemesis.name+'</span>' : "";
 
         if (p.qualified === false) {
           return '<div class="lb-row" '+attrName+'="'+p.name+'" style="opacity:0.65">'+
             '<div class="rank-badge">—</div>'+
-            '<div class="lb-main"><div class="lb-name">'+p.name+'</div>'+
-              '<div class="lb-secondary">'+sHTML+'<span>Played '+p.matchDaysPlayed+' of '+p.matchDaysNeeded+' required days</span></div></div>'+
+            '<div class="lb-main"><div class="lb-name">'+p.name+trashHTML+'</div>'+
+              '<div class="lb-secondary">'+prestigeHTML+sHTML+nemesisHTML+'<span>Played '+p.matchDaysPlayed+' of '+p.matchDaysNeeded+' required days</span></div></div>'+
             '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'" style="font-size:15px">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-top:2px">Building Data</div></div></div>';
         }
 
@@ -1340,9 +1592,10 @@ function renderLeaderboard() {
           subLine2 = '<div class="lb-detail" style="opacity:0.7">'+tot.toFixed(1)+' matches</div>';
         }
 
+        var secondary = prestigeHTML + sHTML + adjHTML + nemesisHTML;
         return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+'" '+attrName+'="'+p.name+'">'+
           '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+'</div>'+
-          '<div class="lb-main"><div class="lb-name">'+p.name+'</div>'+(sHTML||adjHTML?'<div class="lb-secondary">'+sHTML+adjHTML+'</div>':'')+'</div>'+
+          '<div class="lb-main"><div class="lb-name">'+p.name+trashHTML+'</div>'+(secondary?'<div class="lb-secondary">'+secondary+'</div>':'')+'</div>'+
           '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+heroNumber+'%</div><div class="lb-detail">'+subLine1+'</div>'+subLine2+subLine3+'<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'" style="width:'+rate+'%"></div></div></div></div>';
       }).join("")+'<div class="count">'+periodTotalGames.toFixed(1)+' match'+(periodTotalGames!==1?"es":"")+" recorded</div>";
   }
@@ -1531,6 +1784,7 @@ function appendHistory() {
 
 function showPlayerStats(name) {
   currentPlayer=name;
+  resetFlairCache();
   var ind=computeIndividual(),pl=ind.find(function(p){return p.name===name;});
   if(!pl)return;
   var tot=pl.won+pl.lost,rate=tot?Math.round(pl.won/tot*100):0;
@@ -1545,6 +1799,23 @@ function showPlayerStats(name) {
   var re=document.getElementById("p-winrate");re.textContent=rate+"%";re.className="player-winrate"+(rate<50?" low":"");
   document.getElementById("p-record").textContent=pl.won.toFixed(1)+"W — "+pl.lost.toFixed(1)+"L • "+(pl.won+pl.lost).toFixed(1)+" matches";
 
+  var flair = buildPlayerFlair(name);
+  var trashEl = document.getElementById("p-trash-title");
+  if (flair.trash) {
+    trashEl.textContent = '"' + flair.trash + '"';
+    trashEl.style.display = "block";
+  } else {
+    trashEl.textContent = "";
+    trashEl.style.display = "none";
+  }
+  if (flair.prestige.length) {
+    H("p-prestige", flair.prestige.map(function(t){
+      return '<span class="tag prestige prestige-'+t.id+'" title="'+(t.hint||"")+'">'+t.icon+' '+t.label+'</span>';
+    }).join(""));
+  } else {
+    H("p-prestige", "");
+  }
+
   H("stats-grid",
     '<div class="stat-box"><div class="stat-val accent">'+bs+'</div><div class="stat-lbl">Best Streak</div></div>'+
     '<div class="stat-box"><div class="stat-val">'+(pl.won+pl.lost).toFixed(1)+'</div><div class="stat-lbl">Total Matches</div></div>'+
@@ -1556,6 +1827,29 @@ function showPlayerStats(name) {
       '<div style="text-align:center"><div class="stat-val accent">'+r11+'%</div><div class="stat-lbl">11pt Win Rate</div><div style="font-size:11px;color:var(--text-dim);font-family:monospace;margin-top:4px">'+w11+'W — '+l11+'L</div></div>'+
     '</div></div>'
   );
+
+  if (flair.nemesis) {
+    var nem = flair.nemesis;
+    var flairPeriodLabel = getFlairPeriodLabel();
+    var statusLine = nem.struck
+      ? '<div class="nemesis-status struck">🗡️ Just struck — still hunting</div>'
+      : '<div class="nemesis-status">Still hunting…</div>';
+    H("nemesis-section",
+      '<div class="sec-hdr">Nemesis</div>'+
+      '<div class="nemesis-card'+(nem.struck?" struck":"")+'" id="nemesis-card" data-opp="'+nem.name+'" role="button" tabindex="0">'+
+        '<div class="nemesis-top"><span class="nemesis-skull">💀</span><div class="nemesis-copy"><div class="nemesis-label">'+flairPeriodLabel+' rival</div><div class="nemesis-name">'+nem.name+'</div></div>'+
+        '<div class="nemesis-score">'+nem.mine+' — '+nem.theirs+'</div></div>'+
+        statusLine+
+        '<div class="nemesis-sub">Across '+nem.sessions+' match'+(nem.sessions!==1?"es":"")+' in this filter · tap for H2H · flair only</div>'+
+      '</div>'
+    );
+    var nemCard = document.getElementById("nemesis-card");
+    if (nemCard) {
+      nemCard.addEventListener("click", function(){ showH2H(name, this.getAttribute("data-opp")); });
+    }
+  } else {
+    H("nemesis-section", "");
+  }
 
   var insightsHTML = "";
   var partnerStreak = computePartnerStreakInsight(name);
@@ -1583,7 +1877,7 @@ function showPlayerStats(name) {
   }
 
   if (insightsHTML) {
-    H("insights-section", '<div class="sec-hdr">This Month\'s Insights</div><div class="insights-box">'+insightsHTML+'</div>');
+    H("insights-section", '<div class="sec-hdr">'+getFlairPeriodLabel()+' Insights</div><div class="insights-box">'+insightsHTML+'</div>');
   } else {
     H("insights-section", "");
   }
