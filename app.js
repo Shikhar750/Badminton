@@ -60,12 +60,14 @@ function populateIdentityPicker() {
 }
 function renderIdentityUI() {
   var main = document.getElementById("identity-main");
-  var change = document.getElementById("identity-change");
-  if (!main || !change) return;
-  main.textContent = pinnedPlayer ? "👤 " + pinnedPlayer + " · My Stats" : "👤 Pin yourself";
+  if (!main) return;
+  main.textContent = pinnedPlayer ? pinnedPlayer.charAt(0).toUpperCase() : "👤";
   main.classList.toggle("pinned", !!pinnedPlayer);
-  change.style.display = pinnedPlayer ? "block" : "none";
+  main.setAttribute("aria-label", pinnedPlayer ? "Pinned as " + pinnedPlayer : "Pin yourself");
+  main.title = pinnedPlayer ? "Pinned as " + pinnedPlayer : "Pin yourself";
+  document.getElementById("identity-picker-title").textContent = pinnedPlayer ? "Pinned as " + pinnedPlayer : "Pin yourself";
   document.getElementById("identity-clear").style.display = pinnedPlayer ? "block" : "none";
+  document.getElementById("identity-stats").style.display = pinnedPlayer ? "block" : "none";
   document.getElementById("history-win-filter").textContent = pinnedPlayer ? "My Wins" : "Team 1 Won";
   document.getElementById("history-loss-filter").textContent = pinnedPlayer ? "My Losses" : "Team 1 Lost";
   document.getElementById("history-pov").textContent = pinnedPlayer
@@ -95,11 +97,8 @@ function setPinnedPlayer(name) {
   renderHistory();
 }
 function openPinnedPlayerStats() {
-  if (!pinnedPlayer) {
-    document.getElementById("identity-picker").classList.add("open");
-    populateIdentityPicker();
-    return;
-  }
+  document.getElementById("identity-picker").classList.remove("open");
+  if (!pinnedPlayer) return;
   var hasStats = computeIndividual().some(function(player){ return player.name === pinnedPlayer; });
   if (!hasStats) {
     alert(pinnedPlayer + " has no matches in the selected Rankings filter.");
@@ -145,11 +144,14 @@ document.getElementById("nav-history").addEventListener("click", function(){ sho
 document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); seedLineupFromPin(); renderLineupChips(); });
 document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); });
 document.getElementById("refresh-btn").addEventListener("click", renderAll);
-document.getElementById("identity-main").addEventListener("click", openPinnedPlayerStats);
-document.getElementById("identity-change").addEventListener("click", function(e) {
+document.getElementById("identity-main").addEventListener("click", function(e) {
   e.stopPropagation();
   populateIdentityPicker();
   document.getElementById("identity-picker").classList.toggle("open");
+});
+document.getElementById("identity-stats").addEventListener("click", function(e) {
+  e.stopPropagation();
+  openPinnedPlayerStats();
 });
 document.getElementById("identity-save").addEventListener("click", function(e) {
   e.stopPropagation();
@@ -1667,7 +1669,8 @@ function renderLeaderboard() {
         var prestigeHTML = "";
         if (flair && flair.prestige.length) {
           prestigeHTML = flair.prestige.map(function(t){
-            return '<span class="tag prestige prestige-'+t.id+'" title="'+(t.hint||"")+'">'+t.icon+' '+t.label+'</span>';
+            var tip = t.label + (t.hint ? " · " + t.hint : "");
+            return '<span class="tag prestige icon-only prestige-'+t.id+'" title="'+tip+'" aria-label="'+tip+'">'+t.icon+'</span>';
           }).join("");
         }
         var nemesisHTML = (flair && flair.nemesis) ? '<span class="tag nemesis" title="'+getFlairPeriodLabel()+' nemesis">💀 '+flair.nemesis.name+'</span>' : "";
