@@ -108,9 +108,9 @@ h1 span{color:var(--accent)}
 .lb-main{flex:1;min-width:0}
 .lb-name{font-weight:600;font-size:14.5px;letter-spacing:-0.1px}
 .you-label{display:inline-flex;margin-left:6px;padding:1px 5px;border-radius:99px;background:var(--accent-dim);color:var(--accent);font:700 8px 'Space Mono',monospace;vertical-align:2px;letter-spacing:0.5px}
-.lb-secondary{font-size:11px;color:var(--text-dim);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;font-family:'Space Mono',monospace}
+.lb-secondary{font-size:10px;color:var(--text-dim);margin-top:3px;display:flex;gap:5px;flex-wrap:wrap;font-family:'Space Mono',monospace}
 .tag{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600}
-.tag.brownie{background:var(--amber-dim);color:var(--amber)}
+.tag.brownie{background:var(--amber-dim);color:var(--amber);display:none}
 .tag.penalty{background:var(--loss-dim);color:var(--loss)}
 .tag.hot{background:rgba(224,140,66,0.1);color:#e08c42}
 .tag.cold{background:rgba(91,141,217,0.1);color:#5b8dd9}
@@ -120,8 +120,10 @@ h1 span{color:var(--accent)}
 .tag.prestige-assassin{background:rgba(224,90,90,0.12);color:#e87a7a;border-color:rgba(224,90,90,0.25)}
 .tag.prestige-kingmaker{background:rgba(120,160,220,0.12);color:#8eb0e8;border-color:rgba(120,160,220,0.25)}
 .tag.nemesis{background:rgba(180,80,120,0.12);color:#d489b0;border:1px solid rgba(180,80,120,0.22)}
+.lb-secondary .tag{font-size:9px;padding:2px 6px;gap:3px}
+.lb-secondary .tag.icon-only{font-size:10px;padding:2px 5px}
 .trash-title{display:block;font-size:9px;font-weight:600;font-style:italic;color:var(--amber);margin-top:2px;letter-spacing:0.2px;font-family:'Space Mono',monospace}
-.lb-name .trash-title{display:inline;margin-top:0;margin-left:6px;font-size:9px;opacity:0.85}
+.lb-name .trash-title{display:block;margin-top:3px;margin-left:0;font-size:9px;opacity:0.85}
 .lb-stats{text-align:right;flex-shrink:0}
 .lb-rate{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--accent);letter-spacing:-0.5px}
 .lb-rate.low{color:var(--loss)}
