@@ -33,6 +33,80 @@ var customDateValue = "";
 var monthlyAdjustments = {};
 var monthOverrides = {};
 var weeklyPattern = [];
+var PINNED_PLAYER_KEY = "badmintonPinnedPlayer";
+var pinnedPlayer = loadPinnedPlayer();
+
+function loadPinnedPlayer() {
+  try { return localStorage.getItem(PINNED_PLAYER_KEY) || null; }
+  catch (e) { return null; }
+}
+function persistPinnedPlayer(name) {
+  try {
+    if (name) localStorage.setItem(PINNED_PLAYER_KEY, name);
+    else localStorage.removeItem(PINNED_PLAYER_KEY);
+  } catch (e) {}
+}
+function populateIdentityPicker() {
+  var select = document.getElementById("identity-select");
+  if (!select) return;
+  if (!squadPlayers.length) {
+    select.innerHTML = '<option value="">No squad members yet</option>';
+    return;
+  }
+  select.innerHTML = '<option value="">Choose your name</option>' + squadPlayers.map(function(name) {
+    return '<option value="'+name+'">'+name+'</option>';
+  }).join("");
+  if (pinnedPlayer && squadPlayers.indexOf(pinnedPlayer) > -1) select.value = pinnedPlayer;
+}
+function renderIdentityUI() {
+  var main = document.getElementById("identity-main");
+  var change = document.getElementById("identity-change");
+  if (!main || !change) return;
+  main.textContent = pinnedPlayer ? "👤 " + pinnedPlayer + " · My Stats" : "👤 Pin yourself";
+  main.classList.toggle("pinned", !!pinnedPlayer);
+  change.style.display = pinnedPlayer ? "block" : "none";
+  document.getElementById("identity-clear").style.display = pinnedPlayer ? "block" : "none";
+  document.getElementById("history-win-filter").textContent = pinnedPlayer ? "My Wins" : "Team 1 Won";
+  document.getElementById("history-loss-filter").textContent = pinnedPlayer ? "My Losses" : "Team 1 Lost";
+  document.getElementById("history-pov").textContent = pinnedPlayer
+    ? "Showing Won/Lost from " + pinnedPlayer + "'s perspective."
+    : "Pin yourself to see wins and losses from your perspective.";
+  populateIdentityPicker();
+}
+function setPinnedPlayer(name) {
+  var previous = pinnedPlayer;
+  pinnedPlayer = name || null;
+  persistPinnedPlayer(pinnedPlayer);
+  document.getElementById("identity-picker").classList.remove("open");
+  if (pinnedPlayer && !editingKey && t1Selected.length === 0 && t2Selected.length === 0) {
+    t1Selected = [pinnedPlayer];
+  }
+  if (previous && previous !== pinnedPlayer) {
+    var staleIdx = lineupSelected.indexOf(previous);
+    if (staleIdx > -1 && lineupSeededFor === previous) lineupSelected.splice(staleIdx, 1);
+  }
+  lineupSeededFor = null;
+  seedLineupFromPin();
+  renderIdentityUI();
+  renderChips();
+  renderLineupChips();
+  renderLeaderboard();
+  historyPage = 0;
+  renderHistory();
+}
+function openPinnedPlayerStats() {
+  if (!pinnedPlayer) {
+    document.getElementById("identity-picker").classList.add("open");
+    populateIdentityPicker();
+    return;
+  }
+  var hasStats = computeIndividual().some(function(player){ return player.name === pinnedPlayer; });
+  if (!hasStats) {
+    alert(pinnedPlayer + " has no matches in the selected Rankings filter.");
+    return;
+  }
+  showPlayerStats(pinnedPlayer);
+}
 
 function isLocked(s) {
   if (!s.date) return false;
@@ -51,8 +125,6 @@ function checkAdmin() {
   return false;
 }
 
-document.getElementById("inp-date").value = getTodayString();
-
 function showTab(name) {
   ["leaderboard","history","add","player","h2h","rules","winners","pair","pair-duel"].forEach(function(t) {
     var tab = document.getElementById("tab-"+t);
@@ -70,9 +142,28 @@ function showTab(name) {
 
 document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
 document.getElementById("nav-history").addEventListener("click", function(){ showTab("history"); });
-document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); renderLineupChips(); });
+document.getElementById("nav-add").addEventListener("click", function(){ resetForm(); showTab("add"); seedLineupFromPin(); renderLineupChips(); });
 document.getElementById("nav-rules").addEventListener("click", function(){ showTab("rules"); });
 document.getElementById("refresh-btn").addEventListener("click", renderAll);
+document.getElementById("identity-main").addEventListener("click", openPinnedPlayerStats);
+document.getElementById("identity-change").addEventListener("click", function(e) {
+  e.stopPropagation();
+  populateIdentityPicker();
+  document.getElementById("identity-picker").classList.toggle("open");
+});
+document.getElementById("identity-save").addEventListener("click", function(e) {
+  e.stopPropagation();
+  var name = document.getElementById("identity-select").value;
+  if (name) setPinnedPlayer(name);
+});
+document.getElementById("identity-clear").addEventListener("click", function(e) {
+  e.stopPropagation();
+  setPinnedPlayer(null);
+});
+document.getElementById("identity-picker").addEventListener("click", function(e){ e.stopPropagation(); });
+document.addEventListener("click", function(e) {
+  if (!e.target.closest(".identity-bar")) document.getElementById("identity-picker").classList.remove("open");
+});
 function formatFilterLabel(label) {
   if (!label) return "Filter";
   if (label.indexOf("Custom Date • ") === 0) {
@@ -278,7 +369,18 @@ observer.observe(sentinel);
 onValue(squadRef, function(snap) {
   var d = snap.val();
   squadPlayers = d ? (Array.isArray(d) ? d : Object.values(d)) : [];
-  renderChips(); renderSquadTags();
+  if (pinnedPlayer && squadPlayers.indexOf(pinnedPlayer) === -1) {
+    pinnedPlayer = null;
+    persistPinnedPlayer(null);
+  }
+  if (pinnedPlayer && !editingKey && t1Selected.length === 0 && t2Selected.length === 0) {
+    t1Selected = [pinnedPlayer];
+  }
+  seedLineupFromPin();
+  renderIdentityUI();
+  renderChips(); renderSquadTags(); renderLineupChips();
+  renderLeaderboard();
+  historyPage = 0; renderHistory();
 });
 onValue(matchesRef, function(snap) {
   var d = snap.val();
@@ -343,6 +445,12 @@ function isInDateRange(s) {
 }
 function isResultMatch(s) {
   if (resultFilter==="all") return true;
+  if (pinnedPlayer) {
+    if (!inMatch(s,pinnedPlayer)) return false;
+    var result = getResult(s,pinnedPlayer);
+    if (resultFilter==="win") return result==="W";
+    if (resultFilter==="loss") return result==="L";
+  }
   if (resultFilter==="win") return Number(s.t1wins)>Number(s.t2wins);
   if (resultFilter==="loss") return Number(s.t1wins)<Number(s.t2wins);
   return true;
@@ -554,8 +662,7 @@ function renderChips() {
 }
 
 function resetForm() {
-  editingKey=null;t1Selected=[];t2Selected=[];gameType="21";
-  document.getElementById("inp-date").value=getTodayString();
+  editingKey=null;t1Selected=(pinnedPlayer&&squadPlayers.indexOf(pinnedPlayer)>-1)?[pinnedPlayer]:[];t2Selected=[];gameType="21";
   document.getElementById("t1wins").value="";document.getElementById("t2wins").value="";
   document.getElementById("form-err").style.display="none";document.getElementById("form-suc").style.display="none";
   document.getElementById("save-btn").textContent="Save Match";document.getElementById("cancel-btn").style.display="none";
@@ -567,19 +674,20 @@ function startEdit(s) {
   editingKey=s.firebaseKey;gameType=s.gameType||"21";
   t1Selected=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined";});
   t2Selected=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined";});
-  document.getElementById("inp-date").value=s.date;
   document.getElementById("t1wins").value=s.t1wins;document.getElementById("t2wins").value=s.t2wins;
   document.getElementById("save-btn").textContent="Update Match";document.getElementById("cancel-btn").style.display="block";
-  document.getElementById("form-title").textContent="Edit Match";
+  document.getElementById("form-title").textContent="Edit Match · "+fmtDate(s.date);
   document.getElementById("btn-21").classList.toggle("active",gameType==="21");
   document.getElementById("btn-11").classList.toggle("active",gameType==="11");
   renderChips();showTab("add");
 }
 async function handleSave() {
-  var date=document.getElementById("inp-date").value,t1w=document.getElementById("t1wins").value,t2w=document.getElementById("t2wins").value;
+  var existing = editingKey ? sessions.find(function(s){ return s.firebaseKey === editingKey; }) : null;
+  var date = existing && existing.date ? existing.date : getTodayString();
+  var t1w=document.getElementById("t1wins").value,t2w=document.getElementById("t2wins").value;
   var errEl=document.getElementById("form-err"),sucEl=document.getElementById("form-suc"),btn=document.getElementById("save-btn");
   errEl.style.display="none";sucEl.style.display="none";
-  if(!date||t1w===""||t2w===""){errEl.textContent="Please fill in all fields!";errEl.style.display="block";return;}
+  if(t1w===""||t2w===""){errEl.textContent="Please fill in all fields!";errEl.style.display="block";return;}
   if(t1Selected.length!==2||t2Selected.length!==2){errEl.textContent="Please select 2 players for each team!";errEl.style.display="block";return;}
   if (!editingKey) {
     var chosenDate = new Date(date);
@@ -1381,6 +1489,14 @@ function suggestLineup(players) {
 }
 
 var lineupSelected = [];
+var lineupSeededFor = null;
+
+function seedLineupFromPin() {
+  if (!pinnedPlayer || squadPlayers.indexOf(pinnedPlayer) === -1) return;
+  if (lineupSeededFor === pinnedPlayer) return;
+  lineupSeededFor = pinnedPlayer;
+  if (lineupSelected.indexOf(pinnedPlayer) === -1 && lineupSelected.length < 6) lineupSelected.push(pinnedPlayer);
+}
 
 function renderLineupChips() {
   var pool = squadPlayers;
@@ -1391,7 +1507,8 @@ function renderLineupChips() {
   }
   el.innerHTML = pool.map(function(p) {
     var sel = lineupSelected.indexOf(p) > -1;
-    return '<button class="chip'+(sel?" sel-t1":"")+'" data-lp="'+p+'">'+p+'</button>';
+    var youTag = p === pinnedPlayer ? '<span class="chip-you">you</span>' : "";
+    return '<button class="chip'+(sel?" sel-t1":"")+'" data-lp="'+p+'">'+p+youTag+'</button>';
   }).join("");
   el.querySelectorAll(".chip").forEach(function(btn) {
     btn.addEventListener("click", function() {
@@ -1541,6 +1658,8 @@ function renderLeaderboard() {
     return(clickable?'<div class="tap-hint">Tap '+(kind==="pair"?"a pair":"a player")+' to see stats</div>':"")+
       data.map(function(p){
         var tot=p.won+p.lost,rate=tot?Math.round(p.won/tot*100):0,low=rate<50;
+        var isMe = kind === "player" && pinnedPlayer === p.name;
+        var meHTML = isMe ? '<span class="you-label">YOU</span>' : "";
         var sHTML="";
         if(clickable&&kind==="player"){var st=computeStreaks(p.name);if(st&&st.count>=2){if(st.type==="W")sHTML='<span class="tag hot">🔥 won last '+st.count+'</span>';else if(st.type==="L")sHTML='<span class="tag cold">❄️ lost last '+st.count+'</span>';}}
         var flair = (clickable && kind === "player") ? buildPlayerFlair(p.name) : null;
@@ -1554,9 +1673,9 @@ function renderLeaderboard() {
         var nemesisHTML = (flair && flair.nemesis) ? '<span class="tag nemesis" title="'+getFlairPeriodLabel()+' nemesis">💀 '+flair.nemesis.name+'</span>' : "";
 
         if (p.qualified === false) {
-          return '<div class="lb-row" '+attrName+'="'+p.name+'" style="opacity:0.65">'+
+          return '<div class="lb-row'+(isMe?" is-me":"")+'" '+attrName+'="'+p.name+'" style="opacity:0.65">'+
             '<div class="rank-badge">—</div>'+
-            '<div class="lb-main"><div class="lb-name">'+p.name+trashHTML+'</div>'+
+            '<div class="lb-main"><div class="lb-name">'+p.name+meHTML+trashHTML+'</div>'+
               '<div class="lb-secondary">'+prestigeHTML+sHTML+nemesisHTML+'<span>Played '+p.matchDaysPlayed+' of '+p.matchDaysNeeded+' required days</span></div></div>'+
             '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'" style="font-size:15px">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-top:2px">Building Data</div></div></div>';
         }
@@ -1593,9 +1712,9 @@ function renderLeaderboard() {
         }
 
         var secondary = prestigeHTML + sHTML + adjHTML + nemesisHTML;
-        return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+'" '+attrName+'="'+p.name+'">'+
+        return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+(isMe?" is-me":"")+'" '+attrName+'="'+p.name+'">'+
           '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+'</div>'+
-          '<div class="lb-main"><div class="lb-name">'+p.name+trashHTML+'</div>'+(secondary?'<div class="lb-secondary">'+secondary+'</div>':'')+'</div>'+
+          '<div class="lb-main"><div class="lb-name">'+p.name+meHTML+trashHTML+'</div>'+(secondary?'<div class="lb-secondary">'+secondary+'</div>':'')+'</div>'+
           '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+heroNumber+'%</div><div class="lb-detail">'+subLine1+'</div>'+subLine2+subLine3+'<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'" style="width:'+rate+'%"></div></div></div></div>';
       }).join("")+'<div class="count">'+periodTotalGames.toFixed(1)+' match'+(periodTotalGames!==1?"es":"")+" recorded</div>";
   }
@@ -1607,8 +1726,11 @@ function renderLeaderboard() {
 
 function sessionCardHTML(s) {
   var locked = isLocked(s);
-  var t1w=Number(s.t1wins),t2w=Number(s.t2wins),isWin=t1w>t2w,isDraw=t1w===t2w;
-  var rc=isDraw?"draw":isWin?"":"loss",rl=isDraw?"Draw":isWin?"Won":"Lost";
+  var t1w=Number(s.t1wins),t2w=Number(s.t2wins),t1IsWin=t1w>t2w,isDraw=t1w===t2w;
+  var hasPinnedPov = !!pinnedPlayer && inMatch(s,pinnedPlayer);
+  var povResult = hasPinnedPov ? getResult(s,pinnedPlayer) : (isDraw?"D":t1IsWin?"W":"L");
+  var rc=povResult==="D"?"draw":povResult==="W"?"":"loss";
+  var rl=povResult==="D"?"Draw":povResult==="W"?(hasPinnedPov?"Your Win":"Won"):(hasPinnedPov?"Your Loss":"Lost");
   var t1n=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
   var t2n=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined";}).join(" & ");
   var hasScores=s.scores&&s.scores.length>0;
@@ -1635,7 +1757,7 @@ function sessionCardHTML(s) {
       '<span class="badge '+rc+'">'+rl+'</span>'+
       gtBadge(s)+
       '<span class="summary-teams">'+t1n+' vs '+t2n+'</span>'+
-      '<span class="summary-score'+(isWin?"":" loss")+'">'+t1w+'—'+t2w+'</span>'+
+      '<span class="summary-score'+(povResult==="W"?"":" loss")+'">'+t1w+'—'+t2w+'</span>'+
       (hasScores?'<span class="has-scores">📊</span>':'')+
       (locked?'<span style="font-size:11px">🔒</span>':'')+
       '<span class="expand-arrow">›</span>'+
@@ -1647,9 +1769,9 @@ function sessionCardHTML(s) {
         '<button class="del-btn" data-key="'+s.firebaseKey+'" data-locked="'+locked+'">✕ Delete</button>'+
       '</div>'+
       '<div class="teams-flat">'+
-        '<div class="team-side"><div class="team-side-name">'+t1n+'</div><div class="team-side-score'+(isWin?"":isDraw?"":" loss")+'">'+t1w+'</div></div>'+
+        '<div class="team-side"><div class="team-side-name">'+t1n+'</div><div class="team-side-score'+(t1IsWin?"":isDraw?"":" loss")+'">'+t1w+'</div></div>'+
         '<div class="vs-divider">vs</div>'+
-        '<div class="team-side"><div class="team-side-name">'+t2n+'</div><div class="team-side-score'+(isWin?" loss":isDraw?"":"")+'">'+t2w+'</div></div>'+
+        '<div class="team-side"><div class="team-side-name">'+t2n+'</div><div class="team-side-score'+(t1IsWin?" loss":isDraw?"":"")+'">'+t2w+'</div></div>'+
       '</div>'+
       '<div class="match-meta">'+(t1w+t2w)+' matches • '+fmtDate(s.date)+'</div>'+
       '<div class="dots">'+dots+'</div>'+
@@ -1857,27 +1979,33 @@ function showPlayerStats(name) {
   var partnerWinRate = computePartnerWinRateInsight(name);
   var gameTypeGap = computeGameTypeInsight(name);
 
+  var isSelf = pinnedPlayer === name;
+  var streakLead = isSelf ? "You've" : name + " has";
+  var possessive = isSelf ? "Your" : name + "'s";
+
   if (partnerStreak) {
     var icon1 = partnerStreak.type === "W" ? "🔥" : "❄️";
-    var verb1 = partnerStreak.type === "W" ? "Won" : "Lost";
-    insightsHTML += '<div class="insight-row">'+icon1+' '+verb1+' your last '+partnerStreak.count+' with '+partnerStreak.partner+'</div>';
+    var verb1 = partnerStreak.type === "W" ? "won" : "lost";
+    insightsHTML += '<div class="insight-row">'+icon1+' '+streakLead+' '+verb1+' the last '+partnerStreak.count+' alongside '+partnerStreak.partner+'</div>';
   }
   if (opponentStreak) {
     var icon2 = opponentStreak.type === "W" ? "🔥" : "❄️";
-    var verb2 = opponentStreak.type === "W" ? "Won" : "Lost";
-    insightsHTML += '<div class="insight-row">'+icon2+' '+verb2+' your last '+opponentStreak.count+' against '+opponentStreak.opponent+'</div>';
+    var verb2 = opponentStreak.type === "W" ? "won" : "lost";
+    insightsHTML += '<div class="insight-row">'+icon2+' '+streakLead+' '+verb2+' the last '+opponentStreak.count+' against '+opponentStreak.opponent+'</div>';
   }
   if (partnerWinRate) {
     var icon3 = partnerWinRate.diff > 0 ? "📈" : "📉";
     var verb3 = partnerWinRate.diff > 0 ? "jumps" : "drops";
-    insightsHTML += '<div class="insight-row">'+icon3+' Win rate '+verb3+' with '+partnerWinRate.partner+'<div class="insight-sub">'+Math.round(partnerWinRate.overallRate)+'% overall → '+Math.round(partnerWinRate.partnerRate)+'% together ('+partnerWinRate.matches+' matches)</div></div>';
+    insightsHTML += '<div class="insight-row">'+icon3+' '+possessive+' win rate '+verb3+' with '+partnerWinRate.partner+'<div class="insight-sub">'+Math.round(partnerWinRate.overallRate)+'% overall → '+Math.round(partnerWinRate.partnerRate)+'% together ('+partnerWinRate.matches+' matches)</div></div>';
   }
   if (gameTypeGap) {
-    insightsHTML += '<div class="insight-row">🎯 Performs better at '+gameTypeGap.better+' than '+gameTypeGap.worse+'<div class="insight-sub">'+Math.round(gameTypeGap.betterRate)+'% vs '+Math.round(gameTypeGap.worseRate)+'%</div></div>';
+    var gapLead = isSelf ? "You play better at " : name + " plays better at ";
+    insightsHTML += '<div class="insight-row">🎯 '+gapLead+gameTypeGap.better+' than '+gameTypeGap.worse+'<div class="insight-sub">'+Math.round(gameTypeGap.betterRate)+'% vs '+Math.round(gameTypeGap.worseRate)+'%</div></div>';
   }
 
   if (insightsHTML) {
-    H("insights-section", '<div class="sec-hdr">'+getFlairPeriodLabel()+' Insights</div><div class="insights-box">'+insightsHTML+'</div>');
+    var insightsHeading = (isSelf ? "Your " : name + "'s ") + getFlairPeriodLabel() + " Insights";
+    H("insights-section", '<div class="sec-hdr">'+insightsHeading+'</div><div class="insights-box">'+insightsHTML+'</div>');
   } else {
     H("insights-section", "");
   }

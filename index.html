@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>🏸 Squad Leaderboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Space+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="styles.css?v=3"/>
+<link rel="stylesheet" href="styles.css?v=7"/>
 </head>
 <body>
 <div class="wrap">
@@ -24,6 +24,15 @@
     <div class="nav-tab" id="nav-history">History</div>
     <div class="nav-tab" id="nav-add">Add</div>
     <div class="nav-tab" id="nav-rules">Rules</div>
+  </div>
+  <div class="identity-bar" id="identity-bar">
+    <button class="identity-main" id="identity-main" type="button">👤 Pin yourself</button>
+    <button class="identity-change" id="identity-change" type="button" style="display:none">Change</button>
+    <div class="identity-picker" id="identity-picker">
+      <select class="identity-select" id="identity-select" aria-label="Choose your player"></select>
+      <button class="identity-save" id="identity-save" type="button">Pin me</button>
+      <button class="identity-clear" id="identity-clear" type="button" style="display:none">Clear</button>
+    </div>
   </div>
 
   <!-- LEADERBOARD -->
@@ -85,9 +94,10 @@
     </div>
     <div class="filter-row" id="result-filter-row">
       <div class="filter-pill active" data-result="all">All</div>
-      <div class="filter-pill" data-result="win">Won</div>
-      <div class="filter-pill" data-result="loss">Lost</div>
+      <div class="filter-pill" data-result="win" id="history-win-filter">Team 1 Won</div>
+      <div class="filter-pill" data-result="loss" id="history-loss-filter">Team 1 Lost</div>
     </div>
+    <div class="history-pov" id="history-pov">Pin yourself to see wins and losses from your perspective.</div>
     <div class="hint" id="history-total-games" style="margin-bottom:12px"></div>
     <div id="history-content"></div>
     <div class="load-more-sentinel" id="history-sentinel"></div>
@@ -115,7 +125,6 @@
     </div>
 
     <div class="section-label" style="margin-top:var(--sp-5)" id="form-title">Add Doubles Match</div>
-    <div class="fg"><label>Date</label><input type="date" id="inp-date"/></div>
 
     <div class="fg">
       <div class="field-label">Your Team <span style="font-weight:400;text-transform:none;color:var(--text-dim)">— pick 2</span></div>
@@ -153,8 +162,8 @@
       </div>
     </div>
     <div class="frow">
-      <div class="fg"><label>Your Team Won</label><input type="number" id="t1wins" placeholder="3" min="0"/></div>
-      <div class="fg"><label>They Won</label><input type="number" id="t2wins" placeholder="1" min="0"/></div>
+      <div class="fg"><label>Your Team Won</label><input type="number" id="t1wins" placeholder="Enter" min="0"/></div>
+      <div class="fg"><label>They Won</label><input type="number" id="t2wins" placeholder="Enter" min="0"/></div>
     </div>
     <div class="err" id="form-err"></div>
     <div class="suc" id="form-suc"></div>
@@ -227,6 +236,13 @@
 
   <!-- RULES -->
   <div class="tab" id="tab-rules">
+    <div class="rule-card">
+      <div class="rule-title">Pin Yourself</div>
+      <div class="rule-text">
+        👤 Pick your name in the bar below the navigation to highlight your ranking, open My Stats quickly, and view History wins/losses from your perspective.<br><br>
+        The choice stays only on this browser. It is not an account and never changes points or shared squad data.
+      </div>
+    </div>
     <div class="rule-card">
       <div class="rule-title">Logging Matches</div>
       <div class="rule-text">
@@ -337,6 +353,6 @@
   </div>
 </div>
 
-<script type="module" src="app.js?v=3"></script>
+<script type="module" src="app.js?v=7"></script>
 </body>
 </html>
