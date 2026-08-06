@@ -1781,8 +1781,8 @@ function renderRankMovementBadge(name, movementMap) {
   if (!m) return "";
   if (m.type === "up") return '<span class="rank-move rank-move-up rank-move-animate" title="Moved up '+m.amount+'">↑'+m.amount+'</span>';
   if (m.type === "down") return '<span class="rank-move rank-move-down rank-move-animate" title="Moved down '+m.amount+'">↓'+m.amount+'</span>';
-  if (m.type === "new") return '<span class="rank-move rank-move-new rank-move-animate" title="New entry">NEW</span>';
-  return '<span class="rank-move rank-move-same rank-move-animate" title="No change">—</span>';
+  if (m.type === "new" || m.type === "same") return "";
+  return "";
 }
 
 function renderLeaderboard() {
