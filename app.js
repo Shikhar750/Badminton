@@ -717,6 +717,29 @@ function computeStreaks(n) {
   for(var i=r.length-2;i>=0;i--){if(r[i]===last)streak++;else break;}
   return {type:last,count:streak};
 }
+function getRecentFormDotsHTML(name, limit) {
+  limit = limit || 10;
+  var results = playerMatches(name).map(function(s) { return getResult(s, name); }).slice(-limit);
+  if (!results.length) return "";
+  return '<div class="lb-form">' + results.map(function(r) {
+    return '<span class="lb-dot '+(r==="W"?"win":r==="L"?"loss":"draw")+'"></span>';
+  }).join("") + '</div>';
+}
+function getPairResult(s, pairName) {
+  var t1 = [s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
+  var isT1 = t1 === pairName;
+  var t1w = Number(s.t1wins), t2w = Number(s.t2wins);
+  if (isT1) return t1w > t2w ? "W" : t1w < t2w ? "L" : "D";
+  return t2w > t1w ? "W" : t2w < t1w ? "L" : "D";
+}
+function getRecentPairFormDotsHTML(pairName, limit) {
+  limit = limit || 10;
+  var results = getPairMatches(pairName).map(function(s) { return getPairResult(s, pairName); }).slice(-limit);
+  if (!results.length) return "";
+  return '<div class="lb-form">' + results.map(function(r) {
+    return '<span class="lb-dot '+(r==="W"?"win":r==="L"?"loss":"draw")+'"></span>';
+  }).join("") + '</div>';
+}
 function computeBestStreak(n) {
   var m=playerMatches(n);if(!m.length)return 0;
   var r=m.map(function(s){return getResult(s,n);}),best=0,cur=0;
@@ -1715,21 +1738,26 @@ function renderLeaderboard() {
         if(clickable&&kind==="player"){var st=computeStreaks(p.name);if(st&&st.count>=2){if(st.type==="W")sHTML='<span class="tag hot">🔥 won last '+st.count+'</span>';else if(st.type==="L")sHTML='<span class="tag cold">❄️ lost last '+st.count+'</span>';}}
         var flair = (clickable && kind === "player") ? buildPlayerFlair(p.name) : null;
         var trashHTML = (flair && flair.trash) ? '<span class="trash-title">"'+flair.trash+'"</span>' : "";
-        var prestigeHTML = "";
+        var prestigeCornerHTML = "";
         if (flair && flair.prestige.length) {
-          prestigeHTML = flair.prestige.map(function(t){
+          prestigeCornerHTML = '<div class="lb-prestige-corner">' + flair.prestige.map(function(t){
             var tip = t.label + (t.hint ? " · " + t.hint : "");
             return '<span class="tag prestige icon-only prestige-'+t.id+'" title="'+tip+'" aria-label="'+tip+'">'+t.icon+'</span>';
-          }).join("");
+          }).join("") + '</div>';
         }
         var nemesisHTML = (flair && flair.nemesis) ? '<span class="tag nemesis" title="'+getFlairPeriodLabel()+' nemesis">💀 '+flair.nemesis.name+'</span>' : "";
 
+        var formHTML = clickable
+          ? (kind === "player" ? getRecentFormDotsHTML(p.name) : getRecentPairFormDotsHTML(p.name))
+          : '<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'" style="width:'+rate+'%"></div></div>';
+
         if (p.qualified === false) {
-          return '<div class="lb-row'+(isMe?" is-me":"")+'" '+attrName+'="'+p.name+'" style="opacity:0.65">'+
+          return '<div class="lb-row'+(isMe?" is-me":"")+(prestigeCornerHTML?" has-prestige":"")+'" '+attrName+'="'+p.name+'" style="opacity:0.65">'+
+            prestigeCornerHTML+
             '<div class="rank-badge">—</div>'+
             '<div class="lb-main"><div class="lb-name">'+p.name+meHTML+trashHTML+'</div>'+
-              '<div class="lb-secondary">'+prestigeHTML+sHTML+nemesisHTML+'<span>Played '+p.matchDaysPlayed+' of '+p.matchDaysNeeded+' required days</span></div></div>'+
-            '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'" style="font-size:15px">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-top:2px">Building Data</div></div></div>';
+              '<div class="lb-secondary">'+sHTML+nemesisHTML+'<span>Played '+p.matchDaysPlayed+' of '+p.matchDaysNeeded+' required days</span></div></div>'+
+            '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'" style="font-size:15px">'+rate+'%</div><div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div><div style="font-size:10px;color:var(--text-dim);font-weight:700;margin-top:2px">Building Data</div>'+((clickable && kind === "player") ? getRecentFormDotsHTML(p.name) : "")+'</div></div>';
         }
 
         var rankIdx = qualifiedRank;
@@ -1755,19 +1783,23 @@ function renderLeaderboard() {
         } else if (isThisMonth) {
           heroNumber = rate;
           subLine1 = '<span class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</span>';
-          subLine2 = '<div class="lb-detail" style="opacity:0.7">Played '+p.matchDaysPlayed+' of '+getTotalMatchDaysThisMonth()+' match-days</div>';
-          subLine3 = '<div class="lb-detail" style="opacity:0.55">📊 '+Math.round(p.rankedScore)+'% relative</div>';
+          var monthDays = getTotalMatchDaysThisMonth();
+          var relativePct = Math.round(p.rankedScore);
+          var relativePenalized = p.matchDaysPlayed < monthDays;
+          subLine2 = '<div class="lb-relative'+(relativePenalized?" penalized":"")+'">relative '+relativePct+'%</div>';
+          subLine3 = '<div class="lb-detail" style="opacity:0.7">'+p.matchDaysPlayed+'/'+monthDays+' days played</div>';
         } else {
           heroNumber = rate;
           subLine1 = '<span class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</span>';
           subLine2 = '<div class="lb-detail" style="opacity:0.7">'+tot.toFixed(1)+' matches</div>';
         }
 
-        var secondary = prestigeHTML + sHTML + adjHTML + nemesisHTML;
-        return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+(isMe?" is-me":"")+'" '+attrName+'="'+p.name+'">'+
+        var secondary = sHTML + adjHTML + nemesisHTML;
+        return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+(isMe?" is-me":"")+(prestigeCornerHTML?" has-prestige":"")+'" '+attrName+'="'+p.name+'">'+
+          prestigeCornerHTML+
           '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+'</div>'+
           '<div class="lb-main"><div class="lb-name">'+p.name+meHTML+trashHTML+'</div>'+(secondary?'<div class="lb-secondary">'+secondary+'</div>':'')+'</div>'+
-          '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+heroNumber+'%</div><div class="lb-detail">'+subLine1+'</div>'+subLine2+subLine3+'<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'" style="width:'+rate+'%"></div></div></div></div>';
+          '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+heroNumber+'%</div><div class="lb-detail">'+subLine1+'</div>'+subLine2+subLine3+formHTML+'</div></div>';
       }).join("")+'<div class="count">'+periodTotalGames.toFixed(1)+' match'+(periodTotalGames!==1?"es":"")+" recorded</div>";
   }
   H("lb-individual",rows(computeIndividual(),true,"player"));

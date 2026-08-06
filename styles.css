@@ -97,7 +97,9 @@ h1 span{color:var(--accent)}
 .tap-hint{font-size:11px;color:var(--text-dim);text-align:center;margin-bottom:var(--sp-4);font-family:'Space Mono',monospace}
 
 /* Leaderboard rows */
-.lb-row{background:var(--surface);border-radius:var(--radius);padding:var(--sp-4);margin-bottom:var(--sp-2);display:flex;align-items:center;gap:var(--sp-3);position:relative;box-shadow:0 1px 3px rgba(0,0,0,0.35);cursor:pointer}
+.lb-row{background:var(--surface);border-radius:var(--radius);padding:var(--sp-4);margin-bottom:16px;display:flex;align-items:center;gap:var(--sp-3);position:relative;box-shadow:0 1px 3px rgba(0,0,0,0.35);cursor:pointer}
+.lb-prestige-corner{position:absolute;top:0;right:var(--sp-4);transform:translateY(-50%);display:flex;gap:4px;z-index:2}
+.lb-prestige-corner .tag.icon-only{font-size:11px;padding:3px 6px;line-height:1;background:var(--surface-raised);box-shadow:0 1px 4px rgba(0,0,0,0.4)}
 .lb-row::before{content:"";position:absolute;top:0;left:var(--sp-4);right:var(--sp-4);height:1px;background:rgba(255,255,255,0.04)}
 .lb-row.rank-1{background:linear-gradient(135deg, var(--surface-raised), var(--surface))}
 .lb-row.is-me{box-shadow:inset 0 0 0 1px rgba(139,147,248,0.55),0 1px 3px rgba(0,0,0,0.35);background:linear-gradient(120deg,rgba(139,147,248,0.1),var(--surface))}
@@ -128,6 +130,13 @@ h1 span{color:var(--accent)}
 .lb-rate{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--accent);letter-spacing:-0.5px}
 .lb-rate.low{color:var(--loss)}
 .lb-detail{font-size:10.5px;color:var(--text-dim);font-family:'Space Mono',monospace}
+.lb-relative{font-size:10.5px;font-family:'Space Mono',monospace;color:var(--accent);opacity:0.85;margin-top:3px}
+.lb-relative.penalized{color:#a8a0c8;opacity:0.85}
+.lb-form{display:flex;gap:3px;justify-content:flex-end;margin-top:6px}
+.lb-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;opacity:0.9}
+.lb-dot.win{background:#6bc995}
+.lb-dot.loss{background:var(--loss)}
+.lb-dot.draw{background:var(--text-dim);opacity:0.45}
 .lb-bar{background:rgba(255,255,255,0.05);border-radius:99px;height:3px;overflow:hidden;margin-top:6px;width:52px;margin-left:auto}
 .lb-bar-fill{height:100%;background:var(--accent);border-radius:99px}
 .lb-bar-fill.low{background:var(--loss)}
