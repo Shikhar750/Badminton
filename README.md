@@ -1,1 +1,2 @@
 # 🏸 Squad Leaderboard
+Badminton App
