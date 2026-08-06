@@ -11,6 +11,9 @@ var weeklyPatternRef = ref(db, "settings/weeklyMatchDays");
 var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 var ADMIN_PIN = "7789";
+var MATCH_DAY_START_HOUR = 3;
+var MATCH_DAY_MIGRATION_KEY = "badmintonMatchDay3amMigratedV2";
+var matchDayMigrationRunning = false;
 var sessions = [];
 var squadPlayers = [];
 var dateFilter = "all";
@@ -109,11 +112,7 @@ function openPinnedPlayerStats() {
 
 function isLocked(s) {
   if (!s.date) return false;
-  var matchDate = new Date(s.date);
-  var lockTime = new Date(matchDate);
-  lockTime.setDate(lockTime.getDate() + 1);
-  lockTime.setHours(1, 0, 0, 0);
-  return new Date() > lockTime;
+  return new Date() > getMatchDayLockTime(s.date);
 }
 
 function checkAdmin() {
@@ -391,6 +390,7 @@ onValue(matchesRef, function(snap) {
   sessions.sort(function(a,b){ return b.id-a.id; });
   historyPage = 0;
   sessionsLoaded = true;
+  migrateExistingMatchDayDates();
   renderAll();
   populateMatchDayBanner();
   runAutoBrownieAssignment();
@@ -692,12 +692,8 @@ async function handleSave() {
   if(t1w===""||t2w===""){errEl.textContent="Please fill in all fields!";errEl.style.display="block";return;}
   if(t1Selected.length!==2||t2Selected.length!==2){errEl.textContent="Please select 2 players for each team!";errEl.style.display="block";return;}
   if (!editingKey) {
-    var chosenDate = new Date(date);
-    var lockTime = new Date(chosenDate);
-    lockTime.setDate(lockTime.getDate() + 1);
-    lockTime.setHours(1, 0, 0, 0);
-    if (new Date() > lockTime && !checkAdmin()) {
-      errEl.textContent = "This date is locked (past 1am next day). Admin PIN required.";
+    if (new Date() > getMatchDayLockTime(date) && !checkAdmin()) {
+      errEl.textContent = "This date is locked (past 3am next day). Admin PIN required.";
       errEl.style.display = "block"; return;
     }
   }
@@ -1239,17 +1235,70 @@ function populateChampionBanner() {
   document.getElementById("champion-name").textContent = mostRecent.winners.join(" & ");
   document.getElementById("champion-link").textContent = "See all →";
 }
-function getTodayString() {
-  var d = new Date();
+function shiftToMatchDayDate(d) {
+  var copy = new Date(d);
+  if (copy.getHours() < MATCH_DAY_START_HOUR) copy.setDate(copy.getDate() - 1);
+  return copy;
+}
+function getMatchDayDateFrom(input) {
+  var d = shiftToMatchDayDate(input ? new Date(input) : new Date());
+  if (isNaN(d.getTime())) return null;
+  return formatDateString(d);
+}
+function getMatchDayNow() {
+  return shiftToMatchDayDate(new Date());
+}
+function formatDateString(d) {
   var y = d.getFullYear();
   var m = String(d.getMonth()+1).padStart(2,"0");
   var day = String(d.getDate()).padStart(2,"0");
   return y + "-" + m + "-" + day;
 }
+function getMatchDayLockTime(dateStr) {
+  var lockTime = new Date(dateStr);
+  lockTime.setDate(lockTime.getDate() + 1);
+  lockTime.setHours(MATCH_DAY_START_HOUR, 0, 0, 0);
+  return lockTime;
+}
+function getTodayString() {
+  return getMatchDayDateFrom();
+}
 function isTodayMatchDay() {
   var dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-  var todayName = dayNames[new Date().getDay()];
-  return weeklyPattern.indexOf(todayName) > -1;
+  return weeklyPattern.indexOf(dayNames[getMatchDayNow().getDay()]) > -1;
+}
+async function migrateExistingMatchDayDates() {
+  if (matchDayMigrationRunning) return;
+  try {
+    if (localStorage.getItem(MATCH_DAY_MIGRATION_KEY) === "1") return;
+  } catch (e) { return; }
+  if (!sessionsLoaded || !sessions.length) return;
+
+  var payload = {};
+  var now = Date.now();
+  sessions.forEach(function(s) {
+    if (!s.firebaseKey || !s.id) return;
+    var savedAt = Number(s.id);
+    if (!savedAt || savedAt < 1577836800000 || savedAt > now + 86400000) return;
+    var correctDate = getMatchDayDateFrom(savedAt);
+    if (!correctDate || correctDate === s.date) return;
+    payload["matches/" + s.firebaseKey + "/date"] = correctDate;
+  });
+
+  if (!Object.keys(payload).length) {
+    try { localStorage.setItem(MATCH_DAY_MIGRATION_KEY, "1"); } catch (e) {}
+    return;
+  }
+
+  matchDayMigrationRunning = true;
+  try {
+    await update(ref(db), payload);
+    try { localStorage.setItem(MATCH_DAY_MIGRATION_KEY, "1"); } catch (e) {}
+  } catch (e) {
+    console.error("Match day migration failed:", e);
+  } finally {
+    matchDayMigrationRunning = false;
+  }
 }
 function populateMatchDayBanner() {
   var banner = document.getElementById("matchday-banner");
