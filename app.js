@@ -1656,20 +1656,20 @@ function renderLineupSuggestion(players) {
   el.innerHTML = html;
 }
 
-function computeIndividual() {
+function computeIndividual(srcOverride) {
   var p={};
-  if (leaderboardPeriod === "month") {
+  var src = srcOverride || getSessionsForPeriod();
+  if (!srcOverride && leaderboardPeriod === "month") {
     getHistoricallyActivePlayers().forEach(function(n){ p[n]={name:n,won:0,lost:0}; });
   }
-  var src = getSessionsForPeriod();
   src.forEach(function(s){var w=wt(s);[s.t1p1,s.t1p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t1wins)*w;p[n].lost+=Number(s.t2wins)*w;});[s.t2p1,s.t2p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t2wins)*w;p[n].lost+=Number(s.t1wins)*w;});});
   var arr = Object.values(p);
   if (leaderboardPeriod === "month") {
-    var totalMatchDays = getTotalMatchDaysThisMonth();
+    var totalMatchDays = srcOverride ? countTotalMatchDaysInSrc(src) : getTotalMatchDaysThisMonth();
     arr.forEach(function(pl) {
-      pl.qualified = isQualifiedThisMonth(pl.name);
-      pl.matchDaysPlayed = getPlayerMatchDaysThisMonth(pl.name);
+      pl.matchDaysPlayed = srcOverride ? countPlayerMatchDaysInSrc(src, pl.name) : getPlayerMatchDaysThisMonth(pl.name);
       pl.matchDaysNeeded = Math.ceil(totalMatchDays * 0.5);
+      pl.qualified = totalMatchDays === 0 ? true : pl.matchDaysPlayed >= totalMatchDays * 0.5;
       var adj = getAdjustmentFor(pl.name);
       pl.brownie = adj.brownie;
       pl.negative = adj.negative;
@@ -1686,14 +1686,20 @@ function computeIndividual() {
     arr.forEach(function(pl) {
       var rawRate = pl.won+pl.lost ? (pl.won/(pl.won+pl.lost))*100 : 0;
       pl.rawRate = rawRate;
-      var att = getAllTimeAttendanceForPlayer(pl.name);
-      pl.matchDaysPlayed = att.attended;
-      pl.matchDaysTotal = att.total;
-      pl.firstMatchDate = getPlayerFirstMatchDate(pl.name);
+      if (srcOverride) {
+        pl.matchDaysPlayed = countPlayerMatchDaysInSrc(src, pl.name);
+        pl.matchDaysTotal = countTotalMatchDaysInSrc(src);
+        pl.qualified = pl.matchDaysPlayed >= ALLTIME_MIN_MATCH_DAYS;
+      } else {
+        var att = getAllTimeAttendanceForPlayer(pl.name);
+        pl.matchDaysPlayed = att.attended;
+        pl.matchDaysTotal = att.total;
+        pl.firstMatchDate = getPlayerFirstMatchDate(pl.name);
+        pl.qualified = att.attended >= ALLTIME_MIN_MATCH_DAYS;
+      }
       pl.matchDaysNeeded = ALLTIME_MIN_MATCH_DAYS;
-      pl.qualified = att.attended >= ALLTIME_MIN_MATCH_DAYS;
       pl.brownie = 0; pl.negative = 0; pl.negativeReason = "";
-      var attendanceRatio2 = att.total > 0 ? (att.attended / att.total) : 1;
+      var attendanceRatio2 = pl.matchDaysTotal > 0 ? (pl.matchDaysPlayed / pl.matchDaysTotal) : 1;
       pl.attendanceRatio = attendanceRatio2;
       pl.rankedScore = rawRate * attendanceRatio2;
       pl.effectiveScore = pl.rankedScore;
@@ -1712,11 +1718,71 @@ function computeIndividual() {
     return b.effectiveScore-a.effectiveScore||b.won-a.won;
   });
 }
-function computePairs() {
+function computePairs(srcOverride) {
   var p={};
-  var src = getSessionsForPeriod();
+  var src = srcOverride || getSessionsForPeriod();
   src.forEach(function(s){var w=wt(s);var p1=[s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");var p2=[s.t2p1,s.t2p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");if(p1){if(!p[p1])p[p1]={name:p1,won:0,lost:0};p[p1].won+=Number(s.t1wins)*w;p[p1].lost+=Number(s.t2wins)*w;}if(p2){if(!p[p2])p[p2]={name:p2,won:0,lost:0};p[p2].won+=Number(s.t2wins)*w;p[p2].lost+=Number(s.t1wins)*w;}});
   return Object.values(p).sort(function(a,b){var ra=a.won+a.lost?a.won/(a.won+a.lost):0,rb=b.won+b.lost?b.won/(b.won+b.lost):0;return rb-ra||b.won-a.won;});
+}
+function countTotalMatchDaysInSrc(src) {
+  var days = {};
+  src.forEach(function(s) { if (s.date) days[s.date] = true; });
+  return Object.keys(days).length;
+}
+function countPlayerMatchDaysInSrc(src, name) {
+  var days = {};
+  src.forEach(function(s) {
+    if (!s.date) return;
+    if ([s.t1p1,s.t1p2,s.t2p1,s.t2p2].indexOf(name) > -1) days[s.date] = true;
+  });
+  return Object.keys(days).length;
+}
+function getPreviousPeriodSessions() {
+  var current = getSessionsForPeriod();
+  var dates = {};
+  current.forEach(function(s) { if (s.date) dates[s.date] = true; });
+  var sorted = Object.keys(dates).sort();
+  if (sorted.length < 2) return [];
+  var latest = sorted[sorted.length - 1];
+  return current.filter(function(s) { return s.date !== latest; });
+}
+function buildQualifiedRankMap(standings, kind) {
+  var map = {};
+  var rank = 0;
+  standings.forEach(function(pl) {
+    if (kind === "player" && pl.qualified === false) return;
+    if (pl.won + pl.lost <= 0) return;
+    map[pl.name] = rank;
+    rank++;
+  });
+  return map;
+}
+function computeRankMovementMap(kind) {
+  var compute = kind === "pair" ? computePairs : computeIndividual;
+  var currentMap = buildQualifiedRankMap(compute(), kind);
+  var prevSessions = getPreviousPeriodSessions();
+  var previousMap = prevSessions.length ? buildQualifiedRankMap(compute(prevSessions), kind) : {};
+  var movement = {};
+  Object.keys(currentMap).forEach(function(name) {
+    var currentRank = currentMap[name];
+    if (!(name in previousMap)) {
+      movement[name] = { type: "new" };
+      return;
+    }
+    var delta = previousMap[name] - currentRank;
+    if (delta > 0) movement[name] = { type: "up", amount: delta };
+    else if (delta < 0) movement[name] = { type: "down", amount: Math.abs(delta) };
+    else movement[name] = { type: "same" };
+  });
+  return movement;
+}
+function renderRankMovementBadge(name, movementMap) {
+  var m = movementMap[name];
+  if (!m) return "";
+  if (m.type === "up") return '<span class="rank-move rank-move-up rank-move-animate" title="Moved up '+m.amount+'">↑'+m.amount+'</span>';
+  if (m.type === "down") return '<span class="rank-move rank-move-down rank-move-animate" title="Moved down '+m.amount+'">↓'+m.amount+'</span>';
+  if (m.type === "new") return '<span class="rank-move rank-move-new rank-move-animate" title="New entry">NEW</span>';
+  return '<span class="rank-move rank-move-same rank-move-animate" title="No change">—</span>';
 }
 
 function renderLeaderboard() {
@@ -1724,9 +1790,12 @@ function renderLeaderboard() {
   var periodSessions = getSessionsForPeriod();
   var periodTotalGames = 0;
   periodSessions.forEach(function(s){ periodTotalGames += ((Number(s.t1wins)||0) + (Number(s.t2wins)||0)) * wt(s); });
+  var playerMovement = computeRankMovementMap("player");
+  var pairMovement = computeRankMovementMap("pair");
   function rows(data,clickable,kind){
     kind = kind || "player";
     var attrName = kind === "pair" ? "data-pair" : "data-player";
+    var movementMap = kind === "pair" ? pairMovement : playerMovement;
     if(!data.length)return emptyHTML();
     var qualifiedRank = 0;
     return(clickable?'<div class="tap-hint">Tap '+(kind==="pair"?"a pair":"a player")+' to see stats</div>':"")+
@@ -1795,9 +1864,10 @@ function renderLeaderboard() {
         }
 
         var secondary = sHTML + adjHTML + nemesisHTML;
+        var moveBadge = renderRankMovementBadge(p.name, movementMap);
         return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+(isMe?" is-me":"")+(prestigeCornerHTML?" has-prestige":"")+'" '+attrName+'="'+p.name+'">'+
           prestigeCornerHTML+
-          '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+'</div>'+
+          '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+moveBadge+'</div>'+
           '<div class="lb-main"><div class="lb-name">'+p.name+meHTML+trashHTML+'</div>'+(secondary?'<div class="lb-secondary">'+secondary+'</div>':'')+'</div>'+
           '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+heroNumber+'%</div><div class="lb-detail">'+subLine1+'</div>'+subLine2+subLine3+formHTML+'</div></div>';
       }).join("")+'<div class="count">'+periodTotalGames.toFixed(1)+' match'+(periodTotalGames!==1?"es":"")+" recorded</div>";
