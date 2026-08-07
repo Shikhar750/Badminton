@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
 <title>🏸 Squad Leaderboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Space+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="styles.css?v=32"/>
+<link rel="stylesheet" href="styles.css?v=44"/>
 </head>
 <body>
 <div class="wrap">
@@ -188,7 +188,9 @@
       <div class="player-record" id="p-record">0W — 0L</div>
     </div>
     <div class="stats-grid" id="stats-grid"></div>
+    <div id="achievements-section"></div>
     <div id="form-chart-section"></div>
+    <div id="partner-chemistry-section"></div>
     <div id="nemesis-section"></div>
     <div id="insights-section"></div>
     <div class="sec-hdr">Head to Head</div>
@@ -285,41 +287,6 @@
         😄 Sore losers will be publicly shamed
       </div>
     </div>
-    <div class="rule-card">
-      <div class="rule-title">Titles &amp; Nemesis (flair only)</div>
-      <div class="rule-text">
-        <ul class="rule-list">
-          <li>Trash-talk titles, prestige badges, and nemeses are <b>for vibes</b> — they never change win rate or ranking.</li>
-          <li>Everything follows the <b>filter you pick on Rankings</b>. Switch to All Time, 4-Player, or a custom month and titles recalculate for that window.</li>
-          <li><b>Trash titles</b> — one per superlative, awarded inside that window:
-            <ul>
-              <li>Court Bully — hottest streak</li>
-              <li>Free Points — coldest streak</li>
-              <li>Problem Child — best win rate</li>
-              <li>Charity Case — worst win rate</li>
-              <li>11-pt Sniper — best in 11-point games</li>
-              <li>Grinder — best in 21-point games</li>
-              <li>No Days Off — most match days played</li>
-              <li>Cameo Appearance — fewest match days played</li>
-            </ul>
-          </li>
-          <li><b>Prestige</b>
-            <ul>
-              <li>👑 Dominator — win streak worth at least a quarter of your matches in the window (min 5)</li>
-              <li>🗡️ Assassin — beat that window's #1</li>
-              <li>♟️ Kingmaker — most wins partnering the #1</li>
-            </ul>
-          </li>
-          <li><b>Nemesis</b>
-            <ul>
-              <li>The opponent with the biggest game deficit against you</li>
-              <li>Meetings required scale with how many matches the window holds — your all-time nemesis isn't automatically this month's</li>
-              <li>Beat them to "strike"</li>
-            </ul>
-          </li>
-        </ul>
-      </div>
-    </div>
 
     <div class="admin-toggle" id="admin-toggle">
       <div class="admin-label">🔒 Admin Tools</div>
@@ -376,13 +343,20 @@
   <!-- MONTHLY WINNERS DETAIL -->
   <div class="tab" id="tab-winners">
     <button class="back-btn" id="back-from-winners">← Back to Rankings</button>
-    <div class="winners-page-header">
-      <div class="winners-page-title">🏅 Monthly Winners</div>
+    <div id="winners-list-view">
+      <div class="winners-page-header">
+        <div class="winners-page-title">🏅 Monthly Winners</div>
+      </div>
+      <div id="winners-list"></div>
     </div>
-    <div id="winners-list"></div>
+    <div id="winners-month-view" style="display:none">
+      <button class="back-btn" id="back-from-winner-month">← Back to Winners</button>
+      <div class="winners-month-header" id="winners-month-header"></div>
+      <div id="winners-month-content"></div>
+    </div>
   </div>
 </div>
 
-<script type="module" src="app.js?v=32"></script>
+<script type="module" src="app.js?v=45"></script>
 </body>
 </html>
