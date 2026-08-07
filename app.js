@@ -1079,9 +1079,9 @@ function computePrestigeTitles(n) {
   if (!pl) return [];
   var titles = [];
 
-  var untouchableAt = Math.max(5, Math.ceil(pl.matches * 0.25));
-  if (pl.streakType === "W" && pl.streakCount >= untouchableAt) {
-    titles.push({ id: "untouchable", icon: "👑", label: "Untouchable", hint: pl.streakCount + "-win streak · " + getFlairPeriodLabel() });
+  var dominatorAt = Math.max(5, Math.ceil(pl.matches * 0.25));
+  if (pl.streakType === "W" && pl.streakCount >= dominatorAt) {
+    titles.push({ id: "dominator", icon: "👑", label: "Dominator", hint: pl.streakCount + "-win streak · " + getFlairPeriodLabel() });
   }
 
   var leaderName = ctx.leaderName;
