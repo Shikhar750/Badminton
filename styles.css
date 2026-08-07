@@ -259,6 +259,30 @@ input:focus{box-shadow:0 0 0 2px var(--accent-dim)}
 .player-winrate.low{color:var(--loss)}
 .player-record{font-size:12.5px;color:var(--text-dim);font-family:'Space Mono',monospace}
 .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:var(--sp-5)}
+.form-chart-card{background:var(--surface);border-radius:var(--radius-sm);padding:12px 12px 10px;margin-bottom:var(--sp-5)}
+.form-chart-empty{font-size:12px;color:var(--text-dim);text-align:center;padding:18px 10px;font-family:'Space Mono',monospace}
+.form-chart-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
+.form-chart-now{font-family:'Space Mono',monospace;font-size:18px;font-weight:700}
+.form-chart-change.up{color:#6ec995}.form-chart-change.down{color:var(--loss)}.form-chart-change.flat{color:var(--text-dim)}
+.form-chart-meta{font-size:9.5px;color:var(--text-dim);font-family:'Space Mono',monospace;text-align:right;line-height:1.35}
+.form-chart-svg{width:100%;height:128px;display:block}
+.form-chart-grid{stroke:rgba(255,255,255,0.06);stroke-width:1}
+.form-chart-grid-mid{stroke:rgba(255,255,255,0.1)}
+.form-chart-grid-zero{stroke:rgba(255,255,255,0.14)}
+.form-chart-axis-y,.form-chart-axis-x{fill:var(--text-dim);font-size:8px;font-family:'Space Mono',monospace}
+.form-chart-line-seg{stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.form-chart-line-seg.up{stroke:#6ec995}
+.form-chart-line-seg.down{stroke:var(--loss)}
+.form-chart-line-seg.flat{stroke:var(--text-dim)}
+.form-chart-area{opacity:0.95}
+.form-chart-dot.win{fill:#6ec995}
+.form-chart-dot.loss{fill:var(--loss)}
+.form-chart-dot.draw{fill:var(--text-dim)}
+.form-chart-end{stroke:var(--surface);stroke-width:1.5}
+.form-chart-end.up{fill:#6ec995}
+.form-chart-end.down{fill:var(--loss)}
+.form-chart-end.flat{fill:var(--text-dim)}
+.form-chart-foot{display:flex;justify-content:space-between;gap:6px;margin-top:8px;font-size:8.5px;color:var(--text-dim);font-family:'Space Mono',monospace;flex-wrap:wrap}
 .stat-box{background:var(--surface);border-radius:var(--radius-sm);padding:14px;text-align:center}
 .stat-box.wide{grid-column:span 2}
 .stat-val{font-size:19px;font-weight:700;font-family:'Space Mono',monospace;color:var(--text)}

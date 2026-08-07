@@ -718,7 +718,7 @@ function computeStreaks(n) {
   return {type:last,count:streak};
 }
 function getRecentFormDotsHTML(name, limit) {
-  limit = limit || 10;
+  limit = limit || 5;
   var results = playerMatches(name).map(function(s) { return getResult(s, name); }).slice(-limit);
   if (!results.length) return "";
   return '<div class="lb-form">' + results.map(function(r) {
@@ -733,7 +733,7 @@ function getPairResult(s, pairName) {
   return t2w > t1w ? "W" : t2w < t1w ? "L" : "D";
 }
 function getRecentPairFormDotsHTML(pairName, limit) {
-  limit = limit || 10;
+  limit = limit || 5;
   var results = getPairMatches(pairName).map(function(s) { return getPairResult(s, pairName); }).slice(-limit);
   if (!results.length) return "";
   return '<div class="lb-form">' + results.map(function(r) {
@@ -2058,6 +2058,121 @@ function appendHistory() {
   }
 }
 
+function buildPlayerFormChartHTML(name) {
+  var matches = playerMatches(name);
+  var n = matches.length;
+  var periodLabel = getFlairPeriodLabel();
+  if (!n) {
+    return '<div class="sec-hdr">Form · '+periodLabel+'</div><div class="form-chart-card form-chart-empty">No matches in this filter yet.</div>';
+  }
+
+  var results = [];
+  var values = [0];
+  var net = 0;
+  matches.forEach(function(s) {
+    var r = getResult(s, name);
+    results.push(r);
+    if (r === "W") net++;
+    else if (r === "L") net--;
+    values.push(net);
+  });
+
+  var endNet = values[values.length - 1];
+  var peak = values.reduce(function(best, val) { return Math.max(best, val); }, 0);
+  var low = values.reduce(function(best, val) { return Math.min(best, val); }, 0);
+  var yMin = Math.min(0, low);
+  var yMax = Math.max(0, peak);
+  var yPad = Math.max(1, Math.ceil((yMax - yMin) * 0.12));
+  if (yMin === yMax) { yMin = -1; yMax = 1; }
+  else { yMin -= yPad; yMax += yPad; }
+  var yRange = yMax - yMin || 1;
+
+  var W = 320, H = 128;
+  var padL = 30, padR = 10, padT = 12, padB = 24;
+  var cW = W - padL - padR;
+  var cH = H - padT - padB;
+
+  function yAt(val) {
+    return padT + (1 - (val - yMin) / yRange) * cH;
+  }
+  function pointAt(i, val) {
+    var x = padL + (i / n) * cW;
+    return { x: x, y: yAt(val) };
+  }
+
+  var coords = values.map(function(val, i) { return pointAt(i, val); });
+  var linePath = coords.map(function(p, i) { return (i === 0 ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1); }).join(" ");
+  var zeroY = yAt(0).toFixed(1);
+  var areaPath = linePath +
+    " L" + coords[coords.length - 1].x.toFixed(1) + " " + zeroY +
+    " L" + coords[0].x.toFixed(1) + " " + zeroY + " Z";
+
+  var tickVals = [];
+  tickVals.push(yMax);
+  if (yMin < 0 && yMax > 0) tickVals.push(0);
+  else if (yMin >= 0) tickVals.push(0);
+  tickVals.push(yMin);
+  tickVals = tickVals.filter(function(v, i, arr) { return arr.indexOf(v) === i; }).sort(function(a, b) { return b - a; });
+
+  var gridLines = tickVals.map(function(val) {
+    var y = yAt(val).toFixed(1);
+    var isZero = val === 0;
+    return '<line class="form-chart-grid'+(isZero?" form-chart-grid-zero":"")+'" x1="'+padL+'" y1="'+y+'" x2="'+(padL+cW)+'" y2="'+y+'"'+(isZero?' stroke-dasharray="4 3"':"")+'/>';
+  }).join("");
+
+  var yLabels = tickVals.map(function(val) {
+    var label = val > 0 ? "+"+val : String(val);
+    return '<text class="form-chart-axis-y" x="'+(padL-6)+'" y="'+(yAt(val)+3).toFixed(1)+'" text-anchor="end">'+label+'</text>';
+  }).join("");
+
+  var xLabels = '<text class="form-chart-axis-x" x="'+padL+'" y="'+(H-6)+'" text-anchor="start">0</text>'+
+    '<text class="form-chart-axis-x" x="'+(padL+cW)+'" y="'+(H-6)+'" text-anchor="end">'+n+'</text>';
+
+  var showDots = n <= 24;
+  var dots = showDots ? coords.slice(1).map(function(p, i) {
+    var cls = results[i] === "W" ? "form-chart-dot win" : results[i] === "L" ? "form-chart-dot loss" : "form-chart-dot draw";
+    return '<circle class="'+cls+'" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="2.6"/>';
+  }).join("") : "";
+
+  var lineSegments = "";
+  for (var si = 1; si < coords.length; si++) {
+    var segCls = values[si] > values[si - 1] ? "up" : values[si] < values[si - 1] ? "down" : "flat";
+    lineSegments += '<path class="form-chart-line-seg '+segCls+'" d="M'+coords[si-1].x.toFixed(1)+' '+coords[si-1].y.toFixed(1)+' L'+coords[si].x.toFixed(1)+' '+coords[si].y.toFixed(1)+'"/>';
+  }
+
+  var trendCls = endNet > 0 ? "up" : endNet < 0 ? "down" : "flat";
+  var nowDisplay = endNet > 0 ? "+"+endNet : String(endNet);
+  var trendText = endNet > 0 ? "↑ +"+endNet+" net" : endNet < 0 ? "↓ "+endNet+" net" : "→ even";
+  var fillTop = endNet >= 0 ? "rgba(110,201,149,0.2)" : "rgba(226,112,127,0.16)";
+
+  return '<div class="sec-hdr">Form · '+periodLabel+'</div>'+
+    '<div class="form-chart-card">'+
+      '<div class="form-chart-top">'+
+        '<span class="form-chart-now form-chart-change '+trendCls+'">'+nowDisplay+'</span>'+
+        '<span class="form-chart-meta">'+n+' match'+(n!==1?"es":"")+' · <span class="form-chart-change '+trendCls+'">'+trendText+'</span></span>'+
+      '</div>'+
+      '<svg class="form-chart-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" aria-label="Net wins over '+n+' matches in '+periodLabel+'">'+
+        '<defs><linearGradient id="formChartFill" x1="0" y1="0" x2="0" y2="1">'+
+          '<stop offset="0%" stop-color="'+fillTop+'"/>'+
+          '<stop offset="100%" stop-color="rgba(10,12,17,0)"/>'+
+        '</linearGradient></defs>'+
+        gridLines +
+        yLabels +
+        xLabels +
+        '<path class="form-chart-area" d="'+areaPath+'" fill="url(#formChartFill)"/>'+
+        lineSegments +
+        dots +
+        '<circle class="form-chart-end '+trendCls+'" cx="'+coords[coords.length-1].x.toFixed(1)+'" cy="'+coords[coords.length-1].y.toFixed(1)+'" r="3.2"/>'+
+      '</svg>'+
+      '<div class="form-chart-foot">'+
+        '<span>Start 0</span>'+
+        '<span>High '+(peak>0?"+"+peak:peak)+'</span>'+
+        '<span>Low '+(low>0?"+"+low:low)+'</span>'+
+        '<span>Now '+nowDisplay+'</span>'+
+      '</div>'+
+    '</div>';
+}
+
 function showPlayerStats(name) {
   currentPlayer=name;
   resetFlairCache();
@@ -2103,6 +2218,8 @@ function showPlayerStats(name) {
       '<div style="text-align:center"><div class="stat-val accent">'+r11+'%</div><div class="stat-lbl">11pt Win Rate</div><div style="font-size:11px;color:var(--text-dim);font-family:monospace;margin-top:4px">'+w11+'W — '+l11+'L</div></div>'+
     '</div></div>'
   );
+
+  H("form-chart-section", buildPlayerFormChartHTML(name));
 
   if (flair.nemesis) {
     var nem = flair.nemesis;
