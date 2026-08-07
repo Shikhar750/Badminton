@@ -1,2 +1,2 @@
 # 🏸 Squad Leaderboard
-Badminton App
+The Badminton App
