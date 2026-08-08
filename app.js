@@ -1780,7 +1780,7 @@ function showWinnerMonth(appliedMonthKey) {
 function populateChampionBanner() {
   var results = computeMonthlyWinnersList();
   var banner = document.getElementById("champion-banner");
-  banner.style.display = "flex";
+  banner.style.display = "none"; // Monthly Winners tab temporarily hidden - flip back to "flex" to re-enable
   if (!results.length) {
     document.getElementById("champion-label").textContent = "Monthly Champion";
     document.getElementById("champion-name").textContent = "No champion recorded yet";
@@ -1980,7 +1980,7 @@ function getHistoricallyActivePlayers() {
 function getPairKey(a, b) { return [a,b].sort().join("|"); }
 function computePairingCountsThisMonth() {
   var counts = {};
-  var src = getSessionsForPeriod();
+  var src = getSessionsThisMonthAlways(); // always genuinely THIS MONTH, independent of the Rankings filter toggle
   src.forEach(function(s) {
     var t1 = [s.t1p1, s.t1p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
     var t2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
