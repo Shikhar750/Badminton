@@ -2059,21 +2059,44 @@ function suggestLineup(players) {
       });
       return won+lost ? (won/(won+lost))*100 : 50;
     }
-    var skillRates = {};
-    players.forEach(function(p){ skillRates[p] = getThisMonthRawRate(p); });
+    // Blend skill (stable, whole-month competence) with momentum (recent streak) into
+    // ONE balancing signal. Skill is the foundation; momentum nudges it up or down, capped
+    // so a very long streak can't completely dominate the blend. Uses a dedicated,
+    // always-This-Month streak calculation (NOT computeStreaks, which depends on whatever
+    // filter happens to be active on Rankings - same bug class we just fixed for pairing counts).
+    function getThisMonthStreak(name) {
+      var m = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,name); }).sort(function(a,b){ return a.id-b.id; });
+      if (!m.length) return null;
+      var results = m.map(function(s){ return getResult(s,name); });
+      var last = results[results.length-1], streak = 1;
+      for (var i = results.length-2; i >= 0; i--) {
+        if (results[i] === last) streak++; else break;
+      }
+      return { type: last, count: streak };
+    }
+    function getBlendedScore(name) {
+      var skillRate = getThisMonthRawRate(name);
+      var streak = getThisMonthStreak(name);
+      if (!streak) return skillRate;
+      var cappedCount = Math.min(streak.count, 5);
+      var momentumAdj = cappedCount * 4 * (streak.type === "W" ? 1 : -1);
+      return skillRate + momentumAdj;
+    }
+    var blendedScores = {};
+    players.forEach(function(p){ blendedScores[p] = getBlendedScore(p); });
 
     function scoreSplit(split, c) {
       return split.reduce(function(sum, pair) { return sum + getPairCount(c, pair[0], pair[1]); }, 0);
     }
-    function skillImbalancePenalty(split) {
+    function balanceImbalancePenalty(split) {
       return split.reduce(function(sum, pair) {
-        var gap = Math.abs(skillRates[pair[0]] - skillRates[pair[1]]);
-        return sum + (100 - gap);
+        var gap = Math.abs(blendedScores[pair[0]] - blendedScores[pair[1]]);
+        return sum + (200 - gap); // reward a BIG gap (strong/hot + weak/cold together)
       }, 0);
     }
     var PAIRING_WEIGHT = 1000;
     function combinedScore(split, c) {
-      return scoreSplit(split, c) * PAIRING_WEIGHT + skillImbalancePenalty(split);
+      return scoreSplit(split, c) * PAIRING_WEIGHT + balanceImbalancePenalty(split);
     }
 
     var allSplits = allThreeWaySplits(players);
