@@ -288,6 +288,15 @@ input:focus{box-shadow:0 0 0 2px var(--accent-dim)}
 .form-chart-foot{display:flex;justify-content:space-between;gap:6px;margin-top:8px;font-size:8.5px;color:var(--text-dim);font-family:'Space Mono',monospace;flex-wrap:wrap}
 .stat-box{background:var(--surface);border-radius:var(--radius-sm);padding:14px;text-align:center}
 .stat-box.wide{grid-column:span 2}
+.stat-box.merit-stat-tip{cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent}
+.stat-box.merit-stat-tip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.merit-calc-pop{min-width:220px;max-width:min(280px,calc(100vw - 16px));text-align:left}
+.merit-calc-body{display:block}
+.merit-calc-row+.merit-calc-row{margin-top:10px;padding-top:10px;border-top:1px solid var(--border-soft)}
+.merit-calc-label{font-size:10px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:3px}
+.merit-calc-formula{font-size:8.5px;line-height:1.4;color:var(--text-dim);font-family:'Space Mono',monospace;font-weight:500}
+.merit-calc-result{font-size:9.5px;font-weight:700;color:var(--accent);font-family:'Space Mono',monospace;margin-top:2px}
+.merit-stat-tip.tag-tip.open{z-index:80}
 .stat-val{font-size:19px;font-weight:700;font-family:'Space Mono',monospace;color:var(--text)}
 .stat-val.accent{color:var(--accent)}.stat-val.loss{color:var(--loss)}
 .stat-lbl{font-size:10.5px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px}
