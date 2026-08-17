@@ -2063,45 +2063,56 @@ function suggestLineup(players) {
       });
       return won+lost ? (won/(won+lost))*100 : 50;
     }
-    // Skill-balance only: favor pairing a STRONG player with a WEAK player on each team
-    // (based purely on This Month raw win rate), so teams stay roughly even in strength.
-    // No momentum/streak factor - kept simple and verifiable directly against raw %.
     var skillRates = {};
     players.forEach(function(p){ skillRates[p] = getThisMonthRawRate(p); });
+    function skillGap(a,b) { return Math.abs(skillRates[a]-skillRates[b]); }
 
-    function scoreSplit(split, c) {
-      return split.reduce(function(sum, pair) { return sum + getPairCount(c, pair[0], pair[1]); }, 0);
-    }
-    function skillImbalancePenalty(split) {
-      return split.reduce(function(sum, pair) {
-        var gap = Math.abs(skillRates[pair[0]] - skillRates[pair[1]]);
-        return sum + (100 - gap); // reward a BIG gap (strong + weak together)
-      }, 0);
-    }
-    var PAIRING_WEIGHT = 1000;
-    function combinedScore(split, c) {
-      return scoreSplit(split, c) * PAIRING_WEIGHT + skillImbalancePenalty(split);
+    function allPairsAmong(list) {
+      var pairs = [];
+      for (var i=0;i<list.length;i++) for (var j=i+1;j<list.length;j++) pairs.push([list[i],list[j]]);
+      return pairs;
     }
 
+    // FIRST HALF: pairing-freshness is PRIMARY (greedy) - guarantees the single most
+    // under-paired combination is always actually used, not just averaged into a group
+    // total. Skill-balance only breaks a genuine tie in pairing freshness.
+    function pickLeastPaired(list, excludeKeys, c) {
+      var pairs = allPairsAmong(list).filter(function(p){ return excludeKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
+      var minCount = Math.min.apply(null, pairs.map(function(p){ return getPairCount(c, p[0], p[1]); }));
+      var tied = pairs.filter(function(p){ return getPairCount(c, p[0], p[1]) === minCount; });
+      if (tied.length === 1) return tied[0];
+      tied.sort(function(a,b){ return skillGap(b[0],b[1]) - skillGap(a[0],a[1]); });
+      return tied[0];
+    }
+    function greedyPairingFirstSplit(ps, excludeKeys, c) {
+      var team1 = pickLeastPaired(ps, excludeKeys, c);
+      var remaining = ps.filter(function(p){ return team1.indexOf(p)===-1; });
+      var team2 = pickLeastPaired(remaining, excludeKeys, c);
+      var team3 = remaining.filter(function(p){ return team2.indexOf(p)===-1; });
+      return [team1, team2, team3];
+    }
+    var firstHalfSplit = greedyPairingFirstSplit(players, [], counts);
+
+    // SECOND HALF: skill-balance is PRIMARY - actively corrects any imbalance the
+    // freshness-driven first half may have created, rather than leaving it to chance.
+    // Hard constraint: cannot repeat any pairing used in the first half.
+    var firstHalfKeys = firstHalfSplit.map(function(p){ return getPairKey(p[0],p[1]); });
     var allSplits = allThreeWaySplits(players);
-    var firstHalf = allSplits.reduce(function(best, split) {
-      var score = combinedScore(split, counts);
-      return (!best || score < best.score) ? { split: split, score: score } : best;
-    }, null);
-
-    var firstHalfKeys = firstHalf.split.map(function(p){ return getPairKey(p[0],p[1]); });
-    var nonOverlapping = allSplits.filter(function(split) {
+    var validSecondHalfSplits = allSplits.filter(function(split) {
       return split.every(function(p){ return firstHalfKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
     });
-    var secondHalf = null;
-    if (nonOverlapping.length > 0) {
-      secondHalf = nonOverlapping.reduce(function(best, split) {
-        var score = combinedScore(split, counts);
+    function totalSkillImbalance(split) {
+      return split.reduce(function(sum, pair) { return sum + (100 - skillGap(pair[0],pair[1])); }, 0);
+    }
+    var secondHalfSplit = null;
+    if (validSecondHalfSplits.length > 0) {
+      secondHalfSplit = validSecondHalfSplits.reduce(function(best, split) {
+        var score = totalSkillImbalance(split);
         return (!best || score < best.score) ? { split: split, score: score } : best;
-      }, null);
+      }, null).split;
     }
 
-    return { sixPlayerPlan: { firstHalf: firstHalf.split, secondHalf: secondHalf ? secondHalf.split : null } };
+    return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
 }
 
