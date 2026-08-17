@@ -1019,42 +1019,42 @@ function computeTrashTalkFlair(n) {
   var periodLabel = getFlairPeriodLabel();
 
   if (sup.hotStreak === n) {
-    return { id: "court-bully", icon: "🔥", label: "Court Bully", body: pl.streakCount + "-win streak · hottest notable run in " + periodLabel + ". One superlative per filter." };
+    return { id: "court-bully", icon: "🔥", label: "Court Bully", body: pl.streakCount + "-win streak · hottest notable run in " + periodLabel + ". One superlative per filter. Flair only." };
   }
   if (sup.coldStreak === n) {
-    return { id: "free-points", icon: "❄️", label: "Free Points", body: pl.streakCount + "-loss streak · coldest notable run in " + periodLabel + "." };
+    return { id: "free-points", icon: "❄️", label: "Free Points", body: pl.streakCount + "-loss streak · coldest notable run in " + periodLabel + ". Flair only." };
   }
   if (sup.bestRate === n) {
-    return { id: "problem-child", icon: "😈", label: "Problem Child", body: Math.round(pl.rate) + "% win rate · best in " + periodLabel + " (min sample)." };
+    return { id: "problem-child", icon: "😈", label: "Problem Child", body: Math.round(pl.rate) + "% win rate · best in " + periodLabel + " (min sample). Flair only." };
   }
   if (sup.worstRate === n) {
-    return { id: "charity-case", icon: "🎁", label: "Charity Case", body: Math.round(pl.rate) + "% win rate · lowest in " + periodLabel + " (min sample)." };
+    return { id: "charity-case", icon: "🎁", label: "Charity Case", body: Math.round(pl.rate) + "% win rate · lowest in " + periodLabel + " (min sample). Flair only." };
   }
   if (sup.sniper11 === n) {
-    return { id: "sniper11", icon: "🎯", label: "11-pt Sniper", body: "Much stronger in 11-point games than 21s in " + periodLabel + "." };
+    return { id: "sniper11", icon: "🎯", label: "11-pt Sniper", body: "Much stronger in 11-point games than 21s in " + periodLabel + ". Flair only." };
   }
   if (sup.grinder21 === n) {
-    return { id: "grinder21", icon: "⚙️", label: "Grinder", body: "Much stronger in 21-point games than 11s in " + periodLabel + "." };
+    return { id: "grinder21", icon: "⚙️", label: "Grinder", body: "Much stronger in 21-point games than 11s in " + periodLabel + ". Flair only." };
   }
   if (sup.mostPresent === n) {
-    return { id: "no-days-off", icon: "📆", label: "No Days Off", body: "Played every match day in " + periodLabel + "." };
+    return { id: "no-days-off", icon: "📆", label: "No Days Off", body: "Played every match day in " + periodLabel + ". Flair only." };
   }
   if (sup.leastPresent === n) {
-    return { id: "cameo", icon: "👋", label: "Cameo Appearance", body: "Fewest match days in " + periodLabel + "." };
+    return { id: "cameo", icon: "👋", label: "Cameo Appearance", body: "Fewest match days in " + periodLabel + ". Flair only." };
   }
   if (pl.streakType === "W" && pl.streakCount >= 2) {
-    return { id: "heating-up", icon: "🌡️", label: "Heating Up", body: pl.streakCount + "-win streak right now in " + periodLabel + "." };
+    return { id: "heating-up", icon: "🌡️", label: "Heating Up", body: pl.streakCount + "-win streak right now in " + periodLabel + ". Flair only." };
   }
   if (pl.streakType === "L" && pl.streakCount >= 2) {
-    return { id: "thin-ice", icon: "🧊", label: "On Thin Ice", body: pl.streakCount + "-loss streak right now in " + periodLabel + "." };
+    return { id: "thin-ice", icon: "🧊", label: "On Thin Ice", body: pl.streakCount + "-loss streak right now in " + periodLabel + ". Flair only." };
   }
   if (pl.decided >= 3 && pl.rate >= 60) {
-    return { id: "quietly-cooking", icon: "🍳", label: "Quietly Cooking", body: Math.round(pl.rate) + "% win rate without a superlative crown in " + periodLabel + "." };
+    return { id: "quietly-cooking", icon: "🍳", label: "Quietly Cooking", body: Math.round(pl.rate) + "% win rate without a superlative crown in " + periodLabel + ". Flair only." };
   }
   if (pl.decided >= 3 && pl.rate <= 40) {
-    return { id: "bench-warmer", icon: "🪑", label: "Bench Warmer", body: Math.round(pl.rate) + "% win rate · struggling but not last in " + periodLabel + "." };
+    return { id: "bench-warmer", icon: "🪑", label: "Bench Warmer", body: Math.round(pl.rate) + "% win rate · struggling but not last in " + periodLabel + ". Flair only." };
   }
-  return { id: "in-the-mix", icon: "🎭", label: "In the Mix", body: "No trash-talk superlative this filter — middle of the pack vibes in " + periodLabel + "." };
+  return { id: "in-the-mix", icon: "🎭", label: "In the Mix", body: "No trash-talk superlative this filter — middle of the pack vibes in " + periodLabel + ". Flair only." };
 }
 function computeTrashTalkTitle(n) {
   var flair = computeTrashTalkFlair(n);
@@ -1113,26 +1113,6 @@ function computeKingmakerName(leaderName) {
   });
   return bestWins >= 2 ? best : null;
 }
-function computeAssassinName(leaderName) {
-  if (!leaderName) return null;
-  var winsOverLeader = {};
-  getSessionsForPeriod().forEach(function(s) {
-    if (!inMatch(s, leaderName)) return;
-    if (getResult(s, leaderName) !== "L") return;
-    getOpponentsFor(s, leaderName).forEach(function(p) {
-      if (!p || p === "undefined" || p === leaderName) return;
-      winsOverLeader[p] = (winsOverLeader[p] || 0) + 1;
-    });
-  });
-  var best = null, bestWins = 0;
-  Object.keys(winsOverLeader).forEach(function(p) {
-    if (winsOverLeader[p] > bestWins || (winsOverLeader[p] === bestWins && (!best || p < best))) {
-      bestWins = winsOverLeader[p];
-      best = p;
-    }
-  });
-  return bestWins >= 1 ? { name: best, wins: bestWins } : null;
-}
 function computePrestigeTitles(n) {
   var ctx = getFlairContext();
   var pl = ctx.players[n];
@@ -1145,9 +1125,17 @@ function computePrestigeTitles(n) {
   }
 
   var leaderName = ctx.leaderName;
-  var assassin = computeAssassinName(leaderName);
-  if (assassin && assassin.name === n) {
-    titles.push({ id: "assassin", icon: "🗡️", label: "Assassin", hint: assassin.wins + " win" + (assassin.wins !== 1 ? "s" : "") + " over #1 " + leaderName });
+  if (leaderName && leaderName !== n) {
+    var winsOverLeader = 0;
+    var vsLeader = pl.vs[leaderName];
+    if (vsLeader) {
+      getFlairMatchesFor(n).forEach(function(s) {
+        if (getOpponentsFor(s,n).indexOf(leaderName) > -1 && getResult(s,n) === "W") winsOverLeader++;
+      });
+    }
+    if (winsOverLeader > 0) {
+      titles.push({ id: "assassin", icon: "🗡️", label: "Assassin", hint: winsOverLeader + " win" + (winsOverLeader!==1?"s":"") + " over #1 " + leaderName });
+    }
   }
 
   var kingmaker = computeKingmakerName(leaderName);
@@ -1314,7 +1302,7 @@ function computeAchievements(name) {
   }
 
   if (superlatives.topDog === name) {
-    add("top-dog", "🐕", "Top Dog", "Ranked #1 in " + periodLabel + ".");
+    add("top-dog", "🐕", "Top Dog", "Ranked #1 in " + periodLabel + ". Flair only — never changes points.");
   }
   if (superlatives.podium.indexOf(name) > -1) {
     add("podium", "🥉", "Podium", "Top 3 in " + periodLabel + " after qualification rules.");
@@ -1326,7 +1314,7 @@ function computeAchievements(name) {
     add("last-laugh", "😏", "Last Laugh", "On the winning side of the most recent match in " + periodLabel + ".");
   }
   if (superlatives.iceKing === name) {
-    add("ice-king", "🧊", "Ice King", "Longest active loss streak in the squad (" + pl.streakCount + " straight).");
+    add("ice-king", "🧊", "Ice King", "Longest active loss streak in the squad (" + pl.streakCount + " straight). For the banter.");
   }
   if (superlatives.h2hKing === name) {
     add("h2h-king", "👊", "H2H King", "Winning game tally vs the most opponents (3+ meetings each) in " + periodLabel + ".");
@@ -1409,13 +1397,13 @@ function buildTagTipButton(className, icon, label, body) {
   '</button>';
 }
 var PRESTIGE_DEFINITIONS = {
-  dominator: "Win streak worth at least a quarter of your matches in this filter (min 5).",
-  assassin: "Most wins over that filter's #1.",
-  kingmaker: "Most wins partnering the current #1."
+  dominator: "Win streak worth at least a quarter of your matches in this filter (min 5). Flair only — never affects points.",
+  assassin: "Beat that filter's #1 at least once. Flair only — never affects points.",
+  kingmaker: "Most wins partnering the current #1. Flair only — never affects points."
 };
 function buildPrestigeTagsHTML(titles) {
   return titles.map(function(t) {
-    var body = (t.hint ? t.hint + " · " : "") + (PRESTIGE_DEFINITIONS[t.id] || "");
+    var body = (t.hint ? t.hint + " · " : "") + (PRESTIGE_DEFINITIONS[t.id] || "Flair only — never affects points.");
     return buildTagTipButton("prestige prestige-"+t.id, t.icon, t.label, body);
   }).join("");
 }
@@ -1715,7 +1703,15 @@ function computeIndividualForEarnedMonth(earnedMonthKey, appliedMonthKey) {
     pl.matchDaysTotal = totalMatchDays;
     pl.qualified = totalMatchDays === 0 ? true : pl.matchDaysPlayed >= totalMatchDays * 0.5;
     var adj = getAdjustmentForMonth(pl.name, appliedMonthKey);
-    applyPlayerMeritFields(pl, totalMatchDays, adj);
+    pl.brownie = adj.brownie;
+    pl.negative = adj.negative;
+    pl.negativeReason = adj.negativeReason;
+    var rawRate = pl.won + pl.lost ? (pl.won / (pl.won + pl.lost)) * 100 : 0;
+    pl.rawRate = rawRate;
+    var attendanceRatio = totalMatchDays > 0 ? (pl.matchDaysPlayed / totalMatchDays) : 1;
+    pl.attendanceRatio = attendanceRatio;
+    pl.rankedScore = (rawRate * attendanceRatio) + adj.negative;
+    pl.effectiveScore = rawRate + adj.negative;
   });
   return arr.sort(function(a, b) {
     if (a.qualified !== b.qualified) return a.qualified ? -1 : 1;
@@ -1745,7 +1741,7 @@ function buildWinnerMonthLeaderboardHTML(standings, championNames, periodTotalGa
     var rankIdx = qualifiedRank;
     qualifiedRank++;
     var badgeClass = rankIdx === 0 ? "gold" : rankIdx === 1 ? "silver" : rankIdx === 2 ? "bronze" : "";
-    var relativePct = formatAttendanceAdjustedWilsonDisplay(p.attendanceAdjustedWilsonScore);
+    var relativePct = Math.round(p.rankedScore);
     var relativePenalized = p.matchDaysPlayed < totalMatchDays;
     return '<div class="lb-row lb-row-static'+(rankIdx===0?" rank-1":"")+(isChamp?" winner-month-champ-row":"")+'">' +
       '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+'</div>' +
@@ -1753,7 +1749,7 @@ function buildWinnerMonthLeaderboardHTML(standings, championNames, periodTotalGa
         (adjHTML ? '<div class="lb-secondary">'+adjHTML+'</div>' : '') + '</div>' +
       '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div>' +
         '<div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div>' +
-        '<div class="lb-relative'+(relativePenalized?" penalized":"")+'">'+relativePct+'% Merit</div>' +
+        '<div class="lb-relative'+(relativePenalized?" penalized":"")+'">relative '+relativePct+'%</div>' +
         '<div class="lb-detail" style="opacity:0.7">'+p.matchDaysPlayed+'/'+totalMatchDays+' days played</div>' +
         '<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'" style="width:'+rate+'%"></div></div>' +
       '</div></div>';
@@ -2063,44 +2059,24 @@ function suggestLineup(players) {
       });
       return won+lost ? (won/(won+lost))*100 : 50;
     }
-    // Blend skill (stable, whole-month competence) with momentum (recent streak) into
-    // ONE balancing signal. Skill is the foundation; momentum nudges it up or down, capped
-    // so a very long streak can't completely dominate the blend. Uses a dedicated,
-    // always-This-Month streak calculation (NOT computeStreaks, which depends on whatever
-    // filter happens to be active on Rankings - same bug class we just fixed for pairing counts).
-    function getThisMonthStreak(name) {
-      var m = getSessionsThisMonthAlways().filter(function(s){ return inMatch(s,name); }).sort(function(a,b){ return a.id-b.id; });
-      if (!m.length) return null;
-      var results = m.map(function(s){ return getResult(s,name); });
-      var last = results[results.length-1], streak = 1;
-      for (var i = results.length-2; i >= 0; i--) {
-        if (results[i] === last) streak++; else break;
-      }
-      return { type: last, count: streak };
-    }
-    function getBlendedScore(name) {
-      var skillRate = getThisMonthRawRate(name);
-      var streak = getThisMonthStreak(name);
-      if (!streak) return skillRate;
-      var cappedCount = Math.min(streak.count, 5);
-      var momentumAdj = cappedCount * 4 * (streak.type === "W" ? 1 : -1);
-      return skillRate + momentumAdj;
-    }
-    var blendedScores = {};
-    players.forEach(function(p){ blendedScores[p] = getBlendedScore(p); });
+    // Skill-balance only: favor pairing a STRONG player with a WEAK player on each team
+    // (based purely on This Month raw win rate), so teams stay roughly even in strength.
+    // No momentum/streak factor - kept simple and verifiable directly against raw %.
+    var skillRates = {};
+    players.forEach(function(p){ skillRates[p] = getThisMonthRawRate(p); });
 
     function scoreSplit(split, c) {
       return split.reduce(function(sum, pair) { return sum + getPairCount(c, pair[0], pair[1]); }, 0);
     }
-    function balanceImbalancePenalty(split) {
+    function skillImbalancePenalty(split) {
       return split.reduce(function(sum, pair) {
-        var gap = Math.abs(blendedScores[pair[0]] - blendedScores[pair[1]]);
-        return sum + (200 - gap); // reward a BIG gap (strong/hot + weak/cold together)
+        var gap = Math.abs(skillRates[pair[0]] - skillRates[pair[1]]);
+        return sum + (100 - gap); // reward a BIG gap (strong + weak together)
       }, 0);
     }
     var PAIRING_WEIGHT = 1000;
     function combinedScore(split, c) {
-      return scoreSplit(split, c) * PAIRING_WEIGHT + balanceImbalancePenalty(split);
+      return scoreSplit(split, c) * PAIRING_WEIGHT + skillImbalancePenalty(split);
     }
 
     var allSplits = allThreeWaySplits(players);
@@ -2219,119 +2195,6 @@ function renderLineupSuggestion(players) {
   el.innerHTML = html;
 }
 
-function calculateWilsonScoreLowerBound(wins, losses, z) {
-  z = z == null ? 2.1 : z;
-  var n = wins + losses;
-  if (n <= 0) return 0;
-  var p = wins / n;
-  var z2 = z * z;
-  var denominator = 1 + z2 / n;
-  var center = p + z2 / (2 * n);
-  var margin = z * Math.sqrt((p * (1 - p) / n) + (z2 / (4 * n * n)));
-  var lower = (center - margin) / denominator;
-  if (lower < 0) lower = 0;
-  if (lower > 1) lower = 1;
-  return lower * 100;
-}
-function calculateAttendanceAdjustedWilsonScore(wins, losses, daysPlayed, totalMatchDays) {
-  var wilsonPerformance = calculateWilsonScoreLowerBound(wins, losses, 2.1);
-  var attendanceRatio = 1;
-  if (totalMatchDays > 0) {
-    attendanceRatio = daysPlayed / totalMatchDays;
-    if (attendanceRatio < 0) attendanceRatio = 0;
-    if (attendanceRatio > 1) attendanceRatio = 1;
-  }
-  var attendancePenalty = (1 - attendanceRatio) * 10;
-  return wilsonPerformance - attendancePenalty;
-}
-function formatAttendanceAdjustedWilsonDisplay(score) {
-  if (typeof score !== "number" || isNaN(score)) return "0.0";
-  return (Math.round(score * 10) / 10).toFixed(1);
-}
-function formatMeritCalcValue(n, decimals) {
-  if (typeof n !== "number" || isNaN(n)) n = 0;
-  return (Math.round(n * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals);
-}
-function buildMeritCalculationRows(pl) {
-  var wins = pl.won;
-  var losses = pl.lost;
-  var totalGames = wins + losses;
-  var rawRate = totalGames ? (wins / totalGames) * 100 : 0;
-  var wilson = calculateWilsonScoreLowerBound(wins, losses, 2.1);
-  var daysPlayed = pl.matchDaysPlayed != null ? pl.matchDaysPlayed : 0;
-  var totalMatchDays = pl.matchDaysTotal != null ? pl.matchDaysTotal : countTotalMatchDaysInSrc(getSessionsForPeriod());
-  var attendanceRatio = 1;
-  if (totalMatchDays > 0) {
-    attendanceRatio = daysPlayed / totalMatchDays;
-    if (attendanceRatio < 0) attendanceRatio = 0;
-    if (attendanceRatio > 1) attendanceRatio = 1;
-  }
-  var attendancePenalty = (1 - attendanceRatio) * 10;
-  var merit = wilson - attendancePenalty;
-
-  var winsStr = formatMeritCalcValue(wins, 1);
-  var totalStr = formatMeritCalcValue(totalGames, 1);
-  var rawStr = formatMeritCalcValue(rawRate, 1);
-  var wilsonStr = formatMeritCalcValue(wilson, 1);
-  var ratioStr = formatMeritCalcValue(attendanceRatio, 2);
-  var penaltyStr = formatMeritCalcValue(attendancePenalty, 1);
-  var meritStr = formatMeritCalcValue(merit, 1);
-
-  function row(label, formula, result) {
-    return '<div class="merit-calc-row">' +
-      '<div class="merit-calc-label">' + label + '</div>' +
-      '<div class="merit-calc-formula">' + formula + '</div>' +
-      '<div class="merit-calc-result">' + result + '</div>' +
-    '</div>';
-  }
-
-  return row(
-    "Win Rate",
-    "Wins (" + winsStr + ") / Total Games (" + totalStr + ") × 100",
-    "= " + rawStr + "%"
-  ) + row(
-    "Wilson Performance",
-    "Wilson Score (z = 2.1)",
-    "= " + wilsonStr + "%"
-  ) + row(
-    "Attendance",
-    "Days Played (" + daysPlayed + ") / Match Days (" + totalMatchDays + ")",
-    "= " + ratioStr
-  ) + row(
-    "Attendance Penalty",
-    "(1 − Attendance(" + ratioStr + ")) × 10",
-    "= " + penaltyStr
-  ) + row(
-    "Merit",
-    wilsonStr + " − " + penaltyStr,
-    "= " + meritStr + "%"
-  );
-}
-function buildMeritStatBoxHTML(pl, meritDisplay) {
-  return '<div class="stat-box merit-stat-tip tag-tip" role="button" tabindex="0" aria-expanded="false" aria-label="Merit calculation">' +
-    '<div class="stat-val accent">' + escAttr(meritDisplay) + '</div>' +
-    '<div class="stat-lbl">Merit</div>' +
-    '<span class="tag-pop merit-calc-pop" role="tooltip">' +
-      '<span class="tag-pop-title">🏅 Merit Calculation</span>' +
-      '<div class="merit-calc-body">' + buildMeritCalculationRows(pl) + '</div>' +
-    '</span>' +
-  '</div>';
-}
-function applyPlayerMeritFields(pl, totalMatchDays, adj) {
-  adj = adj || { brownie: 0, negative: 0, negativeReason: "" };
-  var rawRate = pl.won + pl.lost ? (pl.won / (pl.won + pl.lost)) * 100 : 0;
-  pl.rawRate = rawRate;
-  pl.matchDaysTotal = totalMatchDays;
-  pl.matchDaysNeeded = Math.ceil(totalMatchDays * 0.5);
-  var attendanceRatio = totalMatchDays > 0 ? (pl.matchDaysPlayed / totalMatchDays) : 1;
-  pl.attendanceRatio = attendanceRatio;
-  pl.brownie = adj.brownie;
-  pl.negative = adj.negative;
-  pl.negativeReason = adj.negativeReason;
-  pl.rankedScore = (rawRate * attendanceRatio) + adj.negative;
-  pl.attendanceAdjustedWilsonScore = calculateAttendanceAdjustedWilsonScore(pl.won, pl.lost, pl.matchDaysPlayed, totalMatchDays);
-  pl.effectiveScore = pl.attendanceAdjustedWilsonScore + adj.negative;
-}
 function computeIndividual(srcOverride) {
   var p={};
   var src = srcOverride || getSessionsForPeriod();
@@ -2340,9 +2203,28 @@ function computeIndividual(srcOverride) {
   }
   src.forEach(function(s){var w=wt(s);[s.t1p1,s.t1p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t1wins)*w;p[n].lost+=Number(s.t2wins)*w;});[s.t2p1,s.t2p2].forEach(function(n){if(!n||n==="undefined"||n==="")return;if(!p[n])p[n]={name:n,won:0,lost:0};p[n].won+=Number(s.t2wins)*w;p[n].lost+=Number(s.t1wins)*w;});});
   var arr = Object.values(p);
-  if (leaderboardPeriod === "alltime") {
+  if (leaderboardPeriod === "month") {
+    var totalMatchDays = srcOverride ? countTotalMatchDaysInSrc(src) : getTotalMatchDaysThisMonth();
+    arr.forEach(function(pl) {
+      pl.matchDaysPlayed = srcOverride ? countPlayerMatchDaysInSrc(src, pl.name) : getPlayerMatchDaysThisMonth(pl.name);
+      pl.matchDaysNeeded = Math.ceil(totalMatchDays * 0.5);
+      pl.qualified = totalMatchDays === 0 ? true : pl.matchDaysPlayed >= totalMatchDays * 0.5;
+      var adj = getAdjustmentFor(pl.name);
+      pl.brownie = adj.brownie;
+      pl.negative = adj.negative;
+      pl.negativeReason = adj.negativeReason;
+      var rawRate = pl.won+pl.lost ? (pl.won/(pl.won+pl.lost))*100 : 0;
+      pl.rawRate = rawRate;
+      var attendanceRatio = totalMatchDays > 0 ? (pl.matchDaysPlayed / totalMatchDays) : 1;
+      pl.attendanceRatio = attendanceRatio;
+      pl.rankedScore = (rawRate * attendanceRatio) + adj.negative;
+      pl.effectiveScore = rawRate + adj.negative;
+    });
+  } else if (leaderboardPeriod === "alltime") {
     var ALLTIME_MIN_MATCH_DAYS = 5;
     arr.forEach(function(pl) {
+      var rawRate = pl.won+pl.lost ? (pl.won/(pl.won+pl.lost))*100 : 0;
+      pl.rawRate = rawRate;
       if (srcOverride) {
         pl.matchDaysPlayed = countPlayerMatchDaysInSrc(src, pl.name);
         pl.matchDaysTotal = countTotalMatchDaysInSrc(src);
@@ -2355,22 +2237,19 @@ function computeIndividual(srcOverride) {
         pl.qualified = att.attended >= ALLTIME_MIN_MATCH_DAYS;
       }
       pl.matchDaysNeeded = ALLTIME_MIN_MATCH_DAYS;
-      applyPlayerMeritFields(pl, pl.matchDaysTotal, { brownie: 0, negative: 0, negativeReason: "" });
+      pl.brownie = 0; pl.negative = 0; pl.negativeReason = "";
+      var attendanceRatio2 = pl.matchDaysTotal > 0 ? (pl.matchDaysPlayed / pl.matchDaysTotal) : 1;
+      pl.attendanceRatio = attendanceRatio2;
+      pl.rankedScore = rawRate * attendanceRatio2;
+      pl.effectiveScore = pl.rankedScore;
     });
   } else {
-    var totalMatchDays = countTotalMatchDaysInSrc(src);
     arr.forEach(function(pl) {
-      pl.matchDaysPlayed = countPlayerMatchDaysInSrc(src, pl.name);
-      pl.qualified = totalMatchDays === 0 ? true : pl.matchDaysPlayed >= totalMatchDays * 0.5;
-      var adj;
-      if (leaderboardPeriod === "month") {
-        adj = getAdjustmentFor(pl.name);
-      } else if (leaderboardPeriod === "customMonth") {
-        adj = getAdjustmentForMonth(pl.name, customMonthValue || getCurrentMonthKey());
-      } else {
-        adj = { brownie: 0, negative: 0, negativeReason: "" };
-      }
-      applyPlayerMeritFields(pl, totalMatchDays, adj);
+      pl.qualified = true;
+      pl.brownie = 0; pl.negative = 0; pl.negativeReason = "";
+      pl.rawRate = pl.won+pl.lost ? (pl.won/(pl.won+pl.lost))*100 : 0;
+      pl.rankedScore = pl.rawRate;
+      pl.effectiveScore = pl.rawRate;
     });
   }
   return arr.sort(function(a,b){
@@ -2496,25 +2375,27 @@ function renderLeaderboard() {
         if (p.brownie > 0) adjHTML += '<span class="tag brownie">🍪 +'+p.brownie+'%</span>';
         if (p.negative < 0) adjHTML += '<span class="tag penalty" title="'+(p.negativeReason||"")+'">⚠️ '+p.negative+'%</span>';
 
-        var showMerit = kind === "player" && typeof p.attendanceAdjustedWilsonScore === "number";
+        var hasRankedScore = kind==="player" && leaderboardPeriod==="alltime" && typeof p.rankedScore==="number";
+        var isThisMonth = kind==="player" && leaderboardPeriod==="month" && typeof p.rankedScore==="number";
         var heroNumber, subLine1, subLine2, subLine3 = "";
-        if (showMerit) {
+        if (hasRankedScore) {
+          heroNumber = Math.round(p.rankedScore);
+          subLine1 = '<span class="lb-rate'+(low?" low":"")+'" style="font-size:11px">'+rate+'%</span><span class="lb-detail"> raw · '+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</span>';
+          var daysTotal = p.matchDaysTotal;
+          subLine2 = '<div class="lb-detail" style="opacity:0.7">Played '+p.matchDaysPlayed+' of '+daysTotal+' match-days</div>';
+          if (p.firstMatchDate) {
+            var fmParts = p.firstMatchDate.split("-");
+            var fmMonthLabel = MONTHS[parseInt(fmParts[1])-1];
+            subLine3 = '<div class="lb-detail" style="opacity:0.55">(since '+fmMonthLabel+')</div>';
+          }
+        } else if (isThisMonth) {
           heroNumber = rate;
           subLine1 = '<span class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</span>';
-          var meritPct = formatAttendanceAdjustedWilsonDisplay(p.attendanceAdjustedWilsonScore);
-          var periodDays = p.matchDaysTotal != null ? p.matchDaysTotal : countTotalMatchDaysInSrc(periodSessions);
-          var meritPenalized = p.matchDaysPlayed < periodDays;
-          subLine2 = '<div class="lb-relative'+(meritPenalized?" penalized":"")+'">'+meritPct+'% Merit</div>';
-          if (leaderboardPeriod === "alltime") {
-            subLine3 = '<div class="lb-detail" style="opacity:0.7">Played '+p.matchDaysPlayed+' of '+periodDays+' match-days</div>';
-            if (p.firstMatchDate) {
-              var fmParts = p.firstMatchDate.split("-");
-              var fmMonthLabel = MONTHS[parseInt(fmParts[1])-1];
-              subLine3 += '<div class="lb-detail" style="opacity:0.55">(since '+fmMonthLabel+')</div>';
-            }
-          } else {
-            subLine3 = '<div class="lb-detail" style="opacity:0.7">'+p.matchDaysPlayed+'/'+periodDays+' days played</div>';
-          }
+          var monthDays = getTotalMatchDaysThisMonth();
+          var relativePct = Math.round(p.rankedScore);
+          var relativePenalized = p.matchDaysPlayed < monthDays;
+          subLine2 = '<div class="lb-relative'+(relativePenalized?" penalized":"")+'">relative '+relativePct+'%</div>';
+          subLine3 = '<div class="lb-detail" style="opacity:0.7">'+p.matchDaysPlayed+'/'+monthDays+' days played</div>';
         } else {
           heroNumber = rate;
           subLine1 = '<span class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</span>';
@@ -2863,13 +2744,9 @@ function showPlayerStats(name) {
     H("p-prestige", "");
   }
 
-  var meritDisplay = typeof pl.attendanceAdjustedWilsonScore === "number"
-    ? formatAttendanceAdjustedWilsonDisplay(pl.attendanceAdjustedWilsonScore) + "%"
-    : "—";
-
   H("stats-grid",
     '<div class="stat-box"><div class="stat-val accent">'+bs+'</div><div class="stat-lbl">Best Streak</div></div>'+
-    buildMeritStatBoxHTML(pl, meritDisplay)+
+    '<div class="stat-box"><div class="stat-val">'+(pl.won+pl.lost).toFixed(1)+'</div><div class="stat-lbl">Total Matches</div></div>'+
     '<div class="stat-box"><div class="stat-val accent" style="font-size:14px">'+(bp||"—")+'</div><div class="stat-lbl">Best Partner</div></div>'+
     '<div class="stat-box"><div class="stat-val loss" style="font-size:14px">'+(tg||"—")+'</div><div class="stat-lbl">Toughest Opp</div></div>'+
     '<div class="stat-box wide"><div class="gt-split">'+
@@ -2888,7 +2765,7 @@ function showPlayerStats(name) {
     var gap = nem.theirs - nem.mine;
     H("nemesis-section",
       '<div class="sec-hdr">Nemesis</div>'+
-      '<div class="nemesis-row'+(nem.struck?" struck":"")+'" id="nemesis-card" data-opp="'+nem.name+'" role="button" tabindex="0" title="Tap for head to head">'+
+      '<div class="nemesis-row'+(nem.struck?" struck":"")+'" id="nemesis-card" data-opp="'+nem.name+'" role="button" tabindex="0" title="Tap for head to head · flair only">'+
         '<span class="nemesis-ico">💀</span>'+
         '<span class="nemesis-copy">'+
           '<span class="nemesis-name">'+nem.name+'</span>'+
