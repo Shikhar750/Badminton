@@ -2075,13 +2075,22 @@ function suggestLineup(players) {
 
     // FIRST HALF: pairing-freshness is PRIMARY (greedy) - guarantees the single most
     // under-paired combination is always actually used, not just averaged into a group
-    // total. Skill-balance only breaks a genuine tie in pairing freshness.
+    // total. Skill-balance breaks a genuine tie in pairing freshness; if STILL tied,
+    // fall back to alphabetical order so the result is always reproducible, not
+    // dependent on incidental array/object ordering.
+    function splitSortKey(split) {
+      return split.map(function(p){ return p.slice().sort().join(""); }).sort().join("|");
+    }
     function pickLeastPaired(list, excludeKeys, c) {
       var pairs = allPairsAmong(list).filter(function(p){ return excludeKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
       var minCount = Math.min.apply(null, pairs.map(function(p){ return getPairCount(c, p[0], p[1]); }));
       var tied = pairs.filter(function(p){ return getPairCount(c, p[0], p[1]) === minCount; });
       if (tied.length === 1) return tied[0];
-      tied.sort(function(a,b){ return skillGap(b[0],b[1]) - skillGap(a[0],a[1]); });
+      tied.sort(function(a,b){
+        var gapDiff = skillGap(b[0],b[1]) - skillGap(a[0],a[1]);
+        if (gapDiff !== 0) return gapDiff;
+        return a.slice().sort().join("").localeCompare(b.slice().sort().join(""));
+      });
       return tied[0];
     }
     function greedyPairingFirstSplit(ps, excludeKeys, c) {
@@ -2095,7 +2104,8 @@ function suggestLineup(players) {
 
     // SECOND HALF: skill-balance is PRIMARY - actively corrects any imbalance the
     // freshness-driven first half may have created, rather than leaving it to chance.
-    // Hard constraint: cannot repeat any pairing used in the first half.
+    // Hard constraint: cannot repeat any pairing used in the first half. If multiple
+    // splits tie on skill-balance, fall back to alphabetical order for reproducibility.
     var firstHalfKeys = firstHalfSplit.map(function(p){ return getPairKey(p[0],p[1]); });
     var allSplits = allThreeWaySplits(players);
     var validSecondHalfSplits = allSplits.filter(function(split) {
@@ -2108,7 +2118,9 @@ function suggestLineup(players) {
     if (validSecondHalfSplits.length > 0) {
       secondHalfSplit = validSecondHalfSplits.reduce(function(best, split) {
         var score = totalSkillImbalance(split);
-        return (!best || score < best.score) ? { split: split, score: score } : best;
+        if (!best || score < best.score) return { split: split, score: score };
+        if (score === best.score && splitSortKey(split) < splitSortKey(best.split)) return { split: split, score: score };
+        return best;
       }, null).split;
     }
 
