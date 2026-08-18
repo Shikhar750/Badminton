@@ -774,6 +774,24 @@ function getSessionsThisMonthAlways() {
     return true;
   });
 }
+// Finds every pairing used on the single MOST RECENT match-day (i.e. the last day
+// anyone played, which could be yesterday or earlier) - used specifically to stop the
+// 6-player second-half suggestion from repeating a pairing that was JUST played, even
+// though it's a different rule than the same-session "no repeat from first half" check.
+function getMostRecentMatchDayPairings() {
+  var allDates = sessions.map(function(s){ return s.date; }).filter(Boolean);
+  if (!allDates.length) return [];
+  var mostRecentDate = allDates.reduce(function(latest, d){ return d > latest ? d : latest; }, allDates[0]);
+  var pairKeys = [];
+  sessions.forEach(function(s) {
+    if (s.date !== mostRecentDate) return;
+    var t1 = [s.t1p1, s.t1p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
+    var t2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
+    if (t1.length === 2) pairKeys.push(getPairKey(t1[0], t1[1]));
+    if (t2.length === 2) pairKeys.push(getPairKey(t2[0], t2[1]));
+  });
+  return pairKeys;
+}
 function getPartnerFor(s, n) {
   if (inT1(s,n)) { var mate = s.t1p1===n ? s.t1p2 : s.t1p1; return mate && mate!=="undefined" ? mate : null; }
   if ([s.t2p1,s.t2p2].indexOf(n)>-1) { var mate2 = s.t2p1===n ? s.t2p2 : s.t2p1; return mate2 && mate2!=="undefined" ? mate2 : null; }
@@ -2067,62 +2085,36 @@ function suggestLineup(players) {
     players.forEach(function(p){ skillRates[p] = getThisMonthRawRate(p); });
     function skillGap(a,b) { return Math.abs(skillRates[a]-skillRates[b]); }
 
-    function allPairsAmong(list) {
-      var pairs = [];
-      for (var i=0;i<list.length;i++) for (var j=i+1;j<list.length;j++) pairs.push([list[i],list[j]]);
-      return pairs;
-    }
-
-    // FIRST HALF: pairing-freshness is PRIMARY (greedy) - guarantees the single most
-    // under-paired combination is always actually used, not just averaged into a group
-    // total. Skill-balance breaks a genuine tie in pairing freshness; if STILL tied,
-    // fall back to alphabetical order so the result is always reproducible, not
-    // dependent on incidental array/object ordering.
     function splitSortKey(split) {
       return split.map(function(p){ return p.slice().sort().join(""); }).sort().join("|");
     }
-    function pickLeastPaired(list, excludeKeys, c) {
-      var pairs = allPairsAmong(list).filter(function(p){ return excludeKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
-      var minCount = Math.min.apply(null, pairs.map(function(p){ return getPairCount(c, p[0], p[1]); }));
-      var tied = pairs.filter(function(p){ return getPairCount(c, p[0], p[1]) === minCount; });
-      if (tied.length === 1) return tied[0];
-      tied.sort(function(a,b){
-        var gapDiff = skillGap(b[0],b[1]) - skillGap(a[0],a[1]);
-        if (gapDiff !== 0) return gapDiff;
-        return a.slice().sort().join("").localeCompare(b.slice().sort().join(""));
-      });
-      return tied[0];
+    function scoreSplit(split, c) {
+      return split.reduce(function(sum, pair) { return sum + getPairCount(c, pair[0], pair[1]); }, 0);
     }
-    function greedyPairingFirstSplit(ps, excludeKeys, c) {
-      var team1 = pickLeastPaired(ps, excludeKeys, c);
-      var remaining = ps.filter(function(p){ return team1.indexOf(p)===-1; });
-      var team2 = pickLeastPaired(remaining, excludeKeys, c);
-      var team3 = remaining.filter(function(p){ return team2.indexOf(p)===-1; });
-      return [team1, team2, team3];
-    }
-    var firstHalfSplit = greedyPairingFirstSplit(players, [], counts);
-
-    // SECOND HALF: skill-balance is PRIMARY - actively corrects any imbalance the
-    // freshness-driven first half may have created, rather than leaving it to chance.
-    // Hard constraint: cannot repeat any pairing used in the first half. If multiple
-    // splits tie on skill-balance, fall back to alphabetical order for reproducibility.
-    var firstHalfKeys = firstHalfSplit.map(function(p){ return getPairKey(p[0],p[1]); });
-    var allSplits = allThreeWaySplits(players);
-    var validSecondHalfSplits = allSplits.filter(function(split) {
-      return split.every(function(p){ return firstHalfKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
-    });
-    function totalSkillImbalance(split) {
+    function skillImbalancePenalty(split) {
       return split.reduce(function(sum, pair) { return sum + (100 - skillGap(pair[0],pair[1])); }, 0);
     }
-    var secondHalfSplit = null;
-    if (validSecondHalfSplits.length > 0) {
-      secondHalfSplit = validSecondHalfSplits.reduce(function(best, split) {
-        var score = totalSkillImbalance(split);
+    var PAIRING_WEIGHT = 1000;
+    function combinedScore(split, c) {
+      return scoreSplit(split, c) * PAIRING_WEIGHT + skillImbalancePenalty(split);
+    }
+    function bestSplit(candidateSplits, c) {
+      return candidateSplits.reduce(function(best, split) {
+        var score = combinedScore(split, c);
         if (!best || score < best.score) return { split: split, score: score };
         if (score === best.score && splitSortKey(split) < splitSortKey(best.split)) return { split: split, score: score };
         return best;
-      }, null).split;
+      }, null);
     }
+
+    var allSplits = allThreeWaySplits(players);
+    var firstHalfSplit = bestSplit(allSplits, counts).split;
+
+    var firstHalfKeys = firstHalfSplit.map(function(p){ return getPairKey(p[0],p[1]); });
+    var validSecondHalfSplits = allSplits.filter(function(split) {
+      return split.every(function(p){ return firstHalfKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
+    });
+    var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplit(validSecondHalfSplits, counts).split : null;
 
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
