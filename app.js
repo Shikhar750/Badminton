@@ -2203,6 +2203,18 @@ function suggestLineup(players) {
     });
     var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplit(validSecondHalfSplits, counts).split : null;
 
+    window.__lineupDebug = {
+      recentDayKeys: recentDayKeys,
+      firstHalf: firstHalfSplit,
+      firstHalfKeys: firstHalfKeys,
+      validCount: validSecondHalfSplits.length,
+      validSplits: validSecondHalfSplits,
+      validScores: validSecondHalfSplits.map(function(s){ return combinedScore(s, counts); }),
+      skillRatesUsed: skillRates,
+      pairingCountsUsed: counts,
+      secondHalf: secondHalfSplit
+    };
+
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
 }
@@ -2279,6 +2291,24 @@ function renderLineupSuggestion(players) {
       html += 'Team 3: ' + sh[2].join(" & ");
       html += '</div>';
       html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">✨ No repeats from the first half</div>';
+    }
+
+    var dbg = window.__lineupDebug;
+    if (dbg) {
+      html += '<div style="margin-top:20px;padding:10px;background:#000;border:1px solid #f2ac3d;border-radius:8px;font-family:monospace;font-size:10px;color:#f2ac3d;white-space:pre-wrap">';
+      html += '=== TEMP DEBUG (delete later) ===\n';
+      html += 'First half: ' + JSON.stringify(dbg.firstHalf) + '\n';
+      html += 'First half keys: ' + JSON.stringify(dbg.firstHalfKeys) + '\n';
+      html += '\nRecent-day exclusion keys:\n';
+      dbg.recentDayKeys.forEach(function(k){ html += '  ' + k.replace('|',' & ') + '\n'; });
+      html += '\nSkill rates used:\n';
+      Object.keys(dbg.skillRatesUsed).forEach(function(p){ html += '  ' + p + ': ' + dbg.skillRatesUsed[p].toFixed(1) + '\n'; });
+      html += '\nPairing counts used:\n';
+      Object.keys(dbg.pairingCountsUsed).sort().forEach(function(k){ html += '  ' + k.replace('|',' & ') + ': ' + dbg.pairingCountsUsed[k] + '\n'; });
+      html += '\nValid second-half count: ' + dbg.validCount + '\n';
+      html += 'Valid splits (with score):\n';
+      dbg.validSplits.forEach(function(s,i){ html += '  ' + JSON.stringify(s) + ' = ' + dbg.validScores[i] + '\n'; });
+      html += '</div>';
     }
     html += '</div>';
     el.innerHTML = html;
