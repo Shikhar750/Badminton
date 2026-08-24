@@ -2191,63 +2191,17 @@ function suggestLineup(players) {
 
     var firstHalfKeys = firstHalfSplit.map(function(p){ return getPairKey(p[0],p[1]); });
 
-    // FAIRNESS ACROSS THE DAY: identify the bottom 2 weakest players in the squad.
-    // Anyone paired with one of them in the first half should NOT be paired with a
-    // weak player again in the second half - so nobody ends up "carrying" a weak
-    // partner for the entire session while others never do.
-    var sortedBySkill = players.slice().sort(function(a,b){ return skillRates[a]-skillRates[b]; });
-    var weakest2 = sortedBySkill.slice(0, 2);
-    var alreadyCarriedWeak = [];
-    firstHalfSplit.forEach(function(pair) {
-      var hasWeak = weakest2.indexOf(pair[0]) > -1 || weakest2.indexOf(pair[1]) > -1;
-      if (!hasWeak) return;
-      var nonWeakPerson = weakest2.indexOf(pair[0]) > -1 ? pair[1] : pair[0];
-      if (weakest2.indexOf(nonWeakPerson) === -1) alreadyCarriedWeak.push(nonWeakPerson);
-    });
-
+    // SECOND HALF: HARD rules, never dropped - must avoid repeating BOTH today's first
+    // half AND the most recent match-day's pairings. Among whatever satisfies both,
+    // pick whichever has the best overall high/low skill balance (same as the first
+    // half's structure - each team pairs a stronger player with a weaker one).
     function noRepeatFromFirstHalf(split) {
       return split.every(function(p){ return firstHalfKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
     }
-    function noDoubleWeakBurden(split) {
-      return split.every(function(pair) {
-        var hasWeak = weakest2.indexOf(pair[0]) > -1 || weakest2.indexOf(pair[1]) > -1;
-        if (!hasWeak) return true;
-        var nonWeakPerson = weakest2.indexOf(pair[0]) > -1 ? pair[1] : pair[0];
-        if (weakest2.indexOf(nonWeakPerson) > -1) return true; // both weak - not a "burden" case
-        return alreadyCarriedWeak.indexOf(nonWeakPerson) === -1;
-      });
-    }
-
-    // Apply rules in priority order, falling back progressively if a stricter combination
-    // leaves no valid options: (1) no repeat today + no weak-burden + no repeat from the
-    // last match-day, (2) no repeat today + no weak-burden, (3) no repeat today only.
     var validSecondHalfSplits = allSplits.filter(function(split) {
-      return noRepeatFromFirstHalf(split) && noDoubleWeakBurden(split) && noRepeatFromRecentDay(split);
+      return noRepeatFromFirstHalf(split) && noRepeatFromRecentDay(split);
     });
-    var stage1Count = validSecondHalfSplits.length;
-    if (validSecondHalfSplits.length === 0) {
-      validSecondHalfSplits = allSplits.filter(function(split) {
-        return noRepeatFromFirstHalf(split) && noDoubleWeakBurden(split);
-      });
-    }
-    var stage2Count = validSecondHalfSplits.length;
-    if (validSecondHalfSplits.length === 0) {
-      validSecondHalfSplits = allSplits.filter(noRepeatFromFirstHalf);
-    }
     var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplit(validSecondHalfSplits, counts).split : null;
-
-    window.__lineupDebug = {
-      recentDayKeys: recentDayKeys,
-      weakest2: weakest2,
-      alreadyCarriedWeak: alreadyCarriedWeak,
-      firstHalf: firstHalfSplit,
-      stage1Count: stage1Count,
-      stage2Count: stage2Count,
-      finalValidSplits: validSecondHalfSplits,
-      finalValidScores: validSecondHalfSplits.map(function(s){ return combinedScore(s, counts); }),
-      skillRatesUsed: skillRates,
-      secondHalf: secondHalfSplit
-    };
 
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
@@ -2325,23 +2279,6 @@ function renderLineupSuggestion(players) {
       html += 'Team 3: ' + sh[2].join(" & ");
       html += '</div>';
       html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">✨ No repeats from the first half</div>';
-    }
-
-    var dbg = window.__lineupDebug;
-    if (dbg) {
-      html += '<div style="margin-top:20px;padding:10px;background:#000;border:1px solid #f2ac3d;border-radius:8px;font-family:monospace;font-size:10px;color:#f2ac3d;white-space:pre-wrap">';
-      html += '=== TEMP DEBUG (delete later) ===\n';
-      html += 'Recent-day exclusion keys:\n';
-      dbg.recentDayKeys.forEach(function(k){ html += '  ' + k.replace('|',' & ') + '\n'; });
-      html += '\nWeakest 2:  ' + JSON.stringify(dbg.weakest2) + '\n';
-      html += 'Already carried weak: ' + JSON.stringify(dbg.alreadyCarriedWeak) + '\n';
-      html += '\nStage 1 (strictest) valid count: ' + dbg.stage1Count + '\n';
-      html += 'Stage 2 (dropped recent-day) valid count: ' + dbg.stage2Count + '\n';
-      html += '\nSkill rates used:\n';
-      Object.keys(dbg.skillRatesUsed).forEach(function(p){ html += '  ' + p + ': ' + dbg.skillRatesUsed[p].toFixed(1) + '\n'; });
-      html += '\nFinal splits considered (with LIVE computed score):\n';
-      dbg.finalValidSplits.forEach(function(s, i){ html += '  ' + JSON.stringify(s) + ' = ' + dbg.finalValidScores[i] + '\n'; });
-      html += '</div>';
     }
     html += '</div>';
     el.innerHTML = html;
