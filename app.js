@@ -2244,6 +2244,8 @@ function suggestLineup(players) {
       stage1Count: stage1Count,
       stage2Count: stage2Count,
       finalValidSplits: validSecondHalfSplits,
+      finalValidScores: validSecondHalfSplits.map(function(s){ return combinedScore(s, counts); }),
+      skillRatesUsed: skillRates,
       secondHalf: secondHalfSplit
     };
 
@@ -2335,8 +2337,10 @@ function renderLineupSuggestion(players) {
       html += 'Already carried weak: ' + JSON.stringify(dbg.alreadyCarriedWeak) + '\n';
       html += '\nStage 1 (strictest) valid count: ' + dbg.stage1Count + '\n';
       html += 'Stage 2 (dropped recent-day) valid count: ' + dbg.stage2Count + '\n';
-      html += '\nFinal splits considered:\n';
-      dbg.finalValidSplits.forEach(function(s){ html += '  ' + JSON.stringify(s) + '\n'; });
+      html += '\nSkill rates used:\n';
+      Object.keys(dbg.skillRatesUsed).forEach(function(p){ html += '  ' + p + ': ' + dbg.skillRatesUsed[p].toFixed(1) + '\n'; });
+      html += '\nFinal splits considered (with LIVE computed score):\n';
+      dbg.finalValidSplits.forEach(function(s, i){ html += '  ' + JSON.stringify(s) + ' = ' + dbg.finalValidScores[i] + '\n'; });
       html += '</div>';
     }
     html += '</div>';
