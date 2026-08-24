@@ -2191,29 +2191,53 @@ function suggestLineup(players) {
 
     var firstHalfKeys = firstHalfSplit.map(function(p){ return getPairKey(p[0],p[1]); });
 
+    // FAIRNESS: identify the bottom 2 weakest players. Anyone paired with one of them
+    // in the first half should NOT get a weak partner again in the second - the ONLY
+    // skill-related rule kept, since it targets a specific real problem (someone
+    // carrying two weak partners all day) without overriding freshness in general.
+    var sortedBySkill = players.slice().sort(function(a,b){ return skillRates[a]-skillRates[b]; });
+    var weakest2 = sortedBySkill.slice(0, 2);
+    var alreadyCarriedWeak = [];
+    firstHalfSplit.forEach(function(pair) {
+      var hasWeak = weakest2.indexOf(pair[0]) > -1 || weakest2.indexOf(pair[1]) > -1;
+      if (!hasWeak) return;
+      var nonWeakPerson = weakest2.indexOf(pair[0]) > -1 ? pair[1] : pair[0];
+      if (weakest2.indexOf(nonWeakPerson) === -1) alreadyCarriedWeak.push(nonWeakPerson);
+    });
+    function noDoubleWeakBurden(split) {
+      return split.every(function(pair) {
+        var hasWeak = weakest2.indexOf(pair[0]) > -1 || weakest2.indexOf(pair[1]) > -1;
+        if (!hasWeak) return true;
+        var nonWeakPerson = weakest2.indexOf(pair[0]) > -1 ? pair[1] : pair[0];
+        if (weakest2.indexOf(nonWeakPerson) > -1) return true; // both weak - not a "burden" case
+        return alreadyCarriedWeak.indexOf(nonWeakPerson) === -1;
+      });
+    }
+
     // SECOND HALF: HARD rules, never dropped - must avoid repeating BOTH today's first
-    // half AND the most recent match-day's pairings. Among whatever satisfies both,
-    // pick whichever has the best overall high/low skill balance (same as the first
-    // half's structure - each team pairs a stronger player with a weaker one).
+    // half AND the most recent match-day's pairings, AND avoid double-burdening anyone
+    // with a weak partner. Among whatever satisfies all three, pick by pure pairing
+    // freshness (no general skill-balance - that's intentionally removed).
     function noRepeatFromFirstHalf(split) {
       return split.every(function(p){ return firstHalfKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
     }
     var validSecondHalfSplits = allSplits.filter(function(split) {
-      return noRepeatFromFirstHalf(split) && noRepeatFromRecentDay(split);
+      return noRepeatFromFirstHalf(split) && noRepeatFromRecentDay(split) && noDoubleWeakBurden(split);
     });
-    var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplit(validSecondHalfSplits, counts).split : null;
-
-    window.__lineupDebug = {
-      recentDayKeys: recentDayKeys,
-      firstHalf: firstHalfSplit,
-      firstHalfKeys: firstHalfKeys,
-      validCount: validSecondHalfSplits.length,
-      validSplits: validSecondHalfSplits,
-      validScores: validSecondHalfSplits.map(function(s){ return combinedScore(s, counts); }),
-      skillRatesUsed: skillRates,
-      pairingCountsUsed: counts,
-      secondHalf: secondHalfSplit
-    };
+    if (validSecondHalfSplits.length === 0) {
+      validSecondHalfSplits = allSplits.filter(function(split) {
+        return noRepeatFromFirstHalf(split) && noRepeatFromRecentDay(split);
+      });
+    }
+    function bestByFreshnessOnly(candidateSplits, c) {
+      return candidateSplits.reduce(function(best, split) {
+        var score = scoreSplit(split, c);
+        if (!best || score < best.score) return { split: split, score: score };
+        if (score === best.score && splitSortKey(split) < splitSortKey(best.split)) return { split: split, score: score };
+        return best;
+      }, null);
+    }
+    var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestByFreshnessOnly(validSecondHalfSplits, counts).split : null;
 
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
@@ -2291,24 +2315,6 @@ function renderLineupSuggestion(players) {
       html += 'Team 3: ' + sh[2].join(" & ");
       html += '</div>';
       html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">✨ No repeats from the first half</div>';
-    }
-
-    var dbg = window.__lineupDebug;
-    if (dbg) {
-      html += '<div style="margin-top:20px;padding:10px;background:#000;border:1px solid #f2ac3d;border-radius:8px;font-family:monospace;font-size:10px;color:#f2ac3d;white-space:pre-wrap">';
-      html += '=== TEMP DEBUG (delete later) ===\n';
-      html += 'First half: ' + JSON.stringify(dbg.firstHalf) + '\n';
-      html += 'First half keys: ' + JSON.stringify(dbg.firstHalfKeys) + '\n';
-      html += '\nRecent-day exclusion keys:\n';
-      dbg.recentDayKeys.forEach(function(k){ html += '  ' + k.replace('|',' & ') + '\n'; });
-      html += '\nSkill rates used:\n';
-      Object.keys(dbg.skillRatesUsed).forEach(function(p){ html += '  ' + p + ': ' + dbg.skillRatesUsed[p].toFixed(1) + '\n'; });
-      html += '\nPairing counts used:\n';
-      Object.keys(dbg.pairingCountsUsed).sort().forEach(function(k){ html += '  ' + k.replace('|',' & ') + ': ' + dbg.pairingCountsUsed[k] + '\n'; });
-      html += '\nValid second-half count: ' + dbg.validCount + '\n';
-      html += 'Valid splits (with score):\n';
-      dbg.validSplits.forEach(function(s,i){ html += '  ' + JSON.stringify(s) + ' = ' + dbg.validScores[i] + '\n'; });
-      html += '</div>';
     }
     html += '</div>';
     el.innerHTML = html;
