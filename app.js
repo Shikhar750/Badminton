@@ -848,7 +848,8 @@ function getSessionsThisMonthAlways() {
 // 6-player second-half suggestion from repeating a pairing that was JUST played, even
 // though it's a different rule than the same-session "no repeat from first half" check.
 function getMostRecentMatchDayPairings() {
-  var allDates = sessions.map(function(s){ return s.date; }).filter(Boolean);
+  var todayStr = getTodayString();
+  var allDates = sessions.map(function(s){ return s.date; }).filter(function(d){ return d && d !== todayStr; });
   if (!allDates.length) return [];
   var mostRecentDate = allDates.reduce(function(latest, d){ return d > latest ? d : latest; }, allDates[0]);
   var pairKeys = [];
