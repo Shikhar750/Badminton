@@ -13,6 +13,7 @@ var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov",
 var ADMIN_PIN = "7789";
 var MATCH_DAY_START_HOUR = 3;
 var MATCH_DAY_MIGRATION_KEY = "badmintonMatchDay3amMigratedV2";
+var LEADERBOARD_QUALIFICATION_ENFORCED = false;
 var matchDayMigrationRunning = false;
 var sessions = [];
 var squadPlayers = [];
@@ -123,6 +124,72 @@ function checkAdmin() {
   return false;
 }
 
+function scrollPageToTop() {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+function getActiveTabName() {
+  var tabs = ["leaderboard","history","add","player","h2h","rules","winners","pair","pair-duel"];
+  for (var i = 0; i < tabs.length; i++) {
+    var tab = document.getElementById("tab-" + tabs[i]);
+    if (tab && tab.classList.contains("active") && tab.style.display !== "none") return tabs[i];
+  }
+  return null;
+}
+function canSwipeBack() {
+  var winnersMonth = document.getElementById("winners-month-view");
+  if (winnersMonth && winnersMonth.style.display !== "none") return true;
+  var active = getActiveTabName();
+  return active === "player" || active === "h2h" || active === "pair" || active === "pair-duel";
+}
+function performNavBack() {
+  var winnersMonth = document.getElementById("winners-month-view");
+  if (winnersMonth && winnersMonth.style.display !== "none") {
+    resetWinnersView();
+    scrollPageToTop();
+    return true;
+  }
+  var active = getActiveTabName();
+  if (active === "player") {
+    showTab("leaderboard");
+    return true;
+  }
+  if (active === "h2h" && currentPlayer) {
+    showPlayerStats(currentPlayer);
+    return true;
+  }
+  if (active === "pair-duel") {
+    showTab("pair");
+    return true;
+  }
+  if (active === "pair") {
+    showTab("leaderboard");
+    return true;
+  }
+  return false;
+}
+var swipeBackState = { startX: 0, startY: 0, tracking: false };
+function initSwipeBack() {
+  document.addEventListener("touchstart", function(e) {
+    if (!canSwipeBack() || e.touches.length !== 1) return;
+    swipeBackState.startX = e.touches[0].clientX;
+    swipeBackState.startY = e.touches[0].clientY;
+    swipeBackState.tracking = true;
+  }, { passive: true });
+  document.addEventListener("touchend", function(e) {
+    if (!swipeBackState.tracking) return;
+    swipeBackState.tracking = false;
+    if (!canSwipeBack()) return;
+    var t = e.changedTouches[0];
+    var dx = t.clientX - swipeBackState.startX;
+    var dy = t.clientY - swipeBackState.startY;
+    if (dx < 72) return;
+    if (Math.abs(dy) > 90) return;
+    if (Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    performNavBack();
+  }, { passive: true });
+}
 function showTab(name) {
   ["leaderboard","history","add","player","h2h","rules","winners","pair","pair-duel"].forEach(function(t) {
     var tab = document.getElementById("tab-"+t);
@@ -136,6 +203,7 @@ function showTab(name) {
   targetTab.style.display = "block";
   var n = document.getElementById("nav-"+name);
   if (n) n.classList.add("active");
+  scrollPageToTop();
 }
 
 document.getElementById("nav-leaderboard").addEventListener("click", function(){ showTab("leaderboard"); });
@@ -324,6 +392,7 @@ document.getElementById("back-from-pair-duel").addEventListener("click", functio
 document.getElementById("champion-banner").addEventListener("click", function(){ resetWinnersView(); renderMonthlyWinners(); showTab("winners"); });
 document.getElementById("back-from-winners").addEventListener("click", function(){ resetWinnersView(); showTab("leaderboard"); });
 document.getElementById("back-from-winner-month").addEventListener("click", function(){ resetWinnersView(); });
+initSwipeBack();
 
 document.getElementById("lineup-toggle").addEventListener("click", function(){
   document.getElementById("lineup-collapse-body").classList.toggle("open");
@@ -1706,6 +1775,7 @@ function resetWinnersView() {
   if (listView) listView.style.display = "block";
   if (monthView) monthView.style.display = "none";
   if (backToRankings) backToRankings.style.display = "block";
+  scrollPageToTop();
 }
 function computeIndividualForEarnedMonth(earnedMonthKey, appliedMonthKey) {
   var src = getSessionsForMonth(earnedMonthKey);
@@ -1734,10 +1804,11 @@ function computeIndividualForEarnedMonth(earnedMonthKey, appliedMonthKey) {
     pl.qualified = totalMatchDays === 0 ? true : pl.matchDaysPlayed >= totalMatchDays * 0.5;
     var adj = getAdjustmentForMonth(pl.name, appliedMonthKey);
     applyPlayerMeritFields(pl, totalMatchDays, adj);
+    applyPlayerLeaderboardPoints(pl, src);
   });
   return arr.sort(function(a, b) {
-    if (a.qualified !== b.qualified) return a.qualified ? -1 : 1;
-    return b.effectiveScore - a.effectiveScore || b.won - a.won;
+    if (LEADERBOARD_QUALIFICATION_ENFORCED && a.qualified !== b.qualified) return a.qualified ? -1 : 1;
+    return getPointsBasedRankingScore(b) - getPointsBasedRankingScore(a) || b.won - a.won;
   });
 }
 function buildWinnerMonthLeaderboardHTML(standings, championNames, periodTotalGames, totalMatchDays) {
@@ -1750,7 +1821,7 @@ function buildWinnerMonthLeaderboardHTML(standings, championNames, periodTotalGa
     if (p.brownie > 0) adjHTML += '<span class="tag brownie">🍪 +'+p.brownie+'%</span>';
     if (p.negative < 0) adjHTML += '<span class="tag penalty" title="'+(p.negativeReason||"")+'">⚠️ '+p.negative+'%</span>';
 
-    if (p.qualified === false) {
+    if (LEADERBOARD_QUALIFICATION_ENFORCED && p.qualified === false) {
       return '<div class="lb-row lb-row-static'+(isChamp?" winner-month-champ-row":"")+'" style="opacity:0.65">' +
         '<div class="rank-badge">—</div>' +
         '<div class="lb-main"><div class="lb-name">'+p.name+(isChamp?' <span class="winner-month-champ-tag">🏅</span>':"")+'</div>' +
@@ -1763,16 +1834,14 @@ function buildWinnerMonthLeaderboardHTML(standings, championNames, periodTotalGa
     var rankIdx = qualifiedRank;
     qualifiedRank++;
     var badgeClass = rankIdx === 0 ? "gold" : rankIdx === 1 ? "silver" : rankIdx === 2 ? "bronze" : "";
-    var relativePct = formatAttendanceAdjustedWilsonDisplay(p.attendanceAdjustedWilsonScore);
-    var relativePenalized = p.matchDaysPlayed < totalMatchDays;
+    var pointsVal = p.leaderboardPoints != null ? p.leaderboardPoints : 0;
     return '<div class="lb-row lb-row-static'+(rankIdx===0?" rank-1":"")+(isChamp?" winner-month-champ-row":"")+'">' +
       '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+'</div>' +
       '<div class="lb-main"><div class="lb-name">'+p.name+(isChamp?' <span class="winner-month-champ-tag">🏅</span>':"")+'</div>' +
         (adjHTML ? '<div class="lb-secondary">'+adjHTML+'</div>' : '') + '</div>' +
-      '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+rate+'%</div>' +
+      '<div class="lb-stats"><div class="lb-rate">'+pointsVal+'</div>' +
         '<div class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</div>' +
-        '<div class="lb-relative'+(relativePenalized?" penalized":"")+'">'+relativePct+'% Merit</div>' +
-        '<div class="lb-detail" style="opacity:0.7">'+p.matchDaysPlayed+'/'+totalMatchDays+' days played</div>' +
+        '<div class="lb-relative'+(low?" low":"")+'">'+rate+'% win rate</div>' +
         '<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'" style="width:'+rate+'%"></div></div>' +
       '</div></div>';
   }).join("") + '<div class="count">'+periodTotalGames.toFixed(1)+' match'+(periodTotalGames!==1?"es":"")+' recorded</div></div>';
@@ -1798,6 +1867,7 @@ function showWinnerMonth(appliedMonthKey) {
 
   document.getElementById("winners-month-content").innerHTML =
     buildWinnerMonthLeaderboardHTML(standings, entry.winners, totalGames, totalMatchDays);
+  scrollPageToTop();
 }
 function populateChampionBanner() {
   var results = computeMonthlyWinnersList();
@@ -2108,21 +2178,60 @@ function suggestLineup(players) {
     }
 
     var allSplits = allThreeWaySplits(players);
-    var firstHalfSplit = bestSplit(allSplits, counts).split;
+    var recentDayKeys = getMostRecentMatchDayPairings();
+    function noRepeatFromRecentDay(split) {
+      return split.every(function(p){ return recentDayKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
+    }
+    // First half: prefer splits that also avoid repeating the most recent match-day's
+    // pairings; if that leaves nothing valid, fall back to the unrestricted best split.
+    var firstHalfCandidates = allSplits.filter(noRepeatFromRecentDay);
+    if (firstHalfCandidates.length === 0) firstHalfCandidates = allSplits;
+    var firstHalfSplit = bestSplit(firstHalfCandidates, counts).split;
 
     var firstHalfKeys = firstHalfSplit.map(function(p){ return getPairKey(p[0],p[1]); });
-    var validSecondHalfSplits = allSplits.filter(function(split) {
-      return split.every(function(p){ return firstHalfKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
-    });
-    var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplit(validSecondHalfSplits, counts).split : null;
 
-    // TEMPORARY DEBUG - remove after diagnosing the lineup discrepancy
-    window.__lineupDebug = {
-      skillRates: skillRates,
-      pairingCounts: counts,
-      firstHalf: firstHalfSplit,
-      secondHalfCandidates: validSecondHalfSplits.map(function(s){ return { split: s, score: combinedScore(s, counts) }; })
-    };
+    // FAIRNESS ACROSS THE DAY: identify the bottom 2 weakest players in the squad.
+    // Anyone paired with one of them in the first half should NOT be paired with a
+    // weak player again in the second half - so nobody ends up "carrying" a weak
+    // partner for the entire session while others never do.
+    var sortedBySkill = players.slice().sort(function(a,b){ return skillRates[a]-skillRates[b]; });
+    var weakest2 = sortedBySkill.slice(0, 2);
+    var alreadyCarriedWeak = [];
+    firstHalfSplit.forEach(function(pair) {
+      var hasWeak = weakest2.indexOf(pair[0]) > -1 || weakest2.indexOf(pair[1]) > -1;
+      if (!hasWeak) return;
+      var nonWeakPerson = weakest2.indexOf(pair[0]) > -1 ? pair[1] : pair[0];
+      if (weakest2.indexOf(nonWeakPerson) === -1) alreadyCarriedWeak.push(nonWeakPerson);
+    });
+
+    function noRepeatFromFirstHalf(split) {
+      return split.every(function(p){ return firstHalfKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
+    }
+    function noDoubleWeakBurden(split) {
+      return split.every(function(pair) {
+        var hasWeak = weakest2.indexOf(pair[0]) > -1 || weakest2.indexOf(pair[1]) > -1;
+        if (!hasWeak) return true;
+        var nonWeakPerson = weakest2.indexOf(pair[0]) > -1 ? pair[1] : pair[0];
+        if (weakest2.indexOf(nonWeakPerson) > -1) return true; // both weak - not a "burden" case
+        return alreadyCarriedWeak.indexOf(nonWeakPerson) === -1;
+      });
+    }
+
+    // Apply rules in priority order, falling back progressively if a stricter combination
+    // leaves no valid options: (1) no repeat today + no weak-burden + no repeat from the
+    // last match-day, (2) no repeat today + no weak-burden, (3) no repeat today only.
+    var validSecondHalfSplits = allSplits.filter(function(split) {
+      return noRepeatFromFirstHalf(split) && noDoubleWeakBurden(split) && noRepeatFromRecentDay(split);
+    });
+    if (validSecondHalfSplits.length === 0) {
+      validSecondHalfSplits = allSplits.filter(function(split) {
+        return noRepeatFromFirstHalf(split) && noDoubleWeakBurden(split);
+      });
+    }
+    if (validSecondHalfSplits.length === 0) {
+      validSecondHalfSplits = allSplits.filter(noRepeatFromFirstHalf);
+    }
+    var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplit(validSecondHalfSplits, counts).split : null;
 
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
@@ -2200,22 +2309,6 @@ function renderLineupSuggestion(players) {
       html += 'Team 3: ' + sh[2].join(" & ");
       html += '</div>';
       html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">✨ No repeats from the first half</div>';
-    }
-
-    // TEMPORARY DEBUG BLOCK - remove after diagnosing, delete this whole if-block once done
-    var dbg = window.__lineupDebug;
-    if (dbg) {
-      html += '<div style="margin-top:20px;padding:10px;background:#000;border:1px solid #f2ac3d;border-radius:8px;font-family:monospace;font-size:10px;color:#f2ac3d;white-space:pre-wrap">';
-      html += '=== TEMP DEBUG (delete later) ===\n';
-      html += 'Skill rates:\n';
-      Object.keys(dbg.skillRates).forEach(function(p){ html += '  ' + p + ': ' + dbg.skillRates[p].toFixed(1) + '\n'; });
-      html += '\nPairing counts:\n';
-      Object.keys(dbg.pairingCounts).sort().forEach(function(k){ html += '  ' + k.replace('|',' & ') + ': ' + dbg.pairingCounts[k] + '\n'; });
-      html += '\nFirst half: ' + JSON.stringify(dbg.firstHalf) + '\n';
-      html += '\nSecond-half candidates (sorted best to worst):\n';
-      var sortedCandidates = dbg.secondHalfCandidates.slice().sort(function(a,b){ return a.score-b.score; });
-      sortedCandidates.forEach(function(c){ html += '  ' + JSON.stringify(c.split) + ' score=' + c.score + '\n'; });
-      html += '</div>';
     }
     html += '</div>';
     el.innerHTML = html;
@@ -2326,6 +2419,50 @@ function buildMeritCalculationRows(pl) {
     "= " + meritStr + "%"
   );
 }
+function buildPointsCalculationRows(pl) {
+  var wins21 = pl.pointsWins21;
+  var wins11 = pl.pointsWins11;
+  if (wins21 == null || wins11 == null) {
+    var counts = countLeaderboardPointWinsFromSrc(getSessionsForPeriod(), pl.name);
+    wins21 = counts.wins21;
+    wins11 = counts.wins11;
+  }
+  var pts21 = calculateLeaderboardPoints(wins21, 0);
+  var pts11 = calculateLeaderboardPoints(0, wins11);
+  var total = calculateLeaderboardPoints(wins21, wins11);
+
+  function row(label, formula, result) {
+    return '<div class="merit-calc-row">' +
+      '<div class="merit-calc-label">' + label + '</div>' +
+      '<div class="merit-calc-formula">' + formula + '</div>' +
+      '<div class="merit-calc-result">' + result + '</div>' +
+    '</div>';
+  }
+
+  return row(
+    "21-Point Wins",
+    "Wins (" + wins21 + ") × 2",
+    "= " + pts21
+  ) + row(
+    "11-Point Wins",
+    "Wins (" + wins11 + ") × 1",
+    "= " + pts11
+  ) + row(
+    "Points",
+    pts21 + " + " + pts11,
+    "= " + total
+  );
+}
+function buildPointsStatBoxHTML(pl, pointsDisplay) {
+  return '<div class="stat-box points-stat-tip tag-tip" role="button" tabindex="0" aria-expanded="false" aria-label="Points calculation">' +
+    '<div class="stat-val accent">' + escAttr(pointsDisplay) + '</div>' +
+    '<div class="stat-lbl">Points</div>' +
+    '<span class="tag-pop merit-calc-pop" role="tooltip">' +
+      '<span class="tag-pop-title">🏆 Points Calculation</span>' +
+      '<div class="merit-calc-body">' + buildPointsCalculationRows(pl) + '</div>' +
+    '</span>' +
+  '</div>';
+}
 function buildMeritStatBoxHTML(pl, meritDisplay) {
   return '<div class="stat-box merit-stat-tip tag-tip" role="button" tabindex="0" aria-expanded="false" aria-label="Merit calculation">' +
     '<div class="stat-val accent">' + escAttr(meritDisplay) + '</div>' +
@@ -2351,6 +2488,33 @@ function applyPlayerMeritFields(pl, totalMatchDays, adj) {
   pl.attendanceAdjustedWilsonScore = calculateAttendanceAdjustedWilsonScore(pl.won, pl.lost, pl.matchDaysPlayed, totalMatchDays);
   pl.effectiveScore = pl.attendanceAdjustedWilsonScore + adj.negative;
 }
+function countLeaderboardPointWinsFromSrc(src, name) {
+  var wins21 = 0, wins11 = 0;
+  src.forEach(function(s) {
+    if (!inMatch(s, name)) return;
+    if (getResult(s, name) !== "W") return;
+    var gamesWon = inT1(s, name) ? Number(s.t1wins) : Number(s.t2wins);
+    if ((s.gameType || "21") === "11") wins11 += gamesWon;
+    else wins21 += gamesWon;
+  });
+  return { wins21: wins21, wins11: wins11 };
+}
+function calculateLeaderboardPoints(wins21, wins11) {
+  return (wins21 * 2) + (wins11 * 1);
+}
+function calculateLeaderboardPointsForPlayer(src, name) {
+  var counts = countLeaderboardPointWinsFromSrc(src, name);
+  return calculateLeaderboardPoints(counts.wins21, counts.wins11);
+}
+function applyPlayerLeaderboardPoints(pl, src) {
+  var counts = countLeaderboardPointWinsFromSrc(src, pl.name);
+  pl.pointsWins21 = counts.wins21;
+  pl.pointsWins11 = counts.wins11;
+  pl.leaderboardPoints = calculateLeaderboardPoints(counts.wins21, counts.wins11);
+}
+function getPointsBasedRankingScore(pl) {
+  return typeof pl.leaderboardPoints === "number" ? pl.leaderboardPoints : 0;
+}
 function computeIndividual(srcOverride) {
   var p={};
   var src = srcOverride || getSessionsForPeriod();
@@ -2375,6 +2539,7 @@ function computeIndividual(srcOverride) {
       }
       pl.matchDaysNeeded = ALLTIME_MIN_MATCH_DAYS;
       applyPlayerMeritFields(pl, pl.matchDaysTotal, { brownie: 0, negative: 0, negativeReason: "" });
+      applyPlayerLeaderboardPoints(pl, src);
     });
   } else {
     var totalMatchDays = countTotalMatchDaysInSrc(src);
@@ -2390,11 +2555,12 @@ function computeIndividual(srcOverride) {
         adj = { brownie: 0, negative: 0, negativeReason: "" };
       }
       applyPlayerMeritFields(pl, totalMatchDays, adj);
+      applyPlayerLeaderboardPoints(pl, src);
     });
   }
   return arr.sort(function(a,b){
-    if (a.qualified !== b.qualified) return a.qualified ? -1 : 1;
-    return b.effectiveScore-a.effectiveScore||b.won-a.won;
+    if (LEADERBOARD_QUALIFICATION_ENFORCED && a.qualified !== b.qualified) return a.qualified ? -1 : 1;
+    return getPointsBasedRankingScore(b) - getPointsBasedRankingScore(a) || b.won - a.won;
   });
 }
 function computePairs(srcOverride) {
@@ -2429,7 +2595,7 @@ function buildQualifiedRankMap(standings, kind) {
   var map = {};
   var rank = 0;
   standings.forEach(function(pl) {
-    if (kind === "player" && pl.qualified === false) return;
+    if (LEADERBOARD_QUALIFICATION_ENFORCED && kind === "player" && pl.qualified === false) return;
     if (pl.won + pl.lost <= 0) return;
     map[pl.name] = rank;
     rank++;
@@ -2499,7 +2665,7 @@ function renderLeaderboard() {
           ? (kind === "player" ? getRecentFormDotsHTML(p.name) : getRecentPairFormDotsHTML(p.name))
           : '<div class="lb-bar"><div class="lb-bar-fill'+(low?" low":"")+'" style="width:'+rate+'%"></div></div>';
 
-        if (p.qualified === false) {
+        if (LEADERBOARD_QUALIFICATION_ENFORCED && p.qualified === false) {
           return '<div class="lb-row'+(isMe?" is-me":"")+(prestigeCornerHTML?" has-prestige":"")+'" '+attrName+'="'+p.name+'" style="opacity:0.65">'+
             prestigeCornerHTML+
             '<div class="rank-badge">—</div>'+
@@ -2515,27 +2681,18 @@ function renderLeaderboard() {
         if (p.brownie > 0) adjHTML += '<span class="tag brownie">🍪 +'+p.brownie+'%</span>';
         if (p.negative < 0) adjHTML += '<span class="tag penalty" title="'+(p.negativeReason||"")+'">⚠️ '+p.negative+'%</span>';
 
-        var showMerit = kind === "player" && typeof p.attendanceAdjustedWilsonScore === "number";
-        var heroNumber, subLine1, subLine2, subLine3 = "";
-        if (showMerit) {
-          heroNumber = rate;
+        var showPointsRank = kind === "player" && typeof p.leaderboardPoints === "number";
+        var heroNumber, heroSuffix, heroLowClass, subLine1, subLine2, subLine3 = "";
+        if (showPointsRank) {
+          heroNumber = p.leaderboardPoints;
+          heroSuffix = "";
+          heroLowClass = "";
           subLine1 = '<span class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</span>';
-          var meritPct = formatAttendanceAdjustedWilsonDisplay(p.attendanceAdjustedWilsonScore);
-          var periodDays = p.matchDaysTotal != null ? p.matchDaysTotal : countTotalMatchDaysInSrc(periodSessions);
-          var meritPenalized = p.matchDaysPlayed < periodDays;
-          subLine2 = '<div class="lb-relative'+(meritPenalized?" penalized":"")+'">'+meritPct+'% Merit</div>';
-          if (leaderboardPeriod === "alltime") {
-            subLine3 = '<div class="lb-detail" style="opacity:0.7">Played '+p.matchDaysPlayed+' of '+periodDays+' match-days</div>';
-            if (p.firstMatchDate) {
-              var fmParts = p.firstMatchDate.split("-");
-              var fmMonthLabel = MONTHS[parseInt(fmParts[1])-1];
-              subLine3 += '<div class="lb-detail" style="opacity:0.55">(since '+fmMonthLabel+')</div>';
-            }
-          } else {
-            subLine3 = '<div class="lb-detail" style="opacity:0.7">'+p.matchDaysPlayed+'/'+periodDays+' days played</div>';
-          }
+          subLine2 = '<div class="lb-relative'+(low?" low":"")+'">'+rate+'% win rate</div>';
         } else {
           heroNumber = rate;
+          heroSuffix = "%";
+          heroLowClass = low ? " low" : "";
           subLine1 = '<span class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</span>';
           subLine2 = '<div class="lb-detail" style="opacity:0.7">'+tot.toFixed(1)+' matches</div>';
         }
@@ -2546,7 +2703,7 @@ function renderLeaderboard() {
           prestigeCornerHTML+
           '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+moveBadge+'</div>'+
           '<div class="lb-main"><div class="lb-name">'+p.name+meHTML+trashHTML+'</div>'+(secondary?'<div class="lb-secondary">'+secondary+'</div>':'')+'</div>'+
-          '<div class="lb-stats"><div class="lb-rate'+(low?" low":"")+'">'+heroNumber+'%</div><div class="lb-detail">'+subLine1+'</div>'+subLine2+subLine3+formHTML+'</div></div>';
+          '<div class="lb-stats"><div class="lb-rate'+heroLowClass+'">'+heroNumber+heroSuffix+'</div><div class="lb-detail">'+subLine1+'</div>'+subLine2+subLine3+formHTML+'</div></div>';
       }).join("")+'<div class="count">'+periodTotalGames.toFixed(1)+' match'+(periodTotalGames!==1?"es":"")+" recorded</div>";
   }
   H("lb-individual",rows(computeIndividual(),true,"player"));
@@ -2882,13 +3039,13 @@ function showPlayerStats(name) {
     H("p-prestige", "");
   }
 
-  var meritDisplay = typeof pl.attendanceAdjustedWilsonScore === "number"
-    ? formatAttendanceAdjustedWilsonDisplay(pl.attendanceAdjustedWilsonScore) + "%"
+  var pointsDisplay = typeof pl.leaderboardPoints === "number"
+    ? String(pl.leaderboardPoints)
     : "—";
 
   H("stats-grid",
     '<div class="stat-box"><div class="stat-val accent">'+bs+'</div><div class="stat-lbl">Best Streak</div></div>'+
-    buildMeritStatBoxHTML(pl, meritDisplay)+
+    buildPointsStatBoxHTML(pl, pointsDisplay)+
     '<div class="stat-box"><div class="stat-val accent" style="font-size:14px">'+(bp||"—")+'</div><div class="stat-lbl">Best Partner</div></div>'+
     '<div class="stat-box"><div class="stat-val loss" style="font-size:14px">'+(tg||"—")+'</div><div class="stat-lbl">Toughest Opp</div></div>'+
     '<div class="stat-box wide"><div class="gt-split">'+
