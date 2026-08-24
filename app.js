@@ -2224,15 +2224,28 @@ function suggestLineup(players) {
     var validSecondHalfSplits = allSplits.filter(function(split) {
       return noRepeatFromFirstHalf(split) && noDoubleWeakBurden(split) && noRepeatFromRecentDay(split);
     });
+    var stage1Count = validSecondHalfSplits.length;
     if (validSecondHalfSplits.length === 0) {
       validSecondHalfSplits = allSplits.filter(function(split) {
         return noRepeatFromFirstHalf(split) && noDoubleWeakBurden(split);
       });
     }
+    var stage2Count = validSecondHalfSplits.length;
     if (validSecondHalfSplits.length === 0) {
       validSecondHalfSplits = allSplits.filter(noRepeatFromFirstHalf);
     }
     var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplit(validSecondHalfSplits, counts).split : null;
+
+    window.__lineupDebug = {
+      recentDayKeys: recentDayKeys,
+      weakest2: weakest2,
+      alreadyCarriedWeak: alreadyCarriedWeak,
+      firstHalf: firstHalfSplit,
+      stage1Count: stage1Count,
+      stage2Count: stage2Count,
+      finalValidSplits: validSecondHalfSplits,
+      secondHalf: secondHalfSplit
+    };
 
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
@@ -2310,6 +2323,21 @@ function renderLineupSuggestion(players) {
       html += 'Team 3: ' + sh[2].join(" & ");
       html += '</div>';
       html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">✨ No repeats from the first half</div>';
+    }
+
+    var dbg = window.__lineupDebug;
+    if (dbg) {
+      html += '<div style="margin-top:20px;padding:10px;background:#000;border:1px solid #f2ac3d;border-radius:8px;font-family:monospace;font-size:10px;color:#f2ac3d;white-space:pre-wrap">';
+      html += '=== TEMP DEBUG (delete later) ===\n';
+      html += 'Recent-day exclusion keys:\n';
+      dbg.recentDayKeys.forEach(function(k){ html += '  ' + k.replace('|',' & ') + '\n'; });
+      html += '\nWeakest 2:  ' + JSON.stringify(dbg.weakest2) + '\n';
+      html += 'Already carried weak: ' + JSON.stringify(dbg.alreadyCarriedWeak) + '\n';
+      html += '\nStage 1 (strictest) valid count: ' + dbg.stage1Count + '\n';
+      html += 'Stage 2 (dropped recent-day) valid count: ' + dbg.stage2Count + '\n';
+      html += '\nFinal splits considered:\n';
+      dbg.finalValidSplits.forEach(function(s){ html += '  ' + JSON.stringify(s) + '\n'; });
+      html += '</div>';
     }
     html += '</div>';
     el.innerHTML = html;
