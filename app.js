@@ -2224,10 +2224,23 @@ function suggestLineup(players) {
     var validSecondHalfSplits = allSplits.filter(function(split) {
       return noRepeatFromFirstHalf(split) && noRepeatFromRecentDay(split) && noDoubleWeakBurden(split);
     });
+    // If the strictest combination leaves nothing, relax the RECENT-DAY rule first
+    // (softer constraint) while KEEPING the weak-burden protection, since preventing
+    // someone from carrying two weak partners in one day matters more than avoiding
+    // a repeat from a previous session.
+    if (validSecondHalfSplits.length === 0) {
+      validSecondHalfSplits = allSplits.filter(function(split) {
+        return noRepeatFromFirstHalf(split) && noDoubleWeakBurden(split);
+      });
+    }
+    // Only if THAT also fails, drop the weak-burden rule too, keeping recent-day intact.
     if (validSecondHalfSplits.length === 0) {
       validSecondHalfSplits = allSplits.filter(function(split) {
         return noRepeatFromFirstHalf(split) && noRepeatFromRecentDay(split);
       });
+    }
+    if (validSecondHalfSplits.length === 0) {
+      validSecondHalfSplits = allSplits.filter(noRepeatFromFirstHalf);
     }
     function bestByFreshnessOnly(candidateSplits, c) {
       return candidateSplits.reduce(function(best, split) {
@@ -2238,14 +2251,11 @@ function suggestLineup(players) {
       }, null);
     }
     var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestByFreshnessOnly(validSecondHalfSplits, counts).split : null;
-
-    window.__lineupDebug = {
-      recentDayKeys: recentDayKeys,
-      firstHalf: firstHalfSplit,
-      pairingCountsUsed: counts,
-      validSplits: validSecondHalfSplits,
-      secondHalf: secondHalfSplit
-    };
+    // TEMPORARY - hardcoded for today's session only, per direct request. Remove this
+    // override tomorrow and let the logic above decide normally again.
+    if (players.indexOf("Shikhar")>-1 && players.indexOf("Archit")>-1 && players.indexOf("Abhinav")>-1 && players.indexOf("Shubham")>-1 && players.indexOf("Vaibhav")>-1 && players.indexOf("Amrit")>-1) {
+      secondHalfSplit = [["Shikhar","Vaibhav"],["Archit","Shubham"],["Abhinav","Amrit"]];
+    }
 
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
@@ -2323,16 +2333,6 @@ function renderLineupSuggestion(players) {
       html += 'Team 3: ' + sh[2].join(" & ");
       html += '</div>';
       html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">✨ No repeats from the first half</div>';
-    }
-    var dbg = window.__lineupDebug;
-    if (dbg) {
-      html += '<div style="margin-top:20px;padding:10px;background:#000;border:1px solid #f2ac3d;border-radius:8px;font-family:monospace;font-size:10px;color:#f2ac3d;white-space:pre-wrap">';
-      html += 'Recent-day keys: ' + JSON.stringify(dbg.recentDayKeys) + '\n\n';
-      html += 'Pairing counts:\n';
-      Object.keys(dbg.pairingCountsUsed).sort().forEach(function(k){ html += '  ' + k.replace('|',' & ') + ': ' + dbg.pairingCountsUsed[k] + '\n'; });
-      html += '\nValid splits:\n';
-      dbg.validSplits.forEach(function(s){ html += '  ' + JSON.stringify(s) + '\n'; });
-      html += '</div>';
     }
     html += '</div>';
     el.innerHTML = html;
