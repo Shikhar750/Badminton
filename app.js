@@ -2191,71 +2191,21 @@ function suggestLineup(players) {
 
     var firstHalfKeys = firstHalfSplit.map(function(p){ return getPairKey(p[0],p[1]); });
 
-    // FAIRNESS: identify the bottom 2 weakest players. Anyone paired with one of them
-    // in the first half should NOT get a weak partner again in the second - the ONLY
-    // skill-related rule kept, since it targets a specific real problem (someone
-    // carrying two weak partners all day) without overriding freshness in general.
-    var sortedBySkill = players.slice().sort(function(a,b){ return skillRates[a]-skillRates[b]; });
-    var weakest2 = sortedBySkill.slice(0, 2);
-    var alreadyCarriedWeak = [];
-    firstHalfSplit.forEach(function(pair) {
-      var hasWeak = weakest2.indexOf(pair[0]) > -1 || weakest2.indexOf(pair[1]) > -1;
-      if (!hasWeak) return;
-      var nonWeakPerson = weakest2.indexOf(pair[0]) > -1 ? pair[1] : pair[0];
-      if (weakest2.indexOf(nonWeakPerson) === -1) alreadyCarriedWeak.push(nonWeakPerson);
-    });
-    function noDoubleWeakBurden(split) {
-      return split.every(function(pair) {
-        var hasWeak = weakest2.indexOf(pair[0]) > -1 || weakest2.indexOf(pair[1]) > -1;
-        if (!hasWeak) return true;
-        var nonWeakPerson = weakest2.indexOf(pair[0]) > -1 ? pair[1] : pair[0];
-        if (weakest2.indexOf(nonWeakPerson) > -1) return true; // both weak - not a "burden" case
-        return alreadyCarriedWeak.indexOf(nonWeakPerson) === -1;
-      });
-    }
-
-    // SECOND HALF: HARD rules, never dropped - must avoid repeating BOTH today's first
-    // half AND the most recent match-day's pairings, AND avoid double-burdening anyone
-    // with a weak partner. Among whatever satisfies all three, pick by pure pairing
-    // freshness (no general skill-balance - that's intentionally removed).
+    // SECOND HALF: hard rules - must avoid repeating BOTH today's first half AND the
+    // most recent match-day's pairings. Among whatever satisfies both, pick using the
+    // SAME combined score as the first half (pairing-freshness dominant, skill-balance
+    // as the secondary tiebreaker). If the strict combination leaves nothing valid,
+    // relax the recent-day rule first, since same-day repeats matter more to avoid.
     function noRepeatFromFirstHalf(split) {
       return split.every(function(p){ return firstHalfKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
     }
     var validSecondHalfSplits = allSplits.filter(function(split) {
-      return noRepeatFromFirstHalf(split) && noRepeatFromRecentDay(split) && noDoubleWeakBurden(split);
+      return noRepeatFromFirstHalf(split) && noRepeatFromRecentDay(split);
     });
-    // If the strictest combination leaves nothing, relax the RECENT-DAY rule first
-    // (softer constraint) while KEEPING the weak-burden protection, since preventing
-    // someone from carrying two weak partners in one day matters more than avoiding
-    // a repeat from a previous session.
-    if (validSecondHalfSplits.length === 0) {
-      validSecondHalfSplits = allSplits.filter(function(split) {
-        return noRepeatFromFirstHalf(split) && noDoubleWeakBurden(split);
-      });
-    }
-    // Only if THAT also fails, drop the weak-burden rule too, keeping recent-day intact.
-    if (validSecondHalfSplits.length === 0) {
-      validSecondHalfSplits = allSplits.filter(function(split) {
-        return noRepeatFromFirstHalf(split) && noRepeatFromRecentDay(split);
-      });
-    }
     if (validSecondHalfSplits.length === 0) {
       validSecondHalfSplits = allSplits.filter(noRepeatFromFirstHalf);
     }
-    function bestByFreshnessOnly(candidateSplits, c) {
-      return candidateSplits.reduce(function(best, split) {
-        var score = scoreSplit(split, c);
-        if (!best || score < best.score) return { split: split, score: score };
-        if (score === best.score && splitSortKey(split) < splitSortKey(best.split)) return { split: split, score: score };
-        return best;
-      }, null);
-    }
-    var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestByFreshnessOnly(validSecondHalfSplits, counts).split : null;
-    // TEMPORARY - hardcoded for today's session only, per direct request. Remove this
-    // override tomorrow and let the logic above decide normally again.
-    if (players.indexOf("Shikhar")>-1 && players.indexOf("Archit")>-1 && players.indexOf("Abhinav")>-1 && players.indexOf("Shubham")>-1 && players.indexOf("Vaibhav")>-1 && players.indexOf("Amrit")>-1) {
-      secondHalfSplit = [["Shikhar","Vaibhav"],["Archit","Shubham"],["Abhinav","Amrit"]];
-    }
+    var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplit(validSecondHalfSplits, counts).split : null;
 
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
