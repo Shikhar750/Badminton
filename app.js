@@ -1807,10 +1807,7 @@ function computeIndividualForEarnedMonth(earnedMonthKey, appliedMonthKey) {
     applyPlayerMeritFields(pl, totalMatchDays, adj);
     applyPlayerLeaderboardPoints(pl, src);
   });
-  return arr.sort(function(a, b) {
-    if (LEADERBOARD_QUALIFICATION_ENFORCED && a.qualified !== b.qualified) return a.qualified ? -1 : 1;
-    return getPointsBasedRankingScore(b) - getPointsBasedRankingScore(a) || b.won - a.won;
-  });
+  return sortLeaderboardStandings(arr);
 }
 function buildWinnerMonthLeaderboardHTML(standings, championNames, periodTotalGames, totalMatchDays) {
   if (!standings.length) return emptyHTML("No standings for this month.");
@@ -2239,6 +2236,9 @@ function renderLineupChips() {
       var idx = lineupSelected.indexOf(p);
       if (idx > -1) lineupSelected.splice(idx, 1);
       else if (lineupSelected.length < 6) lineupSelected.push(p);
+      document.getElementById("lineup-result").innerHTML = "";
+      document.getElementById("lineup-err").style.display = "none";
+      updateLineupShareState();
       renderLineupChips();
     });
   });
@@ -2250,6 +2250,7 @@ document.getElementById("lineup-suggest-btn").addEventListener("click", function
   var resultEl = document.getElementById("lineup-result");
   errEl.style.display = "none";
   resultEl.innerHTML = "";
+  updateLineupShareState();
   var n = lineupSelected.length;
   if (n !== 4 && n !== 5 && n !== 6) {
     errEl.textContent = "Please select exactly 4, 5, or 6 players (currently " + n + " selected)";
@@ -2259,50 +2260,164 @@ document.getElementById("lineup-suggest-btn").addEventListener("click", function
   renderLineupSuggestion(lineupSelected.slice());
 });
 
+var html2canvasLoader = null;
+function loadHtml2Canvas() {
+  if (!html2canvasLoader) {
+    html2canvasLoader = import("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm").then(function(m) { return m.default; });
+  }
+  return html2canvasLoader;
+}
+function getLineupShareDateLabel() {
+  var d = new Date();
+  return d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear();
+}
+function updateLineupShareState() {
+  var btn = document.getElementById("lineup-share-btn");
+  if (!btn) return;
+  var hasLineup = !!document.querySelector("#lineup-result .lineup-suggestion");
+  btn.hidden = !hasLineup;
+  btn.disabled = !hasLineup;
+  btn.classList.toggle("visible", hasLineup);
+}
+function shareLineupScreenshot() {
+  var target = document.querySelector("#lineup-result .lineup-suggestion");
+  if (!target) return Promise.reject(new Error("No lineup to share"));
+  var shareBtn = document.getElementById("lineup-share-btn");
+  var shareText = "Lineup for " + getLineupShareDateLabel();
+  if (shareBtn) shareBtn.disabled = true;
+  return loadHtml2Canvas().then(function(html2canvas) {
+    return html2canvas(target, {
+      backgroundColor: "#151922",
+      scale: Math.min(window.devicePixelRatio || 1, 2),
+      useCORS: true,
+      logging: false
+    });
+  }).then(function(canvas) {
+    return new Promise(function(resolve, reject) {
+      canvas.toBlob(function(blob) {
+        if (!blob) { reject(new Error("Could not create lineup image")); return; }
+        resolve(blob);
+      }, "image/png");
+    });
+  }).then(function(blob) {
+    var file = new File([blob], "lineup.png", { type: "image/png" });
+    if (navigator.share) {
+      var payload = { text: shareText, files: [file] };
+      if (!navigator.canShare || navigator.canShare(payload)) {
+        return navigator.share(payload);
+      }
+      return navigator.share({ text: shareText });
+    }
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = "lineup.png";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }).finally(function() {
+    updateLineupShareState();
+  });
+}
+document.getElementById("lineup-share-btn").addEventListener("click", function() {
+  var errEl = document.getElementById("lineup-err");
+  errEl.style.display = "none";
+  shareLineupScreenshot().catch(function(err) {
+    if (err && err.name === "AbortError") return;
+    errEl.textContent = "Could not share lineup. Try again.";
+    errEl.style.display = "block";
+  });
+});
+
+function getLineupDisplayWinRate(name) {
+  var m = getSessionsThisMonthAlways().filter(function(s) { return inMatch(s, name); });
+  var won = 0, lost = 0;
+  m.forEach(function(s) {
+    var result = getResult(s, name);
+    if (result === "W") won++;
+    else if (result === "L") lost++;
+  });
+  return won + lost ? (won / (won + lost)) * 100 : 50;
+}
+function getLineupTeamStrength(team) {
+  if (!team || !team.length) return 50;
+  var sum = 0;
+  team.forEach(function(p) { sum += getLineupDisplayWinRate(p); });
+  return sum / team.length;
+}
+function getLineupMatchupPercents(team1, team2) {
+  var s1 = getLineupTeamStrength(team1);
+  var s2 = getLineupTeamStrength(team2);
+  var total = s1 + s2;
+  if (!total) return [50, 50];
+  var p1 = Math.round((s1 / total) * 100);
+  return [p1, 100 - p1];
+}
+function buildLineupMatchupCardHTML(team1, team2) {
+  var pcts = getLineupMatchupPercents(team1, team2);
+  var label1 = team1.join(" & ");
+  var label2 = team2.join(" & ");
+  return '<div class="lineup-matchup-card">' +
+    '<div class="lineup-matchup-row">' +
+      '<span class="lineup-matchup-team">' + escAttr(label1) + '</span>' +
+      '<span class="lineup-matchup-pct">' + pcts[0] + '%</span>' +
+      '<span class="lineup-matchup-vs">vs</span>' +
+      '<span class="lineup-matchup-pct">' + pcts[1] + '%</span>' +
+      '<span class="lineup-matchup-team right">' + escAttr(label2) + '</span>' +
+    '</div>' +
+    '<div class="lineup-matchup-bar"><div class="lineup-matchup-bar-fill" style="width:' + pcts[0] + '%"></div></div>' +
+  '</div>';
+}
+function buildLineupRoundRobinCardsHTML(teams) {
+  if (!teams || teams.length < 3) return "";
+  return buildLineupMatchupCardHTML(teams[0], teams[1]) +
+    buildLineupMatchupCardHTML(teams[0], teams[2]) +
+    buildLineupMatchupCardHTML(teams[1], teams[2]);
+}
+function buildLineupFooterNote(score) {
+  return score === 0
+    ? "✨ Fresh pairing — haven't played together this month yet"
+    : "Best available combo (some overlap unavoidable this month)";
+}
+
 function renderLineupSuggestion(players) {
   var result = suggestLineup(players);
   var el = document.getElementById("lineup-result");
+  var html = '<div class="lineup-suggestion">';
 
   if (result.sixPlayerPlan) {
     var fh = result.sixPlayerPlan.firstHalf;
     var sh = result.sixPlayerPlan.secondHalf;
-    var html = '<div style="margin-top:12px">';
-    html += '<div style="font-size:10.5px;color:var(--accent);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:8px">First ~30 min</div>';
-    html += '<div style="font-size:14px;line-height:2;color:var(--text)">';
-    html += 'Team 1: ' + fh[0].join(" & ") + '<br>';
-    html += 'Team 2: ' + fh[1].join(" & ") + '<br>';
-    html += 'Team 3: ' + fh[2].join(" & ");
+    html += '<div class="lineup-section">';
+    html += '<div class="lineup-section-title">First ~30 min</div>';
+    html += buildLineupRoundRobinCardsHTML(fh);
     html += '</div>';
-    html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">Each plays the other two once, then sits</div>';
-
     if (sh) {
-      html += '<div style="font-size:10.5px;color:var(--accent);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin:16px 0 8px">Second ~30 min</div>';
-      html += '<div style="font-size:14px;line-height:2;color:var(--text)">';
-      html += 'Team 1: ' + sh[0].join(" & ") + '<br>';
-      html += 'Team 2: ' + sh[1].join(" & ") + '<br>';
-      html += 'Team 3: ' + sh[2].join(" & ");
+      html += '<div class="lineup-section">';
+      html += '<div class="lineup-section-title">Second ~30 min</div>';
+      html += buildLineupRoundRobinCardsHTML(sh);
       html += '</div>';
-      html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px">✨ No repeats from the first half</div>';
     }
     html += '</div>';
     el.innerHTML = html;
+    updateLineupShareState();
     return;
   }
 
-  var noDataNote = result.score === 0 ? '<div style="font-size:11px;color:var(--text-dim);margin-top:6px">✨ Fresh pairing — haven\'t played together this month yet</div>' : '<div style="font-size:11px;color:var(--text-dim);margin-top:6px">Best available combo (some overlap unavoidable this month)</div>';
-  var html = '<div style="margin-top:12px" class="teams-flat">' +
-    '<div class="team-side"><div class="team-side-name">🟢 Your Team</div><div style="font-size:14px;font-weight:600">'+result.teams[0].join(" & ")+'</div></div>' +
-    '<div class="vs-divider">vs</div>' +
-    '<div class="team-side"><div class="team-side-name">🔴 Opponent</div><div style="font-size:14px;font-weight:600">'+result.teams[1].join(" & ")+'</div></div>' +
-  '</div>';
+  html += '<div class="lineup-section">';
+  html += buildLineupMatchupCardHTML(result.teams[0], result.teams[1]);
+  html += '</div>';
   if (result.sitOut) {
-    html += '<div style="text-align:center;font-size:12px;color:var(--text-dim);margin-top:10px">⏳ Sitting out: '+result.sitOut+'</div>';
+    html += '<div class="lineup-sit-out">⏳ Sitting out: ' + escAttr(result.sitOut) + '</div>';
   }
   if (result.waiting) {
-    html += '<div style="text-align:center;font-size:12px;color:var(--text-dim);margin-top:10px">⏳ Waiting pair: '+result.waiting.join(" & ")+'</div>';
+    html += '<div class="lineup-sit-out">⏳ Waiting pair: ' + escAttr(result.waiting.join(" & ")) + '</div>';
   }
-  html += noDataNote;
+  html += '<div class="lineup-footer-note">' + buildLineupFooterNote(result.score) + '</div>';
+  html += '</div>';
   el.innerHTML = html;
+  updateLineupShareState();
 }
 
 function calculateWilsonScoreLowerBound(wins, losses, z) {
@@ -2489,6 +2604,67 @@ function applyPlayerLeaderboardPoints(pl, src) {
 function getPointsBasedRankingScore(pl) {
   return typeof pl.leaderboardPoints === "number" ? pl.leaderboardPoints : 0;
 }
+function getLeaderboardSortMetricsFromStats(won, lost, points) {
+  return {
+    points: typeof points === "number" ? points : 0,
+    winRate: (won + lost) ? won / (won + lost) : 0,
+    zFactor: calculateWilsonScoreLowerBound(won, lost, 2.1)
+  };
+}
+function getLeaderboardSortMetrics(pl) {
+  return getLeaderboardSortMetricsFromStats(pl.won, pl.lost, getPointsBasedRankingScore(pl));
+}
+function compareLeaderboardSortMetrics(a, b) {
+  if (b.points !== a.points) return b.points - a.points;
+  if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+  if (b.zFactor !== a.zFactor) return b.zFactor - a.zFactor;
+  return 0;
+}
+function buildAllTimeLeaderboardSortMetricsByName() {
+  var p = {};
+  sessions.forEach(function(s) {
+    var w = wt(s);
+    [s.t1p1, s.t1p2].forEach(function(n) {
+      if (!n || n === "undefined" || n === "") return;
+      if (!p[n]) p[n] = { won: 0, lost: 0 };
+      p[n].won += Number(s.t1wins) * w;
+      p[n].lost += Number(s.t2wins) * w;
+    });
+    [s.t2p1, s.t2p2].forEach(function(n) {
+      if (!n || n === "undefined" || n === "") return;
+      if (!p[n]) p[n] = { won: 0, lost: 0 };
+      p[n].won += Number(s.t2wins) * w;
+      p[n].lost += Number(s.t1wins) * w;
+    });
+  });
+  var map = {};
+  Object.keys(p).forEach(function(name) {
+    var row = p[name];
+    var counts = countLeaderboardPointWinsFromSrc(sessions, name);
+    map[name] = getLeaderboardSortMetricsFromStats(
+      row.won,
+      row.lost,
+      calculateLeaderboardPoints(counts.wins21, counts.wins11)
+    );
+  });
+  return map;
+}
+function compareLeaderboardPlayers(a, b, allTimeByName) {
+  var cmp = compareLeaderboardSortMetrics(getLeaderboardSortMetrics(a), getLeaderboardSortMetrics(b));
+  if (cmp !== 0) return cmp;
+  var aAll = allTimeByName[a.name] || { points: 0, winRate: 0, zFactor: 0 };
+  var bAll = allTimeByName[b.name] || { points: 0, winRate: 0, zFactor: 0 };
+  cmp = compareLeaderboardSortMetrics(aAll, bAll);
+  if (cmp !== 0) return cmp;
+  return a.name.localeCompare(b.name);
+}
+function sortLeaderboardStandings(arr) {
+  var allTimeMetrics = buildAllTimeLeaderboardSortMetricsByName();
+  return arr.sort(function(a, b) {
+    if (LEADERBOARD_QUALIFICATION_ENFORCED && a.qualified !== b.qualified) return a.qualified ? -1 : 1;
+    return compareLeaderboardPlayers(a, b, allTimeMetrics);
+  });
+}
 function computeIndividual(srcOverride) {
   var p={};
   var src = srcOverride || getSessionsForPeriod();
@@ -2532,10 +2708,7 @@ function computeIndividual(srcOverride) {
       applyPlayerLeaderboardPoints(pl, src);
     });
   }
-  return arr.sort(function(a,b){
-    if (LEADERBOARD_QUALIFICATION_ENFORCED && a.qualified !== b.qualified) return a.qualified ? -1 : 1;
-    return getPointsBasedRankingScore(b) - getPointsBasedRankingScore(a) || b.won - a.won;
-  });
+  return sortLeaderboardStandings(arr);
 }
 function computePairs(srcOverride) {
   var p={};

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
 <title>🏸 Squad Leaderboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Space+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="styles.css?v=63"/>
+<link rel="stylesheet" href="styles.css?v=68"/>
 </head>
 <body>
 <div class="wrap">
@@ -122,7 +122,10 @@
         <div class="sel-hint" id="lineup-sel-hint">0 selected</div>
         <div class="chips-wrap" id="lineup-chips"></div>
       </div>
-      <button class="save-btn" id="lineup-suggest-btn">Suggest Lineup</button>
+      <div class="lineup-action-row">
+        <button class="save-btn" id="lineup-suggest-btn">Suggest Lineup</button>
+        <button type="button" class="lineup-share-btn" id="lineup-share-btn" hidden disabled aria-label="Share lineup">Share</button>
+      </div>
       <div class="err" id="lineup-err"></div>
       <div id="lineup-result"></div>
       <div class="hint">Based on This Month's pairing history</div>
@@ -357,6 +360,6 @@
   </div>
 </div>
 
-<script type="module" src="app.js?v=63"></script>
+<script type="module" src="app.js?v=68"></script>
 </body>
 </html>
