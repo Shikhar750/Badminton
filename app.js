@@ -2155,7 +2155,14 @@ function suggestLineup(players) {
     function skillGap(a,b) { return Math.abs(skillRates[a]-skillRates[b]); }
 
     function splitSortKey(split) {
-      return split.map(function(p){ return p.slice().sort().join(""); }).sort().join("|");
+      // Sort each pair's two names alphabetically, then sort the pairs themselves by
+      // their full sorted name - then take just the FIRST LETTER of each sorted pair,
+      // in that order. Whichever pattern comes first alphabetically wins the tie.
+      // This ONLY ever matters when pairing history is genuinely tied - it never
+      // overrides real freshness or fairness differences.
+      var sortedPairs = split.map(function(p){ return p.slice().sort(); });
+      sortedPairs.sort(function(a,b){ return a.join("") < b.join("") ? -1 : (a.join("") > b.join("") ? 1 : 0); });
+      return sortedPairs.map(function(p){ return p[0][0]; }).join("");
     }
     function scoreSplit(split, c) {
       return split.reduce(function(sum, pair) { return sum + getPairCount(c, pair[0], pair[1]); }, 0);
