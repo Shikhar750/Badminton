@@ -2153,6 +2153,17 @@ function suggestLineup(players) {
     var skillRates = {};
     players.forEach(function(p){ skillRates[p] = getThisMonthRawRate(p); });
     function skillGap(a,b) { return Math.abs(skillRates[a]-skillRates[b]); }
+    function allPairsAmong(list) {
+      var pairs = [];
+      for (var i=0;i<list.length;i++) for (var j=i+1;j<list.length;j++) pairs.push([list[i],list[j]]);
+      return pairs;
+    }
+    // Skill-balance (SECOND HALF ONLY) is only meaningful once EVERY possible pairing
+    // among the selected players has happened at least once this month (realistically
+    // ~3 match-days). Before that, some pairings are complete unknowns, so the second
+    // half also falls back to freshness + the tiebreak chain, same as the first half.
+    var allPossiblePairs = allPairsAmong(players);
+    var allPairsHaveHappened = allPossiblePairs.every(function(p){ return getPairCount(counts, p[0], p[1]) > 0; });
 
     function splitSortKey(split) {
       // Level 1: sort each pair's two names alphabetically, then sort the pairs by
@@ -2174,12 +2185,20 @@ function suggestLineup(players) {
       return split.reduce(function(sum, pair) { return sum + (100 - skillGap(pair[0],pair[1])); }, 0);
     }
     var PAIRING_WEIGHT = 1000;
-    function combinedScore(split, c) {
-      return scoreSplit(split, c) * PAIRING_WEIGHT + skillImbalancePenalty(split);
+    // FIRST HALF scoring: pairing-freshness ONLY, no skill-balance at all, ever.
+    function freshnessOnlyScore(split, c) {
+      return scoreSplit(split, c) * PAIRING_WEIGHT;
     }
-    function bestSplit(candidateSplits, c) {
+    // SECOND HALF scoring: pairing-freshness (dominant) + skill-balance (secondary) -
+    // but skill only kicks in once all 15 pairings have happened this month; until
+    // then, it behaves exactly like the first half (freshness only).
+    function combinedScore(split, c) {
+      var skillPart = allPairsHaveHappened ? skillImbalancePenalty(split) : 0;
+      return scoreSplit(split, c) * PAIRING_WEIGHT + skillPart;
+    }
+    function bestSplitBy(scoreFn, candidateSplits, c) {
       return candidateSplits.reduce(function(best, split) {
-        var score = combinedScore(split, c);
+        var score = scoreFn(split, c);
         if (!best || score < best.score) return { split: split, score: score };
         if (score === best.score && splitSortKey(split) < splitSortKey(best.split)) return { split: split, score: score };
         return best;
@@ -2193,17 +2212,18 @@ function suggestLineup(players) {
     }
     // First half: prefer splits that also avoid repeating the most recent match-day's
     // pairings; if that leaves nothing valid, fall back to the unrestricted best split.
+    // Uses FRESHNESS ONLY - skill-balance never factors into the first half.
     var firstHalfCandidates = allSplits.filter(noRepeatFromRecentDay);
     if (firstHalfCandidates.length === 0) firstHalfCandidates = allSplits;
-    var firstHalfSplit = bestSplit(firstHalfCandidates, counts).split;
+    var firstHalfSplit = bestSplitBy(freshnessOnlyScore, firstHalfCandidates, counts).split;
 
     var firstHalfKeys = firstHalfSplit.map(function(p){ return getPairKey(p[0],p[1]); });
 
     // SECOND HALF: hard rules - must avoid repeating BOTH today's first half AND the
-    // most recent match-day's pairings. Among whatever satisfies both, pick using the
-    // SAME combined score as the first half (pairing-freshness dominant, skill-balance
-    // as the secondary tiebreaker). If the strict combination leaves nothing valid,
-    // relax the recent-day rule first, since same-day repeats matter more to avoid.
+    // most recent match-day's pairings. Among whatever satisfies both, pick using
+    // pairing-freshness (dominant) PLUS skill-balance (secondary), always active.
+    // If the strict combination leaves nothing valid, relax the recent-day rule first,
+    // since same-day repeats matter more to avoid.
     function noRepeatFromFirstHalf(split) {
       return split.every(function(p){ return firstHalfKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
     }
@@ -2213,7 +2233,7 @@ function suggestLineup(players) {
     if (validSecondHalfSplits.length === 0) {
       validSecondHalfSplits = allSplits.filter(noRepeatFromFirstHalf);
     }
-    var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplit(validSecondHalfSplits, counts).split : null;
+    var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplitBy(combinedScore, validSecondHalfSplits, counts).split : null;
 
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
