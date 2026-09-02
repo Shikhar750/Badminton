@@ -2155,14 +2155,17 @@ function suggestLineup(players) {
     function skillGap(a,b) { return Math.abs(skillRates[a]-skillRates[b]); }
 
     function splitSortKey(split) {
-      // Sort each pair's two names alphabetically, then sort the pairs themselves by
-      // their full sorted name - then take just the FIRST LETTER of each sorted pair,
-      // in that order. Whichever pattern comes first alphabetically wins the tie.
-      // This ONLY ever matters when pairing history is genuinely tied - it never
-      // overrides real freshness or fairness differences.
+      // Level 1: sort each pair's two names alphabetically, then sort the pairs by
+      // their full sorted name - take just the FIRST LETTER of each, in that order.
+      // Level 2 (fallback): if the first-letter pattern also ties between two options,
+      // fall back to the full sorted names, so there's always a single, consistent
+      // winner. Both levels ONLY ever matter when real freshness and skill are tied -
+      // they never override an actual fairness difference.
       var sortedPairs = split.map(function(p){ return p.slice().sort(); });
       sortedPairs.sort(function(a,b){ return a.join("") < b.join("") ? -1 : (a.join("") > b.join("") ? 1 : 0); });
-      return sortedPairs.map(function(p){ return p[0][0]; }).join("");
+      var firstLetterPattern = sortedPairs.map(function(p){ return p[0][0]; }).join("");
+      var fullNameFallback = sortedPairs.map(function(p){ return p.join(""); }).join("|");
+      return firstLetterPattern + "::" + fullNameFallback;
     }
     function scoreSplit(split, c) {
       return split.reduce(function(sum, pair) { return sum + getPairCount(c, pair[0], pair[1]); }, 0);
