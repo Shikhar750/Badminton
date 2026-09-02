@@ -508,7 +508,7 @@ function isInDateRange(s) {
     return s.date >= weekAgoStr;
   }
   if (dateFilter==="month") {
-    var now = new Date();
+    var now = getMatchDayNow();
     var nowMonthStr = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
     var matchMonthStr = s.date.substring(0,7);
     return matchMonthStr === nowMonthStr;
@@ -832,7 +832,7 @@ function computeH2H(p1,p2) {
 }
 
 function getSessionsThisMonthAlways() {
-  var now = new Date();
+  var now = getMatchDayNow();
   var overrideDate = monthOverrides[getCurrentMonthKey()];
   return sessions.filter(function(s) {
     if (!s.date) return false;
@@ -849,11 +849,12 @@ function getSessionsThisMonthAlways() {
 // though it's a different rule than the same-session "no repeat from first half" check.
 function getMostRecentMatchDayPairings() {
   var todayStr = getTodayString();
-  var allDates = sessions.map(function(s){ return s.date; }).filter(function(d){ return d && d !== todayStr; });
+  var allDates = sessions.filter(function(s){ return s.gameType !== "11"; }).map(function(s){ return s.date; }).filter(function(d){ return d && d !== todayStr; });
   if (!allDates.length) return [];
   var mostRecentDate = allDates.reduce(function(latest, d){ return d > latest ? d : latest; }, allDates[0]);
   var pairKeys = [];
   sessions.forEach(function(s) {
+    if (s.gameType === "11") return; // 11pt games are casual/bonus, excluded here too
     if (s.date !== mostRecentDate) return;
     var t1 = [s.t1p1, s.t1p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
     var t2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
@@ -1699,7 +1700,7 @@ function isQualifiedThisMonth(name) {
   return played >= total * 0.5;
 }
 function getCurrentMonthKey() {
-  var now = new Date();
+  var now = getMatchDayNow();
   var m = now.getMonth()+1;
   return now.getFullYear() + "-" + (m<10?"0"+m:m);
 }
@@ -2070,7 +2071,7 @@ function getHistoricallyActivePlayers() {
 function getPairKey(a, b) { return [a,b].sort().join("|"); }
 function computePairingCountsThisMonth() {
   var counts = {};
-  var src = getSessionsThisMonthAlways(); // always genuinely THIS MONTH, independent of the Rankings filter toggle
+  var src = getSessionsThisMonthAlways().filter(function(s){ return s.gameType !== "11"; }); // 11pt games are casual/bonus, excluded from pairing-freshness so they don't skew who's "fresh"
   src.forEach(function(s) {
     var t1 = [s.t1p1, s.t1p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
     var t2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
