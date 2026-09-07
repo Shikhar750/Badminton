@@ -2438,6 +2438,7 @@ function renderLineupSuggestion(players) {
   var result = suggestLineup(players);
   var el = document.getElementById("lineup-result");
   var html = '<div class="lineup-suggestion">';
+  html += '<div style="font-size:9px;color:#f2ac3d;text-align:center;margin-bottom:8px">VERSION-CHECK-SKIP5PLAYER-v1</div>';
 
   if (result.sixPlayerPlan) {
     var fh = result.sixPlayerPlan.firstHalf;
