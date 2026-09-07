@@ -2257,6 +2257,15 @@ function suggestLineup(players) {
     }
     var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplitBy(combinedScore, validSecondHalfSplits, counts).split : null;
 
+    var allDatesDebug = sessions.filter(function(s){ return s.gameType !== "11"; }).map(function(s){ return s.date; }).filter(function(v,i,a){ return a.indexOf(v)===i; }).sort();
+    window.__lineupDebug = {
+      allDates: allDatesDebug.map(function(d){ return { date: d, players: getDistinctPlayersOnDate(d) }; }),
+      recentDayKeysUsed: recentDayKeys,
+      pairingCounts: counts,
+      firstHalf: firstHalfSplit,
+      secondHalf: secondHalfSplit
+    };
+
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
 }
@@ -2438,7 +2447,17 @@ function renderLineupSuggestion(players) {
   var result = suggestLineup(players);
   var el = document.getElementById("lineup-result");
   var html = '<div class="lineup-suggestion">';
-  html += '<div style="font-size:9px;color:#f2ac3d;text-align:center;margin-bottom:8px">VERSION-CHECK-SKIP5PLAYER-v1</div>';
+  var dbg = window.__lineupDebug;
+  if (dbg) {
+    html += '<div style="margin-bottom:12px;padding:10px;background:#000;border:1px solid #f2ac3d;border-radius:8px;font-family:monospace;font-size:10px;color:#f2ac3d;white-space:pre-wrap">';
+    html += 'All dates with matches this month:\n';
+    dbg.allDates.forEach(function(d){ html += '  ' + d.date + ' (' + d.players.length + ' players: ' + d.players.join(',') + ')\n'; });
+    html += '\nRecent-day pairings actually used:\n';
+    dbg.recentDayKeysUsed.forEach(function(k){ html += '  ' + k.replace('|',' & ') + '\n'; });
+    html += '\nPairing counts used:\n';
+    Object.keys(dbg.pairingCounts).sort().forEach(function(k){ html += '  ' + k.replace('|',' & ') + ': ' + dbg.pairingCounts[k] + '\n'; });
+    html += '</div>';
+  }
 
   if (result.sixPlayerPlan) {
     var fh = result.sixPlayerPlan.firstHalf;
