@@ -847,11 +847,33 @@ function getSessionsThisMonthAlways() {
 // anyone played, which could be yesterday or earlier) - used specifically to stop the
 // 6-player second-half suggestion from repeating a pairing that was JUST played, even
 // though it's a different rule than the same-session "no repeat from first half" check.
+function getDistinctPlayersOnDate(dateStr) {
+  var names = {};
+  sessions.forEach(function(s) {
+    if (s.gameType === "11") return;
+    if (s.date !== dateStr) return;
+    [s.t1p1, s.t1p2, s.t2p1, s.t2p2].forEach(function(n){
+      if (n && n !== "undefined" && n !== "") names[n] = true;
+    });
+  });
+  return Object.keys(names);
+}
 function getMostRecentMatchDayPairings() {
   var todayStr = getTodayString();
   var allDates = sessions.filter(function(s){ return s.gameType !== "11"; }).map(function(s){ return s.date; }).filter(function(d){ return d && d !== todayStr; });
-  if (!allDates.length) return [];
-  var mostRecentDate = allDates.reduce(function(latest, d){ return d > latest ? d : latest; }, allDates[0]);
+  var uniqueDates = allDates.filter(function(v,i,a){ return a.indexOf(v)===i; });
+  uniqueDates.sort(function(a,b){ return b > a ? 1 : -1; }); // most recent first
+  // Skip any day that wasn't a genuine 6-player session (e.g. 4 or 5 people that day) -
+  // a smaller session doesn't give everyone the same pairing opportunities as a full
+  // 6-player day, so it shouldn't count as "the real last day" for this purpose.
+  var mostRecentDate = null;
+  for (var i = 0; i < uniqueDates.length; i++) {
+    if (getDistinctPlayersOnDate(uniqueDates[i]).length === 6) {
+      mostRecentDate = uniqueDates[i];
+      break;
+    }
+  }
+  if (!mostRecentDate) return [];
   var pairKeys = [];
   sessions.forEach(function(s) {
     if (s.gameType === "11") return; // 11pt games are casual/bonus, excluded here too
