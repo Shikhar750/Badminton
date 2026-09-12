@@ -982,6 +982,437 @@ function computeGameTypeInsight(n) {
   return { better: r21>r11 ? "21pt" : "11pt", worse: r21>r11 ? "11pt" : "21pt", betterRate: Math.max(r21,r11), worseRate: Math.min(r21,r11) };
 }
 
+function getPlayerDecidedMatches(name, src) {
+  return (src || getSessionsForPeriod()).filter(function(s) {
+    return inMatch(s, name) && getResult(s, name) !== "D";
+  }).sort(function(a, b) { return a.id - b.id; });
+}
+function getPlayerMatchWinRate(name, matchList) {
+  if (!matchList || !matchList.length) return null;
+  var won = 0;
+  matchList.forEach(function(s) { if (getResult(s, name) === "W") won++; });
+  return Math.round((won / matchList.length) * 100);
+}
+function getPlayerGameTypeRates(name, src) {
+  var matches = (src || getSessionsForPeriod()).filter(function(s) { return inMatch(s, name); });
+  var w21 = 0, l21 = 0, w11 = 0, l11 = 0;
+  matches.forEach(function(s) {
+    var result = getResult(s, name);
+    if (result === "D") return;
+    if ((s.gameType || "21") === "11") { if (result === "W") w11++; else l11++; }
+    else { if (result === "W") w21++; else l21++; }
+  });
+  var tot21 = w21 + l21, tot11 = w11 + l11;
+  return {
+    r21: tot21 ? Math.round((w21 / tot21) * 100) : null,
+    r11: tot11 ? Math.round((w11 / tot11) * 100) : null,
+    n21: tot21,
+    n11: tot11
+  };
+}
+function getPlayerAllTimeWeightedWins(name) {
+  var won = 0;
+  sessions.forEach(function(s) {
+    if (!inMatch(s, name)) return;
+    if (getResult(s, name) === "W") won += wt(s);
+  });
+  return won;
+}
+function getPlayerMonthlyWeightedWins(name, monthKey) {
+  var won = 0;
+  sessions.forEach(function(s) {
+    if (!inMatch(s, name) || !s.date) return;
+    if (s.date.slice(0, 7) !== monthKey) return;
+    if (getResult(s, name) === "W") won += wt(s);
+  });
+  return won;
+}
+function getPlayerBestPreviousMonthWins(name, currentMonthKey) {
+  var byMonth = {};
+  sessions.forEach(function(s) {
+    if (!inMatch(s, name) || !s.date) return;
+    var key = s.date.slice(0, 7);
+    if (key === currentMonthKey) return;
+    if (!byMonth[key]) byMonth[key] = 0;
+    if (getResult(s, name) === "W") byMonth[key] += wt(s);
+  });
+  var best = 0;
+  Object.keys(byMonth).forEach(function(k) { best = Math.max(best, byMonth[k]); });
+  return best;
+}
+function computeCoachImprovementOpportunities(name, overallRate, standings) {
+  var areas = [];
+
+  var opps = {};
+  getSessionsForPeriod().forEach(function(s) {
+    if (!inMatch(s, name)) return;
+    getOpponentsFor(s, name).forEach(function(o) {
+      if (!opps[o]) opps[o] = { won: 0, lost: 0 };
+      var r = getResult(s, name);
+      if (r === "W") opps[o].won++;
+      else if (r === "L") opps[o].lost++;
+    });
+  });
+  Object.keys(opps).forEach(function(opp) {
+    var decided = opps[opp].won + opps[opp].lost;
+    if (decided < 3) return;
+    var rate = Math.round((opps[opp].won / decided) * 100);
+    var diff = overallRate - rate;
+    if (diff < 10) return;
+    areas.push({
+      score: diff * decided,
+      icon: "⚔️",
+      title: "vs " + opp,
+      stat: rate + "% vs " + opp + " · " + diff + " pts below overall",
+      action: "Play more games against " + opp,
+      focus: { type: "opponent", subject: opp, current: rate }
+    });
+  });
+
+  var myIdx = standings.findIndex(function(p) { return p.name === name; });
+  if (myIdx >= 0 && standings.length >= 4) {
+    var topHalfNames = standings.slice(0, Math.ceil(standings.length / 2)).map(function(p) { return p.name; }).filter(function(n) { return n !== name; });
+    var vsTop = [];
+    getSessionsForPeriod().forEach(function(s) {
+      if (!inMatch(s, name)) return;
+      var r = getResult(s, name);
+      if (r === "D") return;
+      if (getOpponentsFor(s, name).some(function(o) { return topHalfNames.indexOf(o) > -1; })) vsTop.push(r);
+    });
+    if (vsTop.length >= 3) {
+      var topRate = Math.round(vsTop.filter(function(r) { return r === "W"; }).length / vsTop.length * 100);
+      var topDiff = overallRate - topRate;
+      if (topDiff >= 8) {
+        areas.push({
+          score: topDiff * vsTop.length + 5,
+          icon: "⚔️",
+          title: "Stronger opponents",
+          stat: topRate + "% vs top half · " + topDiff + " pts below overall",
+          action: "Seek games against higher-ranked players",
+          focus: { type: "stronger", subject: "top-ranked opponents", current: topRate }
+        });
+      }
+    }
+  }
+
+  var gt = getPlayerGameTypeRates(name);
+  if (gt.n21 >= 3 && gt.n11 >= 3 && gt.r21 != null && gt.r11 != null) {
+    var worseType = gt.r21 < gt.r11 ? "21pt" : "11pt";
+    var betterType = gt.r21 < gt.r11 ? "11pt" : "21pt";
+    var worseRate = Math.min(gt.r21, gt.r11);
+    var betterRate = Math.max(gt.r21, gt.r11);
+    var typeDiff = betterRate - worseRate;
+    if (typeDiff >= 10) {
+      areas.push({
+        score: typeDiff * Math.min(gt.n21, gt.n11),
+        icon: "⚡",
+        title: worseType === "11pt" ? "Short games" : "Long games",
+        stat: worseRate + "% in " + worseType + " vs " + betterRate + "% in " + betterType,
+        action: worseType === "11pt" ? "Focus on starting fast" : "Settle into longer rallies",
+        focus: { type: "gametype", subject: worseType, current: worseRate }
+      });
+    }
+  }
+
+  computePartnerChemistry(name).forEach(function(row) {
+    var decided = row.won + row.lost;
+    if (decided < 3) return;
+    var diff = overallRate - row.rate;
+    if (diff < 12) return;
+    areas.push({
+      score: diff * decided,
+      icon: "🤝",
+      title: "Partnership depth",
+      stat: row.rate + "% with " + row.name + " vs " + overallRate + "% overall doubles",
+      action: "Try more games together with " + row.name,
+      focus: { type: "partner", subject: row.name, current: row.rate }
+    });
+  });
+
+  var decidedMatches = getPlayerDecidedMatches(name);
+  if (decidedMatches.length >= 12) {
+    var last6 = decidedMatches.slice(-6);
+    var prev6 = decidedMatches.slice(-12, -6);
+    var lastRate = getPlayerMatchWinRate(name, last6);
+    var prevRate = getPlayerMatchWinRate(name, prev6);
+    if (lastRate != null && prevRate != null) {
+      var drop = prevRate - lastRate;
+      if (drop >= 12) {
+        areas.push({
+          score: drop * last6.length,
+          icon: "📉",
+          title: "Recent form dip",
+          stat: lastRate + "% last 6 · down " + drop + " pts from prior 6",
+          action: "Reset with a familiar partner",
+          focus: { type: "form", subject: "recent form", current: lastRate }
+        });
+      }
+    }
+  }
+
+  areas.sort(function(a, b) { return b.score - a.score; });
+  var picked = [];
+  var usedTitles = {};
+  areas.forEach(function(area) {
+    if (picked.length >= 3) return;
+    if (usedTitles[area.title]) return;
+    usedTitles[area.title] = true;
+    picked.push(area);
+  });
+  return picked;
+}
+function computeCoachBiggestImprovement(name) {
+  var matches = getPlayerDecidedMatches(name);
+  if (matches.length < 20) return null;
+  var last10 = matches.slice(-10);
+  var prev10 = matches.slice(-20, -10);
+  var lastRate = getPlayerMatchWinRate(name, last10);
+  var prevRate = getPlayerMatchWinRate(name, prev10);
+  if (lastRate == null || prevRate == null) return null;
+  var diff = lastRate - prevRate;
+  if (diff < 8) return null;
+
+  var gtLast = getPlayerGameTypeRates(name, last10);
+  var gtPrev = getPlayerGameTypeRates(name, prev10);
+  var explanation = "Recent results are trending up";
+  if (diff >= 15) explanation = "Win rate jumped sharply in your last 10 games";
+  else if (gtLast.r21 != null && gtPrev.r21 != null && gtLast.r21 - gtPrev.r21 >= 15) explanation = "21-point games have been driving the uptick";
+  else if (gtLast.r11 != null && gtPrev.r11 != null && gtLast.r11 - gtPrev.r11 >= 15) explanation = "11-point games have been driving the uptick";
+
+  return { lastRate: lastRate, prevRate: prevRate, diff: diff, explanation: explanation };
+}
+function computeCoachBiggestEdge(name, overallRate) {
+  var edges = [];
+  var gt = getPlayerGameTypeRates(name);
+  if (gt.n21 >= 4 && gt.r21 != null && gt.r21 >= overallRate + 8) {
+    edges.push({ score: (gt.r21 - overallRate) * gt.n21, label: "21-point games", rate: gt.r21, note: "One of your strongest areas this period." });
+  }
+  if (gt.n11 >= 4 && gt.r11 != null && gt.r11 >= overallRate + 8) {
+    edges.push({ score: (gt.r11 - overallRate) * gt.n11, label: "11-point games", rate: gt.r11, note: "One of your strongest areas this period." });
+  }
+
+  computePartnerChemistry(name).forEach(function(row) {
+    var decided = row.won + row.lost;
+    if (decided < 4) return;
+    if (row.rate < overallRate + 10) return;
+    edges.push({
+      score: (row.rate - overallRate) * decided,
+      label: "Partnership with " + row.name,
+      rate: row.rate,
+      note: "Your best doubles chemistry this period."
+    });
+  });
+
+  var opps = {};
+  getSessionsForPeriod().forEach(function(s) {
+    if (!inMatch(s, name)) return;
+    getOpponentsFor(s, name).forEach(function(o) {
+      if (!opps[o]) opps[o] = { won: 0, lost: 0 };
+      var r = getResult(s, name);
+      if (r === "W") opps[o].won++;
+      else if (r === "L") opps[o].lost++;
+    });
+  });
+  Object.keys(opps).forEach(function(opp) {
+    var decided = opps[opp].won + opps[opp].lost;
+    if (decided < 3) return;
+    var rate = Math.round((opps[opp].won / decided) * 100);
+    if (rate < 65) return;
+    edges.push({
+      score: rate * decided,
+      label: "Matchup vs " + opp,
+      rate: rate,
+      note: "A favorable head-to-head this period."
+    });
+  });
+
+  var matches = getPlayerDecidedMatches(name);
+  if (matches.length >= 5) {
+    var last5 = matches.slice(-5);
+    var last5Rate = getPlayerMatchWinRate(name, last5);
+    if (last5Rate != null && last5Rate >= 80) {
+      edges.push({
+        score: last5Rate * last5.length + 10,
+        label: "Recent run",
+        rate: last5Rate,
+        note: "Momentum is on your side right now."
+      });
+    }
+  }
+
+  if (!edges.length) return null;
+  edges.sort(function(a, b) { return b.score - a.score; });
+  return edges[0];
+}
+function buildCoachFocusFromArea(area) {
+  if (!area || !area.focus) return null;
+  var current = area.focus.current;
+  var target = Math.min(80, Math.max(current + 5, Math.ceil((current + 7) / 5) * 5));
+  if (target <= current) target = current + 5;
+
+  if (area.focus.type === "opponent") {
+    return {
+      headline: "Improve your record against " + area.focus.subject,
+      current: current,
+      target: target,
+      action: "Prioritize a few games against " + area.focus.subject + " this period."
+    };
+  }
+  if (area.focus.type === "partner") {
+    return {
+      headline: "Build chemistry with " + area.focus.subject,
+      current: current,
+      target: target,
+      action: "Queue up more games together this period."
+    };
+  }
+  if (area.focus.type === "gametype") {
+    return {
+      headline: "Lift your " + area.focus.subject + " win rate",
+      current: current,
+      target: target,
+      action: area.focus.subject === "11pt" ? "Work on fast starts in short games." : "Lean into longer rallies."
+    };
+  }
+  if (area.focus.type === "form") {
+    return {
+      headline: "Stabilize recent form",
+      current: current,
+      target: target,
+      action: "Stick to familiar partners until the slide stops."
+    };
+  }
+  return {
+    headline: "Challenge stronger opponents",
+    current: current,
+    target: target,
+    action: "Target a few games against higher-ranked players."
+  };
+}
+function computeCoachMilestones(name) {
+  var milestones = [];
+  var careerWins = Math.floor(getPlayerAllTimeWeightedWins(name));
+  if (careerWins >= 5) {
+    var nextWinMilestone = Math.ceil((careerWins + 1) / 10) * 10;
+    if (nextWinMilestone <= careerWins) nextWinMilestone += 10;
+    var winsNeeded = Math.ceil(nextWinMilestone - careerWins);
+    if (winsNeeded > 0 && winsNeeded <= 5) {
+      milestones.push({
+        text: winsNeeded + " win" + (winsNeeded === 1 ? "" : "s") + " → " + nextWinMilestone + " career wins"
+      });
+    }
+  }
+
+  var currentMonthKey = getCurrentMonthKey();
+  var monthWins = getPlayerMonthlyWeightedWins(name, currentMonthKey);
+  var bestPrevMonth = getPlayerBestPreviousMonthWins(name, currentMonthKey);
+  if (bestPrevMonth > 0) {
+    if (monthWins < bestPrevMonth) {
+      var need = Math.ceil(bestPrevMonth - monthWins + 0.01);
+      if (need <= 3) {
+        milestones.push({
+          text: need + " win" + (need === 1 ? "" : "s") + " → new monthly record"
+        });
+      }
+    } else if (monthWins === bestPrevMonth && monthWins > 0) {
+      milestones.push({ text: "1 win → new monthly record" });
+    }
+  }
+
+  var chem = computePartnerChemistry(name);
+  if (chem.length >= 2) {
+    var top = chem[0];
+    var runner = chem[1];
+    if (top.total >= 3) {
+      var gamesNeeded = Math.ceil(runner.total - top.total + 1);
+      if (gamesNeeded > 0 && gamesNeeded <= 3) {
+        milestones.push({
+          text: gamesNeeded + " game" + (gamesNeeded === 1 ? "" : "s") + " → most-played partnership"
+        });
+      }
+    }
+  }
+
+  return milestones.slice(0, 3);
+}
+function buildCoachImproveAreasHTML(areas) {
+  if (!areas.length) return "";
+  return areas.map(function(area, i) {
+    return '<div class="coach-nested-card">' +
+      '<div class="coach-nested-top">' +
+        '<span class="coach-num-badge">0' + (i + 1) + '</span>' +
+        '<span class="coach-nested-title">' + area.icon + ' ' + escAttr(area.title) + '</span>' +
+      '</div>' +
+      '<div class="coach-item-stat">' + escAttr(area.stat) + '</div>' +
+      '<div class="coach-item-action">→ ' + escAttr(area.action) + '</div>' +
+    '</div>';
+  }).join("");
+}
+function buildPlayerCoachInsightsHTML(name, overallRate, standings) {
+  var parts = [];
+  var areas = computeCoachImprovementOpportunities(name, overallRate, standings);
+  var improvement = computeCoachBiggestImprovement(name);
+  var edge = computeCoachBiggestEdge(name, overallRate);
+  var focus = buildCoachFocusFromArea(areas[0]);
+  var milestones = computeCoachMilestones(name);
+  var focusTitle = leaderboardPeriod === "month" ? "🎯 This Month's Focus" : "🎯 This Period's Focus";
+
+  if (areas.length) {
+    parts.push(
+      '<div class="coach-card coach-card-parent">' +
+        '<div class="coach-card-hdr">🎯 Top 3 Areas to Improve</div>' +
+        '<div class="coach-nested-stack">' + buildCoachImproveAreasHTML(areas) + '</div>' +
+      '</div>'
+    );
+  }
+  if (improvement) {
+    parts.push(
+      '<div class="coach-card">' +
+        '<div class="coach-card-hdr">📈 Biggest Improvement</div>' +
+        '<div class="coach-item-stat">Last 10 games: <span class="coach-val-up">' + improvement.lastRate + '%</span></div>' +
+        '<div class="coach-item-stat">Previous 10: ' + improvement.prevRate + '%</div>' +
+        '<div class="coach-item-stat coach-improve-delta">→ +' + improvement.diff + ' pts</div>' +
+        '<div class="coach-item-note">' + escAttr(improvement.explanation) + '</div>' +
+      '</div>'
+    );
+  }
+  if (edge || focus) {
+    var duoHTML = "";
+    if (edge) {
+      duoHTML +=
+        '<div class="coach-card">' +
+          '<div class="coach-card-hdr coach-card-hdr-tight">💪 Your Biggest Edge</div>' +
+          '<div class="coach-item-title">' + escAttr(edge.label) + '</div>' +
+          '<div class="coach-item-stat"><span class="coach-val-up">' + edge.rate + '%</span> win rate</div>' +
+          '<div class="coach-item-action">→ ' + escAttr(edge.note) + '</div>' +
+        '</div>';
+    }
+    if (focus) {
+      duoHTML +=
+        '<div class="coach-card">' +
+          '<div class="coach-card-hdr coach-card-hdr-tight">' + focusTitle + '</div>' +
+          '<div class="coach-item-title">' + escAttr(focus.headline) + '</div>' +
+          '<div class="coach-item-stat">Current: ' + focus.current + '% · Target: <span class="coach-focus-target">' + focus.target + '%</span></div>' +
+          '<div class="coach-item-action">→ ' + escAttr(focus.action) + '</div>' +
+        '</div>';
+    }
+    parts.push('<div class="coach-duo-row' + (edge && focus ? "" : " coach-duo-single") + '">' + duoHTML + '</div>');
+  }
+  if (milestones.length) {
+    parts.push(
+      '<div class="coach-card coach-card-compact">' +
+        '<div class="coach-card-hdr coach-card-hdr-tight">🏆 Milestones Within Reach</div>' +
+        '<div class="coach-milestone-list">' +
+          milestones.map(function(m) {
+            return '<div class="coach-milestone">' + escAttr(m.text) + '</div>';
+          }).join("") +
+        '</div>' +
+      '</div>'
+    );
+  }
+  return parts.join("");
+}
+
 /* ── Flair (trash titles / nemesis / prestige) — display only, never affects ranking ──
    Everything below is scoped to the active leaderboard filter. Titles are awarded by
    comparing players against each other *within that filter*, and every threshold scales
@@ -3298,26 +3729,27 @@ function showPlayerStats(name) {
   if (partnerStreak) {
     var icon1 = partnerStreak.type === "W" ? "🔥" : "❄️";
     var verb1 = partnerStreak.type === "W" ? "won" : "lost";
-    insightsHTML += '<div class="insight-row">'+icon1+' '+streakLead+' '+verb1+' the last '+partnerStreak.count+' alongside '+partnerStreak.partner+'</div>';
+    insightsHTML += '<div class="insight-card"><div class="insight-card-main">'+icon1+' '+streakLead+' '+verb1+' the last '+partnerStreak.count+' alongside '+partnerStreak.partner+'</div></div>';
   }
   if (opponentStreak) {
     var icon2 = opponentStreak.type === "W" ? "🔥" : "❄️";
     var verb2 = opponentStreak.type === "W" ? "won" : "lost";
-    insightsHTML += '<div class="insight-row">'+icon2+' '+streakLead+' '+verb2+' the last '+opponentStreak.count+' against '+opponentStreak.opponent+'</div>';
+    insightsHTML += '<div class="insight-card"><div class="insight-card-main">'+icon2+' '+streakLead+' '+verb2+' the last '+opponentStreak.count+' against '+opponentStreak.opponent+'</div></div>';
   }
   if (partnerWinRate) {
     var icon3 = partnerWinRate.diff > 0 ? "📈" : "📉";
     var verb3 = partnerWinRate.diff > 0 ? "jumps" : "drops";
-    insightsHTML += '<div class="insight-row">'+icon3+' '+possessive+' win rate '+verb3+' with '+partnerWinRate.partner+'<div class="insight-sub">'+Math.round(partnerWinRate.overallRate)+'% overall → '+Math.round(partnerWinRate.partnerRate)+'% together ('+partnerWinRate.matches+' matches)</div></div>';
+    insightsHTML += '<div class="insight-card"><div class="insight-card-main">'+icon3+' '+possessive+' win rate '+verb3+' with '+partnerWinRate.partner+'</div><div class="insight-card-sub">'+Math.round(partnerWinRate.overallRate)+'% overall → '+Math.round(partnerWinRate.partnerRate)+'% together ('+partnerWinRate.matches+' matches)</div></div>';
   }
   if (gameTypeGap) {
     var gapLead = isSelf ? "You play better at " : name + " plays better at ";
-    insightsHTML += '<div class="insight-row">🎯 '+gapLead+gameTypeGap.better+' than '+gameTypeGap.worse+'<div class="insight-sub">'+Math.round(gameTypeGap.betterRate)+'% vs '+Math.round(gameTypeGap.worseRate)+'%</div></div>';
+    insightsHTML += '<div class="insight-card"><div class="insight-card-main">🎯 '+gapLead+gameTypeGap.better+' than '+gameTypeGap.worse+'</div><div class="insight-card-sub">'+Math.round(gameTypeGap.betterRate)+'% vs '+Math.round(gameTypeGap.worseRate)+'%</div></div>';
   }
 
-  if (insightsHTML) {
-    var insightsHeading = (isSelf ? "Your " : name + "'s ") + getFlairPeriodLabel() + " Insights";
-    H("insights-section", '<div class="sec-hdr">'+insightsHeading+'</div><div class="insights-box">'+insightsHTML+'</div>');
+  var insightsHeading = (isSelf ? "Your " : name + "'s ") + getFlairPeriodLabel() + " Insights";
+  var coachHTML = buildPlayerCoachInsightsHTML(name, rate, ind);
+  if (insightsHTML || coachHTML) {
+    H("insights-section", '<div class="sec-hdr">'+insightsHeading+'</div><div class="insights-stack">'+insightsHTML+coachHTML+'</div>');
   } else {
     H("insights-section", "");
   }
