@@ -859,8 +859,7 @@ function getDistinctPlayersOnDate(dateStr) {
   return Object.keys(names);
 }
 function getMostRecentMatchDayPairings() {
-  var todayStr = getTodayString();
-  var allDates = sessions.filter(function(s){ return s.gameType !== "11"; }).map(function(s){ return s.date; }).filter(function(d){ return d && d !== todayStr; });
+  var allDates = sessions.filter(function(s){ return s.gameType !== "11"; }).map(function(s){ return s.date; });
   if (!allDates.length) return [];
   var mostRecentDate = allDates.reduce(function(latest, d){ return d > latest ? d : latest; }, allDates[0]);
   var pairKeys = [];
@@ -2246,6 +2245,16 @@ function suggestLineup(players) {
     }
     var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplitBy(combinedScore, validSecondHalfSplits, counts).split : null;
 
+    var allDatesDbg = sessions.filter(function(s){ return s.gameType !== "11"; }).map(function(s){ return s.date; }).filter(function(v,i,a){ return a.indexOf(v)===i; }).sort();
+    window.__lineupDebug = {
+      todayStr: getTodayString(),
+      allDates: allDatesDbg,
+      mostRecentDateDetected: allDatesDbg.length ? allDatesDbg[allDatesDbg.length-1] : null,
+      recentDayKeysUsed: recentDayKeys,
+      firstHalf: firstHalfSplit,
+      secondHalf: secondHalfSplit
+    };
+
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
 }
@@ -2427,6 +2436,17 @@ function renderLineupSuggestion(players) {
   var result = suggestLineup(players);
   var el = document.getElementById("lineup-result");
   var html = '<div class="lineup-suggestion">';
+  var dbg = window.__lineupDebug;
+  if (dbg) {
+    html += '<div style="margin-bottom:12px;padding:10px;background:#000;border:1px solid #f2ac3d;border-radius:8px;font-family:monospace;font-size:10px;color:#f2ac3d;white-space:pre-wrap">';
+    html += 'App thinks today is: ' + dbg.todayStr + '\n\n';
+    html += 'All dates with real matches:\n';
+    dbg.allDates.forEach(function(d){ html += '  ' + d + '\n'; });
+    html += '\nDetected as most recent: ' + dbg.mostRecentDateDetected + '\n';
+    html += '\nRecent-day pairings used for exclusion:\n';
+    dbg.recentDayKeysUsed.forEach(function(k){ html += '  ' + k.replace('|',' & ') + '\n'; });
+    html += '</div>';
+  }
 
   if (result.sixPlayerPlan) {
     var fh = result.sixPlayerPlan.firstHalf;
