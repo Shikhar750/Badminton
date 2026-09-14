@@ -873,6 +873,26 @@ function getMostRecentMatchDayPairings() {
   });
   return pairKeys;
 }
+// Finds every pairing used on the most recent match-day that was SPECIFICALLY a
+// 5-player day (exactly 5 distinct players that day). Used only for back-to-back
+// 5-player sessions right next to each other - if the day right before today was
+// also a 5-player day, avoid repeating that day's exact pairs.
+function getMostRecent5PlayerDayPairings() {
+  var allDates = sessions.filter(function(s){ return s.gameType !== "11"; }).map(function(s){ return s.date; }).filter(function(v,i,a){ return v && a.indexOf(v)===i; });
+  if (!allDates.length) return [];
+  var mostRecentDate = allDates.reduce(function(latest, d){ return d > latest ? d : latest; }, allDates[0]);
+  if (getDistinctPlayersOnDate(mostRecentDate).length !== 5) return [];
+  var pairKeys = [];
+  sessions.forEach(function(s) {
+    if (s.gameType === "11") return;
+    if (s.date !== mostRecentDate) return;
+    var t1 = [s.t1p1, s.t1p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
+    var t2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
+    if (t1.length === 2) pairKeys.push(getPairKey(t1[0], t1[1]));
+    if (t2.length === 2) pairKeys.push(getPairKey(t2[0], t2[1]));
+  });
+  return pairKeys;
+}
 function getPartnerFor(s, n) {
   if (inT1(s,n)) { var mate = s.t1p1===n ? s.t1p2 : s.t1p1; return mate && mate!=="undefined" ? mate : null; }
   if ([s.t2p1,s.t2p2].indexOf(n)>-1) { var mate2 = s.t2p1===n ? s.t2p2 : s.t2p1; return mate2 && mate2!=="undefined" ? mate2 : null; }
@@ -2126,13 +2146,28 @@ function suggestLineup(players) {
     return { teams: r4.teams, waiting: null, sitOut: null, score: r4.score };
   }
   if (playerCount === 5) {
-    var best=null, bestScore=Infinity, bestSitOut=null;
-    players.forEach(function(sitOut) {
-      var remaining = players.filter(function(p){ return p!==sitOut; });
-      var r = bestSplitFor4(remaining, counts);
-      if (r.score < bestScore) { bestScore=r.score; best=r.teams; bestSitOut=sitOut; }
-    });
-    return { teams: best, waiting: null, sitOut: bestSitOut, score: bestScore };
+    // If the immediately-previous match-day was ALSO a 5-player day, avoid repeating
+    // that exact day's pairings first; only fall back to plain lowest-pairing-count
+    // (the original behavior) if every option would repeat one of those pairs.
+    var recent5Keys = getMostRecent5PlayerDayPairings();
+    function splitAvoidsRecent5(splitTeams) {
+      return splitTeams.every(function(team){ return recent5Keys.indexOf(getPairKey(team[0],team[1])) === -1; });
+    }
+    function findBest5(requireAvoidRecent) {
+      var best=null, bestScore=Infinity, bestSitOut=null;
+      players.forEach(function(sitOut) {
+        var remaining = players.filter(function(p){ return p!==sitOut; });
+        allTeamSplitsOf4(remaining).forEach(function(c) {
+          if (requireAvoidRecent && !splitAvoidsRecent5(c)) return;
+          var score = getPairCount(counts, c[0][0], c[0][1]) + getPairCount(counts, c[1][0], c[1][1]);
+          if (score < bestScore) { bestScore=score; best=c; bestSitOut=sitOut; }
+        });
+      });
+      return { teams: best, sitOut: bestSitOut, score: bestScore };
+    }
+    var r5 = recent5Keys.length ? findBest5(true) : null;
+    if (!r5 || !r5.teams) r5 = findBest5(false);
+    return { teams: r5.teams, waiting: null, sitOut: r5.sitOut, score: r5.score };
   }
   if (playerCount === 6) {
     function allThreeWaySplits(ps) {
@@ -2244,16 +2279,6 @@ function suggestLineup(players) {
       validSecondHalfSplits = allSplits.filter(noRepeatFromFirstHalf);
     }
     var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplitBy(combinedScore, validSecondHalfSplits, counts).split : null;
-
-    var allDatesDbg = sessions.filter(function(s){ return s.gameType !== "11"; }).map(function(s){ return s.date; }).filter(function(v,i,a){ return a.indexOf(v)===i; }).sort();
-    window.__lineupDebug = {
-      todayStr: getTodayString(),
-      allDates: allDatesDbg,
-      mostRecentDateDetected: allDatesDbg.length ? allDatesDbg[allDatesDbg.length-1] : null,
-      recentDayKeysUsed: recentDayKeys,
-      firstHalf: firstHalfSplit,
-      secondHalf: secondHalfSplit
-    };
 
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
@@ -2436,17 +2461,6 @@ function renderLineupSuggestion(players) {
   var result = suggestLineup(players);
   var el = document.getElementById("lineup-result");
   var html = '<div class="lineup-suggestion">';
-  var dbg = window.__lineupDebug;
-  if (dbg) {
-    html += '<div style="margin-bottom:12px;padding:10px;background:#000;border:1px solid #f2ac3d;border-radius:8px;font-family:monospace;font-size:10px;color:#f2ac3d;white-space:pre-wrap">';
-    html += 'App thinks today is: ' + dbg.todayStr + '\n\n';
-    html += 'All dates with real matches:\n';
-    dbg.allDates.forEach(function(d){ html += '  ' + d + '\n'; });
-    html += '\nDetected as most recent: ' + dbg.mostRecentDateDetected + '\n';
-    html += '\nRecent-day pairings used for exclusion:\n';
-    dbg.recentDayKeysUsed.forEach(function(k){ html += '  ' + k.replace('|',' & ') + '\n'; });
-    html += '</div>';
-  }
 
   if (result.sixPlayerPlan) {
     var fh = result.sixPlayerPlan.firstHalf;
