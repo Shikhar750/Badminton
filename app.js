@@ -2264,39 +2264,32 @@ function suggestLineup(players) {
 
     var firstHalfKeys = firstHalfSplit.map(function(p){ return getPairKey(p[0],p[1]); });
 
-    // SECOND HALF: hard rules - must avoid repeating BOTH today's first half AND the
-    // most recent match-day's pairings. Among whatever satisfies both, pick using
-    // pairing-freshness (dominant) PLUS skill-balance (secondary), always active.
-    // If the strict combination leaves nothing valid, relax the recent-day rule first,
-    // since same-day repeats matter more to avoid.
+    // SECOND HALF: hard rule - must avoid repeating today's first half. On top of that,
+    // avoid repeating the most recent match-day's pairings too, but this is a MINIMIZE,
+    // not a drop: if zero-repeat is impossible (common when today's 6 heavily overlap
+    // with a smaller recent day, e.g. a 5-player day feeding into today's 6), pick
+    // whichever valid split has the FEWEST recent-day repeats rather than ignoring the
+    // rule altogether. Only ties on repeat-count fall through to pairing-count/skill.
     function noRepeatFromFirstHalf(split) {
       return split.every(function(p){ return firstHalfKeys.indexOf(getPairKey(p[0],p[1])) === -1; });
     }
-    var validSecondHalfSplits = allSplits.filter(function(split) {
-      return noRepeatFromFirstHalf(split) && noRepeatFromRecentDay(split);
-    });
-    if (validSecondHalfSplits.length === 0) {
-      validSecondHalfSplits = allSplits.filter(noRepeatFromFirstHalf);
+    function countRecentDayRepeats(split) {
+      return split.reduce(function(n, p){ return n + (recentDayKeys.indexOf(getPairKey(p[0],p[1])) > -1 ? 1 : 0); }, 0);
+    }
+    var candidateSecondHalfSplits = allSplits.filter(noRepeatFromFirstHalf);
+    var validSecondHalfSplits = [];
+    if (candidateSecondHalfSplits.length > 0) {
+      var minRepeats = candidateSecondHalfSplits.reduce(function(min, split) {
+        return Math.min(min, countRecentDayRepeats(split));
+      }, Infinity);
+      validSecondHalfSplits = candidateSecondHalfSplits.filter(function(split) {
+        return countRecentDayRepeats(split) === minRepeats;
+      });
     }
     var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplitBy(combinedScore, validSecondHalfSplits, counts).split : null;
 
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
-}
-
-// DEBUG helper — exposes exactly what date the app thinks is "most recent" and what
-// pairings it's excluding, so we can check against real data without guessing.
-function debugLineupRecentDay() {
-  var allDatesDbg = sessions.filter(function(s){ return s.gameType !== "11"; }).map(function(s){ return s.date; }).filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort();
-  var mostRecent = allDatesDbg.length ? allDatesDbg[allDatesDbg.length-1] : null;
-  var playersOnMostRecent = mostRecent ? getDistinctPlayersOnDate(mostRecent) : [];
-  return {
-    allMatchDates: allDatesDbg,
-    mostRecentDateDetected: mostRecent,
-    playerCountOnMostRecentDate: playersOnMostRecent.length,
-    playersOnMostRecentDate: playersOnMostRecent,
-    pairingsExcludedFromMostRecentDate: getMostRecentMatchDayPairings().map(function(k){ return k.replace("|"," & "); })
-  };
 }
 
 var lineupSelected = [];
@@ -2480,17 +2473,6 @@ function renderLineupSuggestion(players) {
   if (result.sixPlayerPlan) {
     var fh = result.sixPlayerPlan.firstHalf;
     var sh = result.sixPlayerPlan.secondHalf;
-    var dbg = debugLineupRecentDay(); // DEBUG
-    html += '<div style="margin-bottom:12px;padding:10px;background:#000;border:1px solid #f2ac3d;border-radius:8px;font-family:monospace;font-size:10px;color:#f2ac3d;white-space:pre-wrap">';
-    html += 'All match dates:\n';
-    dbg.allMatchDates.forEach(function(d){ html += '  ' + d + '\n'; });
-    html += '\nMost recent date detected: ' + dbg.mostRecentDateDetected + '\n';
-    html += 'Players on that date (' + dbg.playerCountOnMostRecentDate + '): ' + dbg.playersOnMostRecentDate.join(', ') + '\n';
-    html += '\nPairings excluded from today (recent-day rule):\n';
-    dbg.pairingsExcludedFromMostRecentDate.forEach(function(k){ html += '  ' + k + '\n'; });
-    html += '\nFirst half chosen: ' + fh.map(function(p){return p.join(' & ');}).join(' | ') + '\n';
-    if (sh) html += 'Second half chosen: ' + sh.map(function(p){return p.join(' & ');}).join(' | ') + '\n';
-    html += '</div>';
     html += '<div class="lineup-section">';
     html += '<div class="lineup-section-title">First ~30 min</div>';
     html += buildLineupRoundRobinCardsHTML(fh);
