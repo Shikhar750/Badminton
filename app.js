@@ -2284,6 +2284,21 @@ function suggestLineup(players) {
   }
 }
 
+// DEBUG helper — exposes exactly what date the app thinks is "most recent" and what
+// pairings it's excluding, so we can check against real data without guessing.
+function debugLineupRecentDay() {
+  var allDatesDbg = sessions.filter(function(s){ return s.gameType !== "11"; }).map(function(s){ return s.date; }).filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort();
+  var mostRecent = allDatesDbg.length ? allDatesDbg[allDatesDbg.length-1] : null;
+  var playersOnMostRecent = mostRecent ? getDistinctPlayersOnDate(mostRecent) : [];
+  return {
+    allMatchDates: allDatesDbg,
+    mostRecentDateDetected: mostRecent,
+    playerCountOnMostRecentDate: playersOnMostRecent.length,
+    playersOnMostRecentDate: playersOnMostRecent,
+    pairingsExcludedFromMostRecentDate: getMostRecentMatchDayPairings().map(function(k){ return k.replace("|"," & "); })
+  };
+}
+
 var lineupSelected = [];
 var lineupSeededFor = null;
 
@@ -2465,6 +2480,17 @@ function renderLineupSuggestion(players) {
   if (result.sixPlayerPlan) {
     var fh = result.sixPlayerPlan.firstHalf;
     var sh = result.sixPlayerPlan.secondHalf;
+    var dbg = debugLineupRecentDay(); // DEBUG
+    html += '<div style="margin-bottom:12px;padding:10px;background:#000;border:1px solid #f2ac3d;border-radius:8px;font-family:monospace;font-size:10px;color:#f2ac3d;white-space:pre-wrap">';
+    html += 'All match dates:\n';
+    dbg.allMatchDates.forEach(function(d){ html += '  ' + d + '\n'; });
+    html += '\nMost recent date detected: ' + dbg.mostRecentDateDetected + '\n';
+    html += 'Players on that date (' + dbg.playerCountOnMostRecentDate + '): ' + dbg.playersOnMostRecentDate.join(', ') + '\n';
+    html += '\nPairings excluded from today (recent-day rule):\n';
+    dbg.pairingsExcludedFromMostRecentDate.forEach(function(k){ html += '  ' + k + '\n'; });
+    html += '\nFirst half chosen: ' + fh.map(function(p){return p.join(' & ');}).join(' | ') + '\n';
+    if (sh) html += 'Second half chosen: ' + sh.map(function(p){return p.join(' & ');}).join(' | ') + '\n';
+    html += '</div>';
     html += '<div class="lineup-section">';
     html += '<div class="lineup-section-title">First ~30 min</div>';
     html += buildLineupRoundRobinCardsHTML(fh);
