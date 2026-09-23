@@ -873,26 +873,6 @@ function getMostRecentMatchDayPairings() {
   });
   return pairKeys;
 }
-// Finds every pairing used on the most recent match-day that was SPECIFICALLY a
-// 5-player day (exactly 5 distinct players that day). Used only for back-to-back
-// 5-player sessions right next to each other - if the day right before today was
-// also a 5-player day, avoid repeating that day's exact pairs.
-function getMostRecent5PlayerDayPairings() {
-  var allDates = sessions.filter(function(s){ return s.gameType !== "11"; }).map(function(s){ return s.date; }).filter(function(v,i,a){ return v && a.indexOf(v)===i; });
-  if (!allDates.length) return [];
-  var mostRecentDate = allDates.reduce(function(latest, d){ return d > latest ? d : latest; }, allDates[0]);
-  if (getDistinctPlayersOnDate(mostRecentDate).length !== 5) return [];
-  var pairKeys = [];
-  sessions.forEach(function(s) {
-    if (s.gameType === "11") return;
-    if (s.date !== mostRecentDate) return;
-    var t1 = [s.t1p1, s.t1p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
-    var t2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
-    if (t1.length === 2) pairKeys.push(getPairKey(t1[0], t1[1]));
-    if (t2.length === 2) pairKeys.push(getPairKey(t2[0], t2[1]));
-  });
-  return pairKeys;
-}
 // Finds every pairing used across the last TWO match-days that were SPECIFICALLY
 // 6-player days (skipping over any 4/5-player days in between). Used to identify
 // "stale" pairs - two people who haven't played together in that 6-player window -
@@ -2119,6 +2099,20 @@ function getHistoricallyActivePlayers() {
 }
 
 function getPairKey(a, b) { return [a,b].sort().join("|"); }
+// Who partnered Shubham on the single most recent match-day (any squad size). Used by
+// both the 5-player and 6-player Suggest Lineup logic to keep him from repeating with
+// the same partner right after playing with them, regardless of what size that day was.
+function getShubhamsMostRecentPartners() {
+  var recentKeys = getMostRecentMatchDayPairings();
+  return recentKeys.reduce(function(names, key) {
+    var pair = key.split("|");
+    if (pair.indexOf("Shubham") > -1) {
+      var other = pair[0] === "Shubham" ? pair[1] : pair[0];
+      if (names.indexOf(other) === -1) names.push(other);
+    }
+    return names;
+  }, []);
+}
 function computePairingCountsThisMonth() {
   var counts = {};
   var src = getSessionsThisMonthAlways().filter(function(s){ return s.gameType !== "11"; }); // 11pt games are casual/bonus, excluded from pairing-freshness so they don't skew who's "fresh"
@@ -2166,27 +2160,30 @@ function suggestLineup(players) {
     return { teams: r4.teams, waiting: null, sitOut: null, score: r4.score };
   }
   if (playerCount === 5) {
-    // If the immediately-previous match-day was ALSO a 5-player day, avoid repeating
-    // that exact day's pairings first; only fall back to plain lowest-pairing-count
-    // (the original behavior) if every option would repeat one of those pairs.
-    var recent5Keys = getMostRecent5PlayerDayPairings();
-    function splitAvoidsRecent5(splitTeams) {
-      return splitTeams.every(function(team){ return recent5Keys.indexOf(getPairKey(team[0],team[1])) === -1; });
+    // Avoid repeating pairings from the single most recent match-day, regardless of
+    // that day's squad size (4, 5, or 6) - same "minimize, don't just drop" philosophy
+    // as the 6-player second half. This only ever governs the STARTING lineup: once
+    // the first match is played, 5-player mode moves to live winner-stays rotation on
+    // court, which this suggestion has no further control over.
+    var recentAnyKeys = getMostRecentMatchDayPairings();
+    function countRecentRepeats5(splitTeams) {
+      return splitTeams.reduce(function(n, team){ return n + (recentAnyKeys.indexOf(getPairKey(team[0],team[1])) > -1 ? 1 : 0); }, 0);
     }
-    function findBest5(requireAvoidRecent) {
-      var best=null, bestScore=Infinity, bestSitOut=null;
+    function findBest5() {
+      var allCandidates = [];
       players.forEach(function(sitOut) {
         var remaining = players.filter(function(p){ return p!==sitOut; });
         allTeamSplitsOf4(remaining).forEach(function(c) {
-          if (requireAvoidRecent && !splitAvoidsRecent5(c)) return;
-          var score = getPairCount(counts, c[0][0], c[0][1]) + getPairCount(counts, c[1][0], c[1][1]);
-          if (score < bestScore) { bestScore=score; best=c; bestSitOut=sitOut; }
+          allCandidates.push({ teams: c, sitOut: sitOut, score: getPairCount(counts, c[0][0], c[0][1]) + getPairCount(counts, c[1][0], c[1][1]) });
         });
       });
-      return { teams: best, sitOut: bestSitOut, score: bestScore };
+      if (!allCandidates.length) return { teams: null, sitOut: null, score: Infinity };
+      var minRepeats = recentAnyKeys.length ? allCandidates.reduce(function(min, c){ return Math.min(min, countRecentRepeats5(c.teams)); }, Infinity) : 0;
+      var eligible = recentAnyKeys.length ? allCandidates.filter(function(c){ return countRecentRepeats5(c.teams) === minRepeats; }) : allCandidates;
+      var best = eligible.reduce(function(best, c){ return (!best || c.score < best.score) ? c : best; }, null);
+      return best;
     }
-    var r5 = recent5Keys.length ? findBest5(true) : null;
-    if (!r5 || !r5.teams) r5 = findBest5(false);
+    var r5 = findBest5();
     return { teams: r5.teams, waiting: null, sitOut: r5.sitOut, score: r5.score };
   }
   if (playerCount === 6) {
@@ -2290,14 +2287,7 @@ function suggestLineup(players) {
     // keeps games fairer instead of the same one or two people repeatedly covering for
     // him. This only applies if Shubham is actually playing today; if excluding his
     // most-recent partner(s) leaves zero valid splits, it's dropped as a safety fallback.
-    var shubhamsRecentPartners = recentDayKeys.reduce(function(names, key) {
-      var pair = key.split("|");
-      if (pair.indexOf("Shubham") > -1) {
-        var other = pair[0] === "Shubham" ? pair[1] : pair[0];
-        if (names.indexOf(other) === -1) names.push(other);
-      }
-      return names;
-    }, []);
+    var shubhamsRecentPartners = getShubhamsMostRecentPartners();
     function avoidsShubhamRepeat(split) {
       if (players.indexOf("Shubham") === -1 || !shubhamsRecentPartners.length) return true;
       var shubhamPair = split.find(function(p){ return p.indexOf("Shubham") > -1; });
