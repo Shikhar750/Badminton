@@ -893,6 +893,26 @@ function getMostRecent5PlayerDayPairings() {
   });
   return pairKeys;
 }
+// Finds every pairing used across the last TWO match-days that were SPECIFICALLY
+// 6-player days (skipping over any 4/5-player days in between). Used to identify
+// "stale" pairs - two people who haven't played together in that 6-player window -
+// so the second-half tiebreak can prefer reuniting them over pure skill-balance.
+function getRecentSixPlayerDayPairings(count) {
+  count = count || 2;
+  var allDates = sessions.filter(function(s){ return s.gameType !== "11"; }).map(function(s){ return s.date; }).filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort();
+  var sixPlayerDates = allDates.filter(function(d){ return getDistinctPlayersOnDate(d).length === 6; });
+  var recentDates = sixPlayerDates.slice(-count);
+  var pairKeys = [];
+  sessions.forEach(function(s) {
+    if (s.gameType === "11") return;
+    if (recentDates.indexOf(s.date) === -1) return;
+    var t1 = [s.t1p1, s.t1p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
+    var t2 = [s.t2p1, s.t2p2].filter(function(n){ return n && n!=="undefined" && n!==""; });
+    if (t1.length === 2) { var k1 = getPairKey(t1[0], t1[1]); if (pairKeys.indexOf(k1) === -1) pairKeys.push(k1); }
+    if (t2.length === 2) { var k2 = getPairKey(t2[0], t2[1]); if (pairKeys.indexOf(k2) === -1) pairKeys.push(k2); }
+  });
+  return pairKeys;
+}
 function getPartnerFor(s, n) {
   if (inT1(s,n)) { var mate = s.t1p1===n ? s.t1p2 : s.t1p1; return mate && mate!=="undefined" ? mate : null; }
   if ([s.t2p1,s.t2p2].indexOf(n)>-1) { var mate2 = s.t2p1===n ? s.t2p2 : s.t2p1; return mate2 && mate2!=="undefined" ? mate2 : null; }
@@ -2311,6 +2331,25 @@ function suggestLineup(players) {
       validSecondHalfSplits = candidateSecondHalfSplits.filter(function(split) {
         return countRecentDayRepeats(split) === minRepeats;
       });
+    }
+    // Among whatever's tied so far, prefer reuniting "stale" pairs - people who haven't
+    // played together across the last 2 six-player match-days - over pure pairing-
+    // count/skill scoring. Count how many of a split's 3 pairs are stale, and keep only
+    // the splits with the MOST stale pairs reunited; skill only decides once that's
+    // also tied (or when no split contains any stale pair at all).
+    var recentSixPlayerPairs = getRecentSixPlayerDayPairings(2);
+    function countStalePairs(split) {
+      return split.reduce(function(n, p){ return n + (recentSixPlayerPairs.indexOf(getPairKey(p[0],p[1])) === -1 ? 1 : 0); }, 0);
+    }
+    if (validSecondHalfSplits.length > 1 && recentSixPlayerPairs.length > 0) {
+      var maxStale = validSecondHalfSplits.reduce(function(max, split) {
+        return Math.max(max, countStalePairs(split));
+      }, 0);
+      if (maxStale > 0) {
+        validSecondHalfSplits = validSecondHalfSplits.filter(function(split) {
+          return countStalePairs(split) === maxStale;
+        });
+      }
     }
     var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplitBy(combinedScore, validSecondHalfSplits, counts).split : null;
 
