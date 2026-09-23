@@ -2288,6 +2288,29 @@ function suggestLineup(players) {
     }
     var secondHalfSplit = validSecondHalfSplits.length > 0 ? bestSplitBy(combinedScore, validSecondHalfSplits, counts).split : null;
 
+    // DEBUG — everything the second-half decision considered, so we can see exactly
+    // why a given split was (or wasn't) picked.
+    var allDatesDbg = sessions.filter(function(s){ return s.gameType !== "11"; }).map(function(s){ return s.date; }).filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort();
+    window.__lineupDebug = {
+      todayStr: getTodayString(),
+      players: players,
+      allMatchDates: allDatesDbg,
+      mostRecentDateDetected: allDatesDbg.length ? allDatesDbg[allDatesDbg.length-1] : null,
+      recentDayKeysUsed: recentDayKeys.map(function(k){ return k.replace("|"," & "); }),
+      firstHalfChosen: firstHalfSplit.map(function(p){ return p.join(" & "); }),
+      allPossibleSecondHalfSplits: allSplits.map(function(split) {
+        return {
+          split: split.map(function(p){ return p.join(" & "); }).join(" | "),
+          avoidsFirstHalf: noRepeatFromFirstHalf(split),
+          recentDayRepeats: countRecentDayRepeats(split),
+          pairingCountScore: split.reduce(function(sum,p){ return sum + getPairCount(counts,p[0],p[1]); }, 0),
+          skillPenalty: split.reduce(function(sum,p){ return sum + (100 - skillGap(p[0],p[1])); }, 0)
+        };
+      }),
+      minRecentDayRepeatsAchievable: candidateSecondHalfSplits.length ? candidateSecondHalfSplits.reduce(function(min,s){ return Math.min(min, countRecentDayRepeats(s)); }, Infinity) : null,
+      secondHalfChosen: secondHalfSplit ? secondHalfSplit.map(function(p){ return p.join(" & "); }) : null
+    };
+
     return { sixPlayerPlan: { firstHalf: firstHalfSplit, secondHalf: secondHalfSplit } };
   }
 }
@@ -2473,6 +2496,26 @@ function renderLineupSuggestion(players) {
   if (result.sixPlayerPlan) {
     var fh = result.sixPlayerPlan.firstHalf;
     var sh = result.sixPlayerPlan.secondHalf;
+    var dbg = window.__lineupDebug; // DEBUG
+    if (dbg) {
+      html += '<div style="margin-bottom:12px;padding:10px;background:#000;border:1px solid #f2ac3d;border-radius:8px;font-family:monospace;font-size:10px;color:#f2ac3d;white-space:pre-wrap">';
+      html += 'Today: ' + dbg.todayStr + '\n';
+      html += 'Players: ' + dbg.players.join(', ') + '\n\n';
+      html += 'Most recent match date: ' + dbg.mostRecentDateDetected + '\n';
+      html += 'Recent-day pairings (excluded where possible):\n';
+      dbg.recentDayKeysUsed.forEach(function(k){ html += '  ' + k + '\n'; });
+      html += '\nFirst half chosen: ' + dbg.firstHalfChosen.join(' | ') + '\n';
+      html += '\nMin recent-day repeats achievable in second half: ' + dbg.minRecentDayRepeatsAchievable + '\n';
+      html += '\nAll 15 possible second-half splits (sorted by repeats, then pairing score):\n';
+      dbg.allPossibleSecondHalfSplits
+        .slice()
+        .sort(function(a,b){ return (a.avoidsFirstHalf===b.avoidsFirstHalf?0:(a.avoidsFirstHalf?-1:1)) || a.recentDayRepeats-b.recentDayRepeats || a.pairingCountScore-b.pairingCountScore; })
+        .forEach(function(s){
+          html += '  ' + (s.avoidsFirstHalf ? '✓' : '✗ (repeats today)') + ' repeats=' + s.recentDayRepeats + ' pairScore=' + s.pairingCountScore + ' skillPenalty=' + s.skillPenalty + '  ' + s.split + '\n';
+        });
+      html += '\nSecond half chosen: ' + (dbg.secondHalfChosen ? dbg.secondHalfChosen.join(' | ') : 'NONE') + '\n';
+      html += '</div>';
+    }
     html += '<div class="lineup-section">';
     html += '<div class="lineup-section-title">First ~30 min</div>';
     html += buildLineupRoundRobinCardsHTML(fh);
