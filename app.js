@@ -2764,14 +2764,83 @@ function buildPointsCalculationRows(pl) {
     "= " + total
   );
 }
+function buildWinRateCalculationRows(pl) {
+  var wins = pl.won;
+  var losses = pl.lost;
+  var totalGames = wins + losses;
+  var rawRate = totalGames ? (wins / totalGames) * 100 : 0;
+  var winsStr = formatMeritCalcValue(wins, 1);
+  var totalStr = formatMeritCalcValue(totalGames, 1);
+  var rawStr = formatMeritCalcValue(rawRate, 1);
+  return '<div class="merit-calc-row">' +
+    '<div class="merit-calc-formula">Wins (' + winsStr + ') / Total Games (' + totalStr + ') × 100</div>' +
+    '<div class="merit-calc-result">= ' + rawStr + '%</div>' +
+  '</div>';
+}
+function buildZFactorCalculationRows(pl) {
+  var wins = pl.won;
+  var losses = pl.lost;
+  var n = wins + losses;
+  var wilson = calculateWilsonScoreLowerBound(wins, losses, 2.1);
+  var winsStr = formatMeritCalcValue(wins, 1);
+  var lossesStr = formatMeritCalcValue(losses, 1);
+  var nStr = formatMeritCalcValue(n, 1);
+  var pStr = n ? formatMeritCalcValue((wins / n) * 100, 1) : "0.0";
+  var wilsonStr = formatMeritCalcValue(wilson, 2);
+  function row(label, formula, result) {
+    return '<div class="merit-calc-row">' +
+      '<div class="merit-calc-label">' + label + '</div>' +
+      '<div class="merit-calc-formula">' + formula + '</div>' +
+      '<div class="merit-calc-result">' + result + '</div>' +
+    '</div>';
+  }
+  return row(
+    "Sample",
+    "Wins (" + winsStr + ") + Losses (" + lossesStr + ")",
+    "= " + nStr + " games"
+  ) + row(
+    "Observed Rate",
+    "Wins / Total × 100",
+    "= " + pStr + "%"
+  ) + row(
+    "Z-Factor",
+    "Wilson Score Lower Bound (z = 2.1)",
+    "= " + wilsonStr
+  );
+}
+function buildCalcTipPopHTML(title, bodyHTML) {
+  return '<span class="tag-pop merit-calc-pop" role="tooltip">' +
+    '<span class="tag-pop-title">' + title + '</span>' +
+    '<div class="merit-calc-body">' + bodyHTML + '</div>' +
+  '</span>';
+}
 function buildPointsStatBoxHTML(pl, pointsDisplay) {
   return '<div class="stat-box points-stat-tip tag-tip" role="button" tabindex="0" aria-expanded="false" aria-label="Points calculation">' +
     '<div class="stat-val accent">' + escAttr(pointsDisplay) + '</div>' +
     '<div class="stat-lbl">Points</div>' +
-    '<span class="tag-pop merit-calc-pop" role="tooltip">' +
-      '<span class="tag-pop-title">🏆 Points Calculation</span>' +
-      '<div class="merit-calc-body">' + buildPointsCalculationRows(pl) + '</div>' +
-    '</span>' +
+    buildCalcTipPopHTML("🏆 Points Calculation", buildPointsCalculationRows(pl)) +
+  '</div>';
+}
+function buildCoreStatsSplitHTML(bestStreak, winRate, zDisplay, pl) {
+  return '<div class="stat-box wide">' +
+    '<div class="gt-split gt-split-3">' +
+      '<div class="gt-split-col">' +
+        '<div class="stat-val accent">' + escAttr(String(bestStreak)) + '</div>' +
+        '<div class="stat-lbl">Best Streak</div>' +
+      '</div>' +
+      '<div class="gt-split-divider"></div>' +
+      '<div class="gt-split-col points-stat-tip tag-tip" role="button" tabindex="0" aria-expanded="false" aria-label="Win percentage calculation">' +
+        '<div class="stat-val accent">' + winRate + '%</div>' +
+        '<div class="stat-lbl">Win Percentage</div>' +
+        buildCalcTipPopHTML("📊 Win Percentage", buildWinRateCalculationRows(pl)) +
+      '</div>' +
+      '<div class="gt-split-divider"></div>' +
+      '<div class="gt-split-col points-stat-tip tag-tip" role="button" tabindex="0" aria-expanded="false" aria-label="Z-Factor calculation">' +
+        '<div class="stat-val accent">' + escAttr(zDisplay) + '</div>' +
+        '<div class="stat-lbl">Z-Factor</div>' +
+        buildCalcTipPopHTML("📐 Z-Factor", buildZFactorCalculationRows(pl)) +
+      '</div>' +
+    '</div>' +
   '</div>';
 }
 function buildMeritStatBoxHTML(pl, meritDisplay) {
@@ -3390,7 +3459,20 @@ function showPlayerStats(name) {
 
   document.getElementById("p-avatar").textContent=name.charAt(0).toUpperCase();
   document.getElementById("p-name").textContent=name;
-  var re=document.getElementById("p-winrate");re.textContent=rate+"%";re.className="player-winrate"+(rate<50?" low":"");
+  var pointsDisplay = typeof pl.leaderboardPoints === "number"
+    ? String(pl.leaderboardPoints)
+    : "—";
+  var zFactor = calculateWilsonScoreLowerBound(pl.won, pl.lost, 2.1);
+  var zDisplay = formatMeritCalcValue(zFactor, 2);
+  var re = document.getElementById("p-winrate");
+  re.className = "player-winrate points-hero-tip tag-tip";
+  re.setAttribute("role", "button");
+  re.setAttribute("tabindex", "0");
+  re.setAttribute("aria-expanded", "false");
+  re.setAttribute("aria-label", "Points calculation");
+  re.innerHTML =
+    '<span class="tag-tip-label">' + escAttr(pointsDisplay) + '</span>' +
+    buildCalcTipPopHTML("🏆 Points Calculation", buildPointsCalculationRows(pl));
   document.getElementById("p-record").textContent=pl.won.toFixed(1)+"W — "+pl.lost.toFixed(1)+"L • "+(pl.won+pl.lost).toFixed(1)+" matches";
 
   var flair = buildPlayerFlair(name);
@@ -3408,19 +3490,14 @@ function showPlayerStats(name) {
     H("p-prestige", "");
   }
 
-  var pointsDisplay = typeof pl.leaderboardPoints === "number"
-    ? String(pl.leaderboardPoints)
-    : "—";
-
   H("stats-grid",
-    '<div class="stat-box"><div class="stat-val accent">'+bs+'</div><div class="stat-lbl">Best Streak</div></div>'+
-    buildPointsStatBoxHTML(pl, pointsDisplay)+
+    buildCoreStatsSplitHTML(bs, rate, zDisplay, pl)+
     '<div class="stat-box"><div class="stat-val accent" style="font-size:14px">'+(bp||"—")+'</div><div class="stat-lbl">Best Partner</div></div>'+
     '<div class="stat-box"><div class="stat-val loss" style="font-size:14px">'+(tg||"—")+'</div><div class="stat-lbl">Toughest Opp</div></div>'+
     '<div class="stat-box wide"><div class="gt-split">'+
-      '<div style="text-align:center"><div class="stat-val accent">'+r21+'%</div><div class="stat-lbl">21pt Win Rate</div><div style="font-size:11px;color:var(--text-dim);font-family:monospace;margin-top:4px">'+w21+'W — '+l21+'L</div></div>'+
-      '<div style="width:1px;height:36px;background:var(--border-soft)"></div>'+
-      '<div style="text-align:center"><div class="stat-val accent">'+r11+'%</div><div class="stat-lbl">11pt Win Rate</div><div style="font-size:11px;color:var(--text-dim);font-family:monospace;margin-top:4px">'+w11+'W — '+l11+'L</div></div>'+
+      '<div class="gt-split-col"><div class="stat-val accent">'+r21+'%</div><div class="stat-lbl">21pt Win Rate</div><div class="gt-split-sub">'+w21+'W — '+l21+'L</div></div>'+
+      '<div class="gt-split-divider"></div>'+
+      '<div class="gt-split-col"><div class="stat-val accent">'+r11+'%</div><div class="stat-lbl">11pt Win Rate</div><div class="gt-split-sub">'+w11+'W — '+l11+'L</div></div>'+
     '</div></div>'
   );
 

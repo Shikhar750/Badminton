@@ -283,6 +283,9 @@ input:focus{box-shadow:0 0 0 2px var(--accent-dim)}
 .player-prestige{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px}
 .player-winrate{font-size:34px;font-weight:700;font-family:'Space Mono',monospace;color:var(--accent);margin:4px 0}
 .player-winrate.low{color:var(--loss)}
+.player-winrate.points-hero-tip{cursor:pointer;position:relative;display:inline-block;-webkit-tap-highlight-color:transparent}
+.player-winrate.points-hero-tip:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+.player-winrate.points-hero-tip.tag-tip.open{z-index:80}
 .player-record{font-size:12.5px;color:var(--text-dim);font-family:'Space Mono',monospace}
 .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:var(--sp-5)}
 .form-chart-card{background:var(--surface);border-radius:var(--radius-sm);padding:12px 12px 10px;margin-bottom:var(--sp-5)}
@@ -323,8 +326,14 @@ input:focus{box-shadow:0 0 0 2px var(--accent-dim)}
 .stat-val{font-size:19px;font-weight:700;font-family:'Space Mono',monospace;color:var(--text)}
 .stat-val.accent{color:var(--accent)}.stat-val.loss{color:var(--loss)}
 .stat-lbl{font-size:10.5px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px}
-.gt-split{display:flex;justify-content:space-around;align-items:center}
-.gt-divider{width:1px;height:36px;background:var(--border-soft)}
+.gt-split{display:flex;justify-content:space-around;align-items:center;width:100%}
+.gt-split-3{justify-content:space-between}
+.gt-split-col{flex:1;text-align:center;min-width:0;padding:0 4px}
+.gt-split-col.tag-tip{cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent}
+.gt-split-col.tag-tip:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+.gt-split-col.tag-tip.open{z-index:80}
+.gt-split-divider{width:1px;height:40px;background:var(--border-soft);flex-shrink:0}
+.gt-split-sub{font-size:11px;color:var(--text-dim);font-family:'Space Mono',monospace;margin-top:4px}
 .sec-hdr{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.2px;margin:16px 0 10px;font-family:'Space Mono',monospace}
 .achievements-box{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:var(--sp-4)}
 .tag.tag-tip,.trash-title-tip.tag-tip{position:relative;font-family:inherit;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
