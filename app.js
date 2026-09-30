@@ -1167,11 +1167,44 @@ function computeTrashTalkFlair(n) {
   if (pl.streakType === "L" && pl.streakCount >= 2) {
     return { id: "thin-ice", icon: "🧊", label: "On Thin Ice", body: pl.streakCount + "-loss streak right now in " + periodLabel + "." };
   }
+  if (pl.streakType === "W" && pl.streakCount === 1) {
+    return { id: "fresh-win", icon: "✨", label: "Fresh Win Energy", body: "Latest match was a W in " + periodLabel + "." };
+  }
+  if (pl.streakType === "L" && pl.streakCount === 1) {
+    return { id: "plot-twist", icon: "🎬", label: "Plot Twist", body: "Latest match flipped the script in " + periodLabel + "." };
+  }
+  if (pl.decided >= 5 && pl.rate >= 70) {
+    return { id: "main-character", icon: "🌟", label: "Main Character", body: Math.round(pl.rate) + "% win rate · carrying quiet aura in " + periodLabel + "." };
+  }
+  if (pl.decided >= 4 && pl.rate >= 65) {
+    return { id: "lowkey-dangerous", icon: "😼", label: "Lowkey Dangerous", body: Math.round(pl.rate) + "% win rate · not loud, just effective in " + periodLabel + "." };
+  }
   if (pl.decided >= 3 && pl.rate >= 60) {
     return { id: "quietly-cooking", icon: "🍳", label: "Quietly Cooking", body: Math.round(pl.rate) + "% win rate without a superlative crown in " + periodLabel + "." };
   }
+  if (pl.decided >= 4 && pl.rate >= 55) {
+    return { id: "still-simmering", icon: "🍲", label: "Still Simmering", body: Math.round(pl.rate) + "% win rate · warming up nicely in " + periodLabel + "." };
+  }
+  if (ctx.totalDays >= 3 && pl.daysPlayed >= Math.ceil(ctx.totalDays * 0.6) && pl.decided >= 3 && pl.rate >= 48 && pl.rate < 58) {
+    return { id: "calendar-regular", icon: "📅", label: "Calendar Regular", body: "Shows up often and keeps it steady in " + periodLabel + "." };
+  }
+  if (pl.decided >= 5 && pl.rate >= 48 && pl.rate <= 52) {
+    return { id: "fifty-fifty", icon: "⚖️", label: "Fifty-Fifty", body: Math.round(pl.rate) + "% · perfectly balanced chaos in " + periodLabel + "." };
+  }
+  if (pl.decided >= 3 && pl.rate >= 50) {
+    return { id: "unbothered", icon: "😎", label: "Unbothered", body: Math.round(pl.rate) + "% win rate · middle of the pack, zero stress in " + periodLabel + "." };
+  }
+  if (pl.decided >= 4 && pl.rate >= 45) {
+    return { id: "working-on-it", icon: "🔧", label: "Working On It", body: Math.round(pl.rate) + "% win rate · arc still loading in " + periodLabel + "." };
+  }
+  if (pl.decided >= 3 && pl.rate > 40 && pl.rate < 45) {
+    return { id: "character-dev", icon: "📖", label: "Character Development", body: Math.round(pl.rate) + "% win rate · early chapters in " + periodLabel + "." };
+  }
   if (pl.decided >= 3 && pl.rate <= 40) {
     return { id: "bench-warmer", icon: "🪑", label: "Bench Warmer", body: Math.round(pl.rate) + "% win rate · struggling but not last in " + periodLabel + "." };
+  }
+  if (pl.matches >= 2 && pl.decided < 3) {
+    return { id: "small-sample", icon: "🧪", label: "Small Sample Size", body: "Not enough decided matches yet for a real read in " + periodLabel + "." };
   }
   return { id: "in-the-mix", icon: "🎭", label: "In the Mix", body: "No trash-talk superlative this filter — middle of the pack vibes in " + periodLabel + "." };
 }
@@ -3068,6 +3101,19 @@ function renderRankMovementBadge(name, movementMap) {
   return "";
 }
 
+function shouldUsePodiumMedalsOnLeaderboard() {
+  if (leaderboardPeriod !== "customMonth") return false;
+  var key = customMonthValue || "";
+  return !!key && key !== getCurrentMonthKey();
+}
+function renderLeaderboardRankBadge(rankIdx, moveBadge, useMedals) {
+  var badgeClass = rankIdx === 0 ? "gold" : rankIdx === 1 ? "silver" : rankIdx === 2 ? "bronze" : "";
+  var content = String(rankIdx + 1);
+  if (useMedals && rankIdx === 0) { content = "🥇"; badgeClass += " medal"; }
+  else if (useMedals && rankIdx === 1) { content = "🥈"; badgeClass += " medal"; }
+  else if (useMedals && rankIdx === 2) { content = "🥉"; badgeClass += " medal"; }
+  return '<div class="rank-badge '+badgeClass.trim()+'">'+content+(moveBadge||"")+'</div>';
+}
 function renderLeaderboard() {
   resetFlairCache();
   var periodSessions = getSessionsForPeriod();
@@ -3114,7 +3160,6 @@ function renderLeaderboard() {
 
         var rankIdx = qualifiedRank;
         qualifiedRank++;
-        var badgeClass = rankIdx===0?"gold":rankIdx===1?"silver":rankIdx===2?"bronze":"";
         var adjHTML = "";
         if (p.brownie > 0) adjHTML += '<span class="tag brownie">🍪 +'+p.brownie+'%</span>';
         if (p.negative < 0) adjHTML += '<span class="tag penalty" title="'+(p.negativeReason||"")+'">⚠️ '+p.negative+'%</span>';
@@ -3126,7 +3171,9 @@ function renderLeaderboard() {
           heroSuffix = "";
           heroLowClass = "";
           subLine1 = '<span class="lb-detail">'+p.won.toFixed(1)+'W — '+p.lost.toFixed(1)+'L</span>';
-          subLine2 = '<div class="lb-relative'+(low?" low":"")+'">'+rate+'% win rate</div>';
+          var zFactor = calculateWilsonScoreLowerBound(p.won, p.lost, 2.1);
+          var zDisplay = formatMeritCalcValue(zFactor, 2);
+          subLine2 = '<div class="lb-relative'+(low?" low":"")+'">'+rate+'% wR · '+zDisplay+'z</div>';
         } else {
           heroNumber = rate;
           heroSuffix = "%";
@@ -3137,9 +3184,10 @@ function renderLeaderboard() {
 
         var secondary = sHTML + adjHTML + nemesisHTML;
         var moveBadge = renderRankMovementBadge(p.name, movementMap);
+        var useMedals = shouldUsePodiumMedalsOnLeaderboard();
         return '<div class="lb-row'+(rankIdx===0?" rank-1":"")+(isMe?" is-me":"")+(prestigeCornerHTML?" has-prestige":"")+'" '+attrName+'="'+p.name+'">'+
           prestigeCornerHTML+
-          '<div class="rank-badge '+badgeClass+'">'+(rankIdx+1)+moveBadge+'</div>'+
+          renderLeaderboardRankBadge(rankIdx, moveBadge, useMedals)+
           '<div class="lb-main"><div class="lb-name">'+p.name+meHTML+trashHTML+'</div>'+(secondary?'<div class="lb-secondary">'+secondary+'</div>':'')+'</div>'+
           '<div class="lb-stats"><div class="lb-rate'+heroLowClass+'">'+heroNumber+heroSuffix+'</div><div class="lb-detail">'+subLine1+'</div>'+subLine2+subLine3+formHTML+'</div></div>';
       }).join("")+'<div class="count">'+periodTotalGames.toFixed(1)+' match'+(periodTotalGames!==1?"es":"")+" recorded</div>";
