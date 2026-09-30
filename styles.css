@@ -335,6 +335,57 @@ input:focus{box-shadow:0 0 0 2px var(--accent-dim)}
 .tag-pop-title{display:block;font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px}
 .tag-pop-body{display:block;font-size:10px;line-height:1.45;color:var(--text-dim);font-weight:500;white-space:normal}
 .tag.achievement{background:rgba(139,147,248,0.12);color:var(--accent);border:1px solid rgba(139,147,248,0.2);font-size:10px;padding:4px 8px}
+.potm-group{flex:0 0 100%;display:flex;flex-wrap:wrap;gap:8px;margin-bottom:2px}
+.tag.achievement.potm-medal{
+  --potm-c:#f5c542;
+  --potm-rgb:245,197,66;
+  background:#12151c;
+  color:var(--potm-c);
+  border:1.5px solid rgba(var(--potm-rgb),0.55);
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+  padding:4px 4px 4px 8px;
+  box-shadow:inset 0 0 18px rgba(var(--potm-rgb),0.08);
+  line-height:1;
+  gap:0;
+}
+.tag.achievement.potm-medal.potm-place-2{
+  --potm-c:#c8d0e0;
+  --potm-rgb:150,165,200;
+  border-color:rgba(var(--potm-rgb),0.5);
+  box-shadow:inset 0 0 18px rgba(var(--potm-rgb),0.07);
+}
+.tag.achievement.potm-medal.potm-place-3{
+  --potm-c:#d4926a;
+  --potm-rgb:200,120,80;
+  border-color:rgba(var(--potm-rgb),0.55);
+  box-shadow:inset 0 0 18px rgba(var(--potm-rgb),0.08);
+}
+.potm-chip{display:inline-flex;align-items:center;gap:0}
+.potm-chip-medal{font-size:14px;line-height:1;margin-right:5px;filter:drop-shadow(0 0 4px rgba(var(--potm-rgb),0.35))}
+.potm-chip-place{font-size:12px;font-weight:700;letter-spacing:0.01em;line-height:1;margin-right:7px}
+.potm-chip-count{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:22px;
+  height:22px;
+  padding:0;
+  border-radius:99px;
+  background:rgba(var(--potm-rgb),0.2);
+  color:var(--potm-c);
+  font-size:11px;
+  font-weight:700;
+  font-family:'Space Mono',monospace;
+  line-height:1;
+}
+.potm-place-2 .potm-chip-count{color:#e8edf7}
+.potm-place-3 .potm-chip-count{color:#f0c4a8}
+.potm-pop{min-width:170px}
+.potm-count{color:var(--amber);font-weight:700;margin-left:4px}
+.potm-months{display:flex;flex-direction:column;gap:4px;margin-top:2px}
+.potm-month{display:block;font-size:10.5px;line-height:1.4;color:var(--text-dim);font-family:'Space Mono',monospace;font-weight:500}
 .player-prestige .tag.prestige.tag-tip{font-size:10px;padding:4px 8px}
 .tag-tip.open{z-index:70}
 @media (hover:hover){

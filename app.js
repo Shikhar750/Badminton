@@ -1527,6 +1527,87 @@ function buildTagTipButton(className, icon, label, body) {
     '</span>'+
   '</button>';
 }
+function formatMonthKeyLabel(monthKey) {
+  var parts = String(monthKey || "").split("-");
+  if (parts.length < 2) return monthKey || "";
+  var monthIdx = parseInt(parts[1], 10) - 1;
+  if (monthIdx < 0 || monthIdx > 11) return monthKey;
+  return MONTHS[monthIdx] + " " + parts[0];
+}
+function getUniqueSessionMonthKeys() {
+  var keys = {};
+  sessions.forEach(function(s) {
+    if (!s.date || s.date.length < 7) return;
+    keys[s.date.slice(0, 7)] = true;
+  });
+  return Object.keys(keys).sort(function(a, b) { return b.localeCompare(a); });
+}
+function getAppliedMonthKeyFromEarned(earnedMonthKey) {
+  var parts = String(earnedMonthKey || "").split("-");
+  if (parts.length < 2) return earnedMonthKey;
+  var year = parseInt(parts[0], 10);
+  var month = parseInt(parts[1], 10);
+  if (!year || !month) return earnedMonthKey;
+  var d = new Date(year, month, 1);
+  var m = d.getMonth() + 1;
+  return d.getFullYear() + "-" + (m < 10 ? "0" + m : String(m));
+}
+function getPlayerPlaceInMonthStandings(standings, name) {
+  if (!standings || !standings.length) return 0;
+  var place = 0;
+  for (var i = 0; i < standings.length; i++) {
+    if (LEADERBOARD_QUALIFICATION_ENFORCED && standings[i].qualified === false) continue;
+    place++;
+    if (standings[i].name === name) return place <= 3 ? place : 0;
+  }
+  return 0;
+}
+function computePlayerPotmResults(name) {
+  var byPlace = { 1: [], 2: [], 3: [] };
+  var currentKey = getCurrentMonthKey();
+  getUniqueSessionMonthKeys().forEach(function(monthKey) {
+    if (monthKey === currentKey) return;
+    var standings = computeIndividualForEarnedMonth(monthKey, getAppliedMonthKeyFromEarned(monthKey));
+    if (!standings.length) return;
+    var place = getPlayerPlaceInMonthStandings(standings, name);
+    if (place < 1 || place > 3) return;
+    byPlace[place].push({
+      monthKey: monthKey,
+      label: formatMonthKeyLabel(monthKey)
+    });
+  });
+  return byPlace;
+}
+function buildPotmMedalChipHTML(place, months) {
+  if (!months || !months.length) return "";
+  var medal = place === 1 ? "🥇" : place === 2 ? "🥈" : "🥉";
+  var placeLabel = place === 1 ? "1st Place Finishes" : place === 2 ? "2nd Place Finishes" : "3rd Place Finishes";
+  var placeShort = place === 1 ? "1st" : place === 2 ? "2nd" : "3rd";
+  var monthsHTML = months.map(function(m, i) {
+    return '<span class="potm-month">' + (i + 1) + '. ' + escAttr(m.label) + '</span>';
+  }).join("");
+  return '<button type="button" class="tag tag-tip achievement potm-medal potm-place-'+place+'" aria-expanded="false" aria-label="'+medal+' '+escAttr(placeLabel)+' ×'+months.length+'">'+
+    '<span class="tag-tip-label potm-chip">'+
+      '<span class="potm-chip-medal">'+medal+'</span>'+
+      '<span class="potm-chip-place">'+placeShort+'</span>'+
+      '<span class="potm-chip-count">'+months.length+'</span>'+
+    '</span>'+
+    '<span class="tag-pop potm-pop" role="tooltip">'+
+      '<span class="tag-pop-title">'+medal+' '+escAttr(placeLabel)+' <span class="potm-count">×'+months.length+'</span></span>'+
+      '<span class="tag-pop-body potm-months">'+monthsHTML+'</span>'+
+    '</span>'+
+  '</button>';
+}
+function buildPotmChipsHTML(name) {
+  var results = computePlayerPotmResults(name);
+  var hasAny = results[1].length || results[2].length || results[3].length;
+  if (!hasAny) return "";
+  return '<div class="potm-group">' +
+    buildPotmMedalChipHTML(1, results[1]) +
+    buildPotmMedalChipHTML(2, results[2]) +
+    buildPotmMedalChipHTML(3, results[3]) +
+  '</div>';
+}
 var PRESTIGE_DEFINITIONS = {
   dominator: "Win streak worth at least a quarter of your matches in this filter (min 5).",
   assassin: "Most wins over that filter's #1.",
@@ -1539,13 +1620,15 @@ function buildPrestigeTagsHTML(titles) {
   }).join("");
 }
 function buildAchievementsHTML(name) {
+  var potmHTML = buildPotmChipsHTML(name);
   var items = computeAchievements(name);
-  if (!items.length) return "";
+  if (!potmHTML && !items.length) return "";
   var heading = (pinnedPlayer === name ? "Your " : name + "'s ") + "Achievements";
+  var tagsHTML = potmHTML + items.map(function(a) {
+    return buildTagTipButton("achievement", a.icon, a.label, a.body);
+  }).join("");
   return '<div class="sec-hdr">'+heading+'</div><div class="achievements-box" id="achievements-box">'+
-    items.map(function(a) {
-      return buildTagTipButton("achievement", a.icon, a.label, a.body);
-    }).join("")+
+    tagsHTML+
   '</div>';
 }
 var tagTipBound = false;
