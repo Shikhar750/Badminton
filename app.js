@@ -2586,7 +2586,7 @@ document.getElementById("lineup-share-btn").addEventListener("click", function()
 });
 
 function getLineupDisplayWinRate(name) {
-  var m = getSessionsThisMonthAlways().filter(function(s) { return inMatch(s, name); });
+  var m = sessions.filter(function(s) { return inMatch(s, name); });
   var won = 0, lost = 0;
   m.forEach(function(s) {
     var result = getResult(s, name);
