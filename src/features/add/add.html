@@ -1,0 +1,50 @@
+<div class="tab" id="tab-add">
+  <div data-partial="lineup"></div>
+
+  <div class="section-label" style="margin-top:var(--sp-5)" id="form-title">Add Doubles Match</div>
+
+  <div class="fg">
+    <div class="field-label">Your Team <span style="font-weight:400;text-transform:none;color:var(--text-dim)">— pick 2</span></div>
+    <div class="sel-hint" id="t1-hint">0 of 2 selected</div>
+    <div class="chips-wrap" id="t1-chips"></div>
+  </div>
+  <div class="fg">
+    <div class="field-label opp">Opponent Team <span style="font-weight:400;text-transform:none;color:var(--text-dim)">— pick 2</span></div>
+    <div class="sel-hint" id="t2-hint">0 of 2 selected</div>
+    <div class="chips-wrap" id="t2-chips"></div>
+  </div>
+
+  <div class="collapse-toggle" id="squad-toggle">
+    <div>
+      <div class="collapse-label">👤 Manage Squad</div>
+      <div class="collapse-sub">add or remove players</div>
+    </div>
+    <div class="chevron" id="squad-chevron">▾</div>
+  </div>
+  <div class="collapse-body" id="squad-collapse-body">
+    <div id="squad-tags"></div>
+    <div class="add-row">
+      <input type="text" class="add-input" id="new-player-input" placeholder="Add new player name"/>
+      <button class="add-btn" id="add-player-btn">Add</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="fg">
+    <label>Game Type</label>
+    <div style="display:flex;gap:8px">
+      <button class="gt-btn active" id="btn-21">21 pts</button>
+      <button class="gt-btn" id="btn-11">11 pts</button>
+    </div>
+  </div>
+  <div class="frow">
+    <div class="fg"><label>Your Team Won</label><input type="number" id="t1wins" placeholder="Enter" min="0"/></div>
+    <div class="fg"><label>They Won</label><input type="number" id="t2wins" placeholder="Enter" min="0"/></div>
+  </div>
+  <div class="err" id="form-err"></div>
+  <div class="suc" id="form-suc"></div>
+  <button class="save-btn" id="save-btn">Save Match</button>
+  <button class="cancel-btn" id="cancel-btn" style="display:none">Cancel Edit</button>
+  <div class="hint">⚡ saves to Firebase • visible to everyone</div>
+</div>

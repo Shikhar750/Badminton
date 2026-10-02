@@ -1,0 +1,21 @@
+<div class="collapse-toggle" id="lineup-toggle">
+  <div>
+    <div class="collapse-label">🎲 Suggest Today's Lineup</div>
+    <div class="collapse-sub">optional — tap to open</div>
+  </div>
+  <div class="chevron" id="lineup-chevron">▾</div>
+</div>
+<div class="collapse-body" id="lineup-collapse-body">
+  <div class="fg">
+    <label>Who's playing today? <span style="font-weight:400;text-transform:none;color:var(--text-dim)">(pick 4, 5, or 6)</span></label>
+    <div class="sel-hint" id="lineup-sel-hint">0 selected</div>
+    <div class="chips-wrap" id="lineup-chips"></div>
+  </div>
+  <div class="lineup-action-row">
+    <button class="save-btn" id="lineup-suggest-btn">Suggest Lineup</button>
+    <button type="button" class="lineup-share-btn" id="lineup-share-btn" hidden disabled aria-label="Share lineup">Share</button>
+  </div>
+  <div class="err" id="lineup-err"></div>
+  <div id="lineup-result"></div>
+  <div class="hint">Based on This Month's pairing history</div>
+</div>

@@ -1,0 +1,33 @@
+/* src/shell/base.css */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:20px;--sp-6:24px;
+  --radius:18px;--radius-sm:12px;
+  --bg:#0a0c11;
+  --surface:#151922;
+  --surface-raised:#1b2029;
+  --text:#f0f1f5;
+  --text-dim:#767b87;
+  --border-soft:rgba(255,255,255,0.06);
+
+  --accent:#8b93f8;
+  --accent-dim:rgba(139,147,248,0.11);
+  --amber:#f2ac3d;
+  --amber-dim:rgba(242,172,61,0.13);
+  --loss:#e2707f;
+  --loss-dim:rgba(226,112,127,0.10);
+}
+html,body{touch-action:manipulation;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh;padding:var(--sp-6) var(--sp-4) 60px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:480px;margin:0 auto}
+.section-label{font-size:10.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.3px;margin:var(--sp-5) 0 var(--sp-3);font-weight:700}
+.tap-hint{font-size:11px;color:var(--text-dim);text-align:center;margin-bottom:var(--sp-4);font-family:'Space Mono',monospace}
+.empty{text-align:center;padding:40px 20px;color:var(--text-dim)}
+.empty-icon{font-size:32px;margin-bottom:10px}
+
+.hint{font-size:10.5px;color:var(--text-dim);text-align:center;margin-top:10px;font-family:'Space Mono',monospace}
+.divider{height:1px;background:var(--border-soft);margin:var(--sp-5) 0}
+.err{color:var(--loss);font-size:12px;margin:8px 0;display:none}
+.suc{color:var(--accent);font-size:12px;margin:8px 0;display:none}
+.back-btn{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--accent);font-size:14px;font-weight:600;cursor:pointer;margin-bottom:var(--sp-5);padding:0}
+.sec-hdr{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.2px;margin:16px 0 10px;font-family:'Space Mono',monospace}

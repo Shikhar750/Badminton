@@ -1,0 +1,9 @@
+export var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+export var ADMIN_PIN = "7789";
+export var MATCH_DAY_START_HOUR = 3;
+export var MATCH_DAY_MIGRATION_KEY = "badmintonMatchDay3amMigratedV2";
+export var LEADERBOARD_QUALIFICATION_ENFORCED = false;
+export var PAGE_SIZE = 10;
+export var PINNED_PLAYER_KEY = "badmintonPinnedPlayer";
+export var ALL_DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+export var WILSON_Z = 2.1;

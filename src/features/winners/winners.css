@@ -1,0 +1,17 @@
+/* Winners detail sub-view */
+.winners-page-header{text-align:center;margin-bottom:var(--sp-5)}
+.winners-page-title{font-size:17px;font-weight:700}
+.winner-row{background:var(--surface);border-radius:var(--radius-sm);padding:13px 15px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.winner-row.champ{background:linear-gradient(120deg, rgba(242,172,61,0.1), var(--surface))}
+.winner-medal{font-size:18px;width:28px;text-align:center;flex-shrink:0}
+.winner-month{font-size:10.5px;color:var(--text-dim);font-family:'Space Mono',monospace;min-width:60px}
+.winner-name{font-size:13.5px;font-weight:600;flex:1;color:var(--amber)}
+.winner-arr{color:var(--text-dim);font-size:14px;flex-shrink:0}
+.winners-month-header{text-align:center;margin-bottom:var(--sp-4)}
+.winners-month-title{font-size:17px;font-weight:700}
+.winners-month-champ{font-size:13px;color:var(--amber);font-weight:600;margin-top:6px}
+.winners-month-meta{font-size:10px;color:var(--text-dim);font-family:'Space Mono',monospace;margin-top:4px}
+.winners-month-lb{margin-top:var(--sp-2)}
+.lb-row-static{cursor:default;pointer-events:none}
+.winner-month-champ-row{border-color:rgba(242,172,61,0.28)}
+.winner-month-champ-tag{font-size:12px}

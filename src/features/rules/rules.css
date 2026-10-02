@@ -1,0 +1,12 @@
+/* Rules tab */
+.rule-card{background:var(--surface);border-radius:var(--radius);padding:var(--sp-4);margin-bottom:var(--sp-3)}
+.rule-title{font-size:11px;color:var(--accent);font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.8px;font-family:'Space Mono',monospace}
+.rule-text{font-size:13px;color:#c8cbd3;line-height:1.75}
+.rule-list{margin:0;padding-left:18px}
+.rule-list li{margin-bottom:6px}
+.rule-list ul{margin-top:6px;margin-bottom:0;padding-left:16px}
+.rule-list ul li{margin-bottom:4px;color:#b4b8c2}
+.admin-toggle{background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.14);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-top:var(--sp-6)}
+.admin-label{font-size:12px;color:var(--text-dim);font-weight:600;display:flex;align-items:center;gap:7px}
+.admin-body{display:none;margin-top:var(--sp-2)}
+.admin-body.open{display:block}

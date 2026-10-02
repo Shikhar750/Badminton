@@ -1,0 +1,97 @@
+<div class="tab" id="tab-rules">
+    <div class="rule-card">
+      <div class="rule-title">Pin Yourself</div>
+      <div class="rule-text">
+        👤 Tap the avatar in the top right corner and pick your name to highlight your ranking, open My Stats quickly, and view History wins/losses from your perspective.<br><br>
+        The choice stays only on this browser. It is not an account and never changes points or shared squad data.
+      </div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-title">Logging Matches</div>
+      <div class="rule-text">
+        📝 All matches played must be logged on the same day<br>
+        🚫 No exceptions unless agreed by the group beforehand
+      </div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-title">Match Lock</div>
+      <div class="rule-text">
+        🔒 All matches lock at 3am the next morning<br>
+        ✏️ No additions, edits or deletions after lock<br>
+        👑 Admin can edit locked matches with PIN
+      </div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-title">Deletion</div>
+      <div class="rule-text">
+        🗑️ Deletion requires majority WhatsApp group approval<br>
+        💬 Raise it in the group chat first
+      </div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-title">Rotation Rules</div>
+      <div class="rule-text">
+        <b>4 players:</b> Across 6 matches, cycle through all 3 possible team combinations — 2 matches with each pairing.<br><br>
+        <b>5 players:</b> One player sits out each match (loser's team rotates one out, sitting player joins the survivor). If a pair wins 2 matches in a row, they split before the 3rd — one stays, one joins the other side, and the surviving loser pairs with whoever's left.<br><br>
+        <b>6 players:</b> Split into 3 fixed teams of 2. First ~30 min: round robin — each team plays the other two once, then sits (3 matches total, everyone faces everyone). Second ~30 min: reshuffle into 3 fresh teams with zero repeat pairings from the first half. Use 🎲 Suggest Today's Lineup at the start — it gives you both halves at once, based on this month's pairing history.
+      </div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-title">Spirit of the Game</div>
+      <div class="rule-text">
+        🏆 If you played it, it goes on the board<br>
+        😄 Sore losers will be publicly shamed
+      </div>
+    </div>
+
+    <div class="admin-toggle" id="admin-toggle">
+      <div class="admin-label">🔒 Admin Tools</div>
+      <div class="chevron" id="admin-chevron">▾</div>
+    </div>
+    <div class="admin-body" id="admin-collapse-body">
+      <div class="rule-card">
+        <div class="rule-title">Monthly Adjustments</div>
+        <div class="fg">
+          <label>Player</label>
+          <select id="adj-player" style="background:var(--surface);border:none;border-radius:var(--radius-sm);padding:10px 12px;color:var(--text);font-size:14px;outline:none;width:100%;font-family:'Space Grotesk',sans-serif"></select>
+        </div>
+        <div class="frow">
+          <div class="fg"><label>Brownie %</label><input type="number" id="adj-brownie" placeholder="e.g. 1.5" step="0.1"/></div>
+          <div class="fg"><label>Negative %</label><input type="number" id="adj-negative" placeholder="e.g. -1" step="0.1"/></div>
+        </div>
+        <div class="fg"><label>Reason (for negative points)</label><input type="text" id="adj-reason" placeholder="e.g. refused designated partner"/></div>
+        <div class="fg" style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="adj-hide-winners" style="width:auto"/>
+          <label style="margin-bottom:0;text-transform:none;font-size:12.5px;color:var(--text);font-weight:400">Hide from Monthly Winners board</label>
+        </div>
+        <div class="err" id="adj-err"></div>
+        <div class="suc" id="adj-suc"></div>
+        <button class="save-btn" id="adj-save-btn">Apply Adjustment (PIN required)</button>
+        <button class="cancel-btn" id="adj-clear-btn" style="margin-top:8px">Clear This Player's Adjustment (PIN required)</button>
+        <div class="hint">Applies to: <span id="adj-month-label"></span></div>
+      </div>
+
+      <div class="rule-card">
+        <div class="rule-title">Month Start Override</div>
+        <div class="rule-text" style="font-size:11.5px;margin-bottom:12px">Use this if "This Month" should start counting from a later date, ignoring earlier matches for ranking purposes. All Time is never affected.</div>
+        <div class="fg"><label>Override applies to month</label><input type="text" id="override-month-label" disabled style="opacity:0.7"/></div>
+        <div class="fg"><label>Start counting "This Month" from</label><input type="date" id="override-date-input"/></div>
+        <div class="err" id="override-err"></div>
+        <div class="suc" id="override-suc"></div>
+        <button class="save-btn" id="override-set-btn">Set Override (PIN required)</button>
+        <button class="cancel-btn" id="override-clear-btn" style="margin-top:8px">Clear Override for This Month (PIN required)</button>
+        <div class="hint" id="override-current-status">No override currently set for this month</div>
+      </div>
+
+      <div class="rule-card">
+        <div class="rule-title">Weekly Match Days</div>
+        <div class="rule-text" style="font-size:11.5px;margin-bottom:12px">Pick the days you regularly play — the banner shows automatically for everyone on these days.</div>
+        <div class="fg">
+          <div class="chips-wrap" id="weekly-pattern-chips"></div>
+        </div>
+        <div class="err" id="weekly-err"></div>
+        <div class="suc" id="weekly-suc"></div>
+        <button class="save-btn" id="weekly-save-btn">Save Weekly Pattern (PIN required)</button>
+      </div>
+    </div>
+  </div>

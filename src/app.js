@@ -1,19 +1,39 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, push, remove, update, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { push, remove, update, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { matchesRef, squadRef, adjustmentsRef, monthOverridesRef, weeklyPatternRef } from "./config/firebase.js";
+import {
+  MONTHS,
+  ADMIN_PIN,
+  MATCH_DAY_START_HOUR,
+  MATCH_DAY_MIGRATION_KEY,
+  LEADERBOARD_QUALIFICATION_ENFORCED,
+  PAGE_SIZE,
+  PINNED_PLAYER_KEY,
+  ALL_DAYS,
+  WILSON_Z
+} from "./constants.js";
+import { wt, gtBadge, inT1, inMatch, getResult, getPairResult } from "./utils/match.js";
+import { H, emptyHTML, escAttr, fmtDate, scrollPageToTop } from "./utils/dom.js";
+import {
+  calculateWilsonScoreLowerBound,
+  calculateAttendanceAdjustedWilsonScore,
+  formatMeritCalcValue
+} from "./ranking/wilson.js";
+import {
+  countLeaderboardPointWinsFromSrc,
+  calculateLeaderboardPoints,
+  applyPlayerLeaderboardPoints,
+  getLeaderboardSortMetricsFromStats,
+  getLeaderboardSortMetrics,
+  compareLeaderboardSortMetrics
+} from "./ranking/points.js";
+import {
+  getLineupDisplayWinRate as getLineupDisplayWinRateFromSessions,
+  getLineupTeamStrength as getLineupTeamStrengthFromSessions,
+  getLineupMatchupPercents as getLineupMatchupPercentsFromSessions,
+  buildLineupMatchupCardHTML as buildLineupMatchupCardHTMLFromSessions
+} from "./features/lineup/percent.js";
+import { bindTagTips } from "./ui/tagTips.js";
 
-var app = initializeApp({ databaseURL: "https://badminton-7ef03-default-rtdb.asia-southeast1.firebasedatabase.app" });
-var db = getDatabase(app);
-var matchesRef = ref(db, "matches");
-var squadRef = ref(db, "squad");
-var adjustmentsRef = ref(db, "monthlyAdjustments");
-var monthOverridesRef = ref(db, "settings/monthOverrides");
-var weeklyPatternRef = ref(db, "settings/weeklyMatchDays");
-var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-var ADMIN_PIN = "7789";
-var MATCH_DAY_START_HOUR = 3;
-var MATCH_DAY_MIGRATION_KEY = "badmintonMatchDay3amMigratedV2";
-var LEADERBOARD_QUALIFICATION_ENFORCED = false;
 var matchDayMigrationRunning = false;
 var sessions = [];
 var squadPlayers = [];
@@ -25,7 +45,6 @@ var t2Selected = [];
 var gameType = "21";
 var currentPlayer = null;
 var historyPage = 0;
-var PAGE_SIZE = 10;
 var allHistoryLoaded = false;
 var adminUnlocked = false;
 var sessionsLoaded = false;
@@ -37,7 +56,6 @@ var customDateValue = "";
 var monthlyAdjustments = {};
 var monthOverrides = {};
 var weeklyPattern = [];
-var PINNED_PLAYER_KEY = "badmintonPinnedPlayer";
 var pinnedPlayer = loadPinnedPlayer();
 
 function loadPinnedPlayer() {
@@ -124,11 +142,6 @@ function checkAdmin() {
   return false;
 }
 
-function scrollPageToTop() {
-  window.scrollTo(0, 0);
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
-}
 function getActiveTabName() {
   var tabs = ["leaderboard","history","add","player","h2h","rules","winners","pair","pair-duel"];
   for (var i = 0; i < tabs.length; i++) {
@@ -481,15 +494,7 @@ onValue(weeklyPatternRef, function(snap) {
   populateMatchDayBanner();
 });
 
-function fmtDate(d) { if(!d) return "Unknown"; var p=d.split("-"); if(p.length===3) return p[2]+" "+MONTHS[parseInt(p[1])-1]+" "+p[0]; return d; }
-function H(id,html) { document.getElementById(id).innerHTML=html; }
-function emptyHTML(msg) { return '<div class="empty"><div class="empty-icon">🏸</div><p>'+(msg||"No matches yet!")+'</p></div>'; }
 function renderAll() { renderLeaderboard(); historyPage=0; renderHistory(); }
-function wt(s) { return s.gameType==="11"?0.5:1; }
-function gtBadge(s) { return '<span class="gt-badge">'+(s.gameType==="11"?"11pt":"21pt")+'</span>'; }
-function inT1(s,n) { return [s.t1p1,s.t1p2].indexOf(n)>-1; }
-function inMatch(s,n) { return [s.t1p1,s.t1p2,s.t2p1,s.t2p2].indexOf(n)>-1; }
-function getResult(s,n) { var a=inT1(s,n),t1=Number(s.t1wins),t2=Number(s.t2wins); if(a) return t1>t2?"W":t1<t2?"L":"D"; return t2>t1?"W":t2<t1?"L":"D"; }
 function playerMatches(n) { return getSessionsForPeriod().filter(function(s){ return inMatch(s,n); }).sort(function(a,b){ return a.id-b.id; }); }
 
 function getDateNDaysAgoString(n) {
@@ -606,7 +611,6 @@ document.getElementById("override-clear-btn").addEventListener("click", async fu
 });
 
 var weeklyPatternSelected = [];
-var ALL_DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 function renderWeeklyPatternChips() {
   var el = document.getElementById("weekly-pattern-chips");
   el.innerHTML = ALL_DAYS.map(function(d) {
@@ -794,13 +798,6 @@ function getRecentFormDotsHTML(name, limit) {
   return '<div class="lb-form">' + results.map(function(r) {
     return '<span class="lb-dot '+(r==="W"?"win":r==="L"?"loss":"draw")+'"></span>';
   }).join("") + '</div>';
-}
-function getPairResult(s, pairName) {
-  var t1 = [s.t1p1,s.t1p2].filter(function(n){return n&&n!=="undefined"&&n!=="";}).sort().join(" & ");
-  var isT1 = t1 === pairName;
-  var t1w = Number(s.t1wins), t2w = Number(s.t2wins);
-  if (isT1) return t1w > t2w ? "W" : t1w < t2w ? "L" : "D";
-  return t2w > t1w ? "W" : t2w < t1w ? "L" : "D";
 }
 function getRecentPairFormDotsHTML(pairName, limit) {
   limit = limit || 5;
@@ -1357,9 +1354,6 @@ function buildPartnerChemistryHTML(name) {
     }).join("")+
   '</div>';
 }
-function escAttr(s) {
-  return String(s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-}
 function buildAchievementSuperlatives() {
   var standings = computeIndividual();
   var qualified = standings.filter(function(p) { return p.qualified && (p.won + p.lost) > 0; });
@@ -1663,111 +1657,6 @@ function buildAchievementsHTML(name) {
   return '<div class="sec-hdr">'+heading+'</div><div class="achievements-box" id="achievements-box">'+
     tagsHTML+
   '</div>';
-}
-var tagTipBound = false;
-function resetTagPopPosition(chip) {
-  var pop = chip && chip.querySelector(".tag-pop");
-  if (!pop) return;
-  pop.style.position = "";
-  pop.style.left = "";
-  pop.style.top = "";
-  pop.style.right = "";
-  pop.style.bottom = "";
-  pop.style.transform = "";
-  pop.style.maxWidth = "";
-  pop.style.display = "";
-  pop.style.visibility = "";
-}
-function positionTagPop(chip) {
-  var pop = chip.querySelector(".tag-pop");
-  if (!pop) return;
-  var margin = 8;
-  var gap = 6;
-  pop.style.display = "block";
-  pop.style.visibility = "hidden";
-  var chipRect = chip.getBoundingClientRect();
-  var vw = window.innerWidth;
-  var vh = window.innerHeight;
-  pop.style.maxWidth = Math.min(240, vw - margin * 2) + "px";
-  var popRect = pop.getBoundingClientRect();
-  pop.style.display = "";
-  pop.style.visibility = "";
-
-  var left = chipRect.left + chipRect.width / 2 - popRect.width / 2;
-  left = Math.max(margin, Math.min(left, vw - margin - popRect.width));
-
-  var top = chipRect.bottom + gap;
-  if (top + popRect.height > vh - margin) {
-    top = chipRect.top - gap - popRect.height;
-  }
-  top = Math.max(margin, Math.min(top, vh - margin - popRect.height));
-
-  pop.style.position = "fixed";
-  pop.style.left = left + "px";
-  pop.style.top = top + "px";
-  pop.style.transform = "none";
-}
-function closeAllTagTips() {
-  var root = document.getElementById("tab-player");
-  if (!root) return;
-  root.querySelectorAll(".tag-tip").forEach(function(el) {
-    el.classList.remove("open");
-    el.setAttribute("aria-expanded", "false");
-    resetTagPopPosition(el);
-  });
-}
-function openTagTip(chip) {
-  closeAllTagTips();
-  chip.classList.add("open");
-  chip.setAttribute("aria-expanded", "true");
-  positionTagPop(chip);
-}
-function toggleTagTip(chip) {
-  var wasOpen = chip.classList.contains("open");
-  closeAllTagTips();
-  if (!wasOpen) openTagTip(chip);
-}
-function bindTagTips() {
-  if (tagTipBound) return;
-  tagTipBound = true;
-  var root = document.getElementById("tab-player");
-  if (!root) return;
-
-  root.addEventListener("click", function(e) {
-    var chip = e.target.closest(".tag-tip");
-    if (!chip || !root.contains(chip)) return;
-    e.stopPropagation();
-    toggleTagTip(chip);
-  });
-
-  document.addEventListener("click", function(e) {
-    if (e.target.closest("#tab-player .tag-tip")) return;
-    closeAllTagTips();
-  });
-
-  document.addEventListener("keydown", function(e) {
-    if (e.key === "Escape") closeAllTagTips();
-  });
-
-  window.addEventListener("resize", function() {
-    root.querySelectorAll(".tag-tip.open, .tag-tip:hover").forEach(function(chip) { positionTagPop(chip); });
-  });
-
-  root.addEventListener("mouseover", function(e) {
-    if (!window.matchMedia("(hover: hover)").matches) return;
-    var chip = e.target.closest(".tag-tip");
-    if (!chip || !root.contains(chip)) return;
-    positionTagPop(chip);
-  });
-
-  root.addEventListener("mouseout", function(e) {
-    if (!window.matchMedia("(hover: hover)").matches) return;
-    var chip = e.target.closest(".tag-tip");
-    if (!chip || !root.contains(chip) || chip.classList.contains("open")) return;
-    var next = e.relatedTarget;
-    if (next && chip.contains(next)) return;
-    resetTagPopPosition(chip);
-  });
 }
 function getSessionsForMonth(monthKey) {
   var parts = monthKey.split("-");
@@ -2586,43 +2475,16 @@ document.getElementById("lineup-share-btn").addEventListener("click", function()
 });
 
 function getLineupDisplayWinRate(name) {
-  var m = sessions.filter(function(s) { return inMatch(s, name); });
-  var won = 0, lost = 0;
-  m.forEach(function(s) {
-    var result = getResult(s, name);
-    if (result === "W") won++;
-    else if (result === "L") lost++;
-  });
-  return won + lost ? (won / (won + lost)) * 100 : 50;
+  return getLineupDisplayWinRateFromSessions(name, sessions);
 }
 function getLineupTeamStrength(team) {
-  if (!team || !team.length) return 50;
-  var sum = 0;
-  team.forEach(function(p) { sum += getLineupDisplayWinRate(p); });
-  return sum / team.length;
+  return getLineupTeamStrengthFromSessions(team, sessions);
 }
 function getLineupMatchupPercents(team1, team2) {
-  var s1 = getLineupTeamStrength(team1);
-  var s2 = getLineupTeamStrength(team2);
-  var total = s1 + s2;
-  if (!total) return [50, 50];
-  var p1 = Math.round((s1 / total) * 100);
-  return [p1, 100 - p1];
+  return getLineupMatchupPercentsFromSessions(team1, team2, sessions);
 }
 function buildLineupMatchupCardHTML(team1, team2) {
-  var pcts = getLineupMatchupPercents(team1, team2);
-  var label1 = team1.join(" & ");
-  var label2 = team2.join(" & ");
-  return '<div class="lineup-matchup-card">' +
-    '<div class="lineup-matchup-row">' +
-      '<span class="lineup-matchup-team">' + escAttr(label1) + '</span>' +
-      '<span class="lineup-matchup-pct">' + pcts[0] + '%</span>' +
-      '<span class="lineup-matchup-vs">vs</span>' +
-      '<span class="lineup-matchup-pct">' + pcts[1] + '%</span>' +
-      '<span class="lineup-matchup-team right">' + escAttr(label2) + '</span>' +
-    '</div>' +
-    '<div class="lineup-matchup-bar"><div class="lineup-matchup-bar-fill" style="width:' + pcts[0] + '%"></div></div>' +
-  '</div>';
+  return buildLineupMatchupCardHTMLFromSessions(team1, team2, sessions);
 }
 function buildLineupRoundRobinCardsHTML(teams) {
   if (!teams || teams.length < 3) return "";
@@ -2675,39 +2537,6 @@ function renderLineupSuggestion(players) {
   updateLineupShareState();
 }
 
-function calculateWilsonScoreLowerBound(wins, losses, z) {
-  z = z == null ? 2.1 : z;
-  var n = wins + losses;
-  if (n <= 0) return 0;
-  var p = wins / n;
-  var z2 = z * z;
-  var denominator = 1 + z2 / n;
-  var center = p + z2 / (2 * n);
-  var margin = z * Math.sqrt((p * (1 - p) / n) + (z2 / (4 * n * n)));
-  var lower = (center - margin) / denominator;
-  if (lower < 0) lower = 0;
-  if (lower > 1) lower = 1;
-  return lower * 100;
-}
-function calculateAttendanceAdjustedWilsonScore(wins, losses, daysPlayed, totalMatchDays) {
-  var wilsonPerformance = calculateWilsonScoreLowerBound(wins, losses, 2.1);
-  var attendanceRatio = 1;
-  if (totalMatchDays > 0) {
-    attendanceRatio = daysPlayed / totalMatchDays;
-    if (attendanceRatio < 0) attendanceRatio = 0;
-    if (attendanceRatio > 1) attendanceRatio = 1;
-  }
-  var attendancePenalty = (1 - attendanceRatio) * 10;
-  return wilsonPerformance - attendancePenalty;
-}
-function formatAttendanceAdjustedWilsonDisplay(score) {
-  if (typeof score !== "number" || isNaN(score)) return "0.0";
-  return (Math.round(score * 10) / 10).toFixed(1);
-}
-function formatMeritCalcValue(n, decimals) {
-  if (typeof n !== "number" || isNaN(n)) n = 0;
-  return (Math.round(n * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals);
-}
 function buildMeritCalculationRows(pl) {
   var wins = pl.won;
   var losses = pl.lost;
@@ -2900,49 +2729,6 @@ function applyPlayerMeritFields(pl, totalMatchDays, adj) {
   pl.rankedScore = (rawRate * attendanceRatio) + adj.negative;
   pl.attendanceAdjustedWilsonScore = calculateAttendanceAdjustedWilsonScore(pl.won, pl.lost, pl.matchDaysPlayed, totalMatchDays);
   pl.effectiveScore = pl.attendanceAdjustedWilsonScore + adj.negative;
-}
-function countLeaderboardPointWinsFromSrc(src, name) {
-  var wins21 = 0, wins11 = 0;
-  src.forEach(function(s) {
-    if (!inMatch(s, name)) return;
-    if (getResult(s, name) !== "W") return;
-    var gamesWon = inT1(s, name) ? Number(s.t1wins) : Number(s.t2wins);
-    if ((s.gameType || "21") === "11") wins11 += gamesWon;
-    else wins21 += gamesWon;
-  });
-  return { wins21: wins21, wins11: wins11 };
-}
-function calculateLeaderboardPoints(wins21, wins11) {
-  return (wins21 * 2) + (wins11 * 1);
-}
-function calculateLeaderboardPointsForPlayer(src, name) {
-  var counts = countLeaderboardPointWinsFromSrc(src, name);
-  return calculateLeaderboardPoints(counts.wins21, counts.wins11);
-}
-function applyPlayerLeaderboardPoints(pl, src) {
-  var counts = countLeaderboardPointWinsFromSrc(src, pl.name);
-  pl.pointsWins21 = counts.wins21;
-  pl.pointsWins11 = counts.wins11;
-  pl.leaderboardPoints = calculateLeaderboardPoints(counts.wins21, counts.wins11);
-}
-function getPointsBasedRankingScore(pl) {
-  return typeof pl.leaderboardPoints === "number" ? pl.leaderboardPoints : 0;
-}
-function getLeaderboardSortMetricsFromStats(won, lost, points) {
-  return {
-    points: typeof points === "number" ? points : 0,
-    winRate: (won + lost) ? won / (won + lost) : 0,
-    zFactor: calculateWilsonScoreLowerBound(won, lost, 2.1)
-  };
-}
-function getLeaderboardSortMetrics(pl) {
-  return getLeaderboardSortMetricsFromStats(pl.won, pl.lost, getPointsBasedRankingScore(pl));
-}
-function compareLeaderboardSortMetrics(a, b) {
-  if (b.points !== a.points) return b.points - a.points;
-  if (b.winRate !== a.winRate) return b.winRate - a.winRate;
-  if (b.zFactor !== a.zFactor) return b.zFactor - a.zFactor;
-  return 0;
 }
 function buildAllTimeLeaderboardSortMetricsByName() {
   var p = {};

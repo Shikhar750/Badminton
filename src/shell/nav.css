@@ -1,0 +1,5 @@
+/* src/shell/nav.css */
+.nav{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:var(--sp-5)}
+.nav-tab{padding:10px 4px;border-radius:var(--radius-sm);background:var(--surface);color:var(--text-dim);font-weight:600;font-size:11px;cursor:pointer;text-align:center;transition:background 0.15s}
+.nav-tab.active{background:var(--accent-dim);color:var(--accent)}
+.tab{display:none}.tab.active{display:block}
